@@ -1,0 +1,287 @@
+mother_query_name,sql,relations,joins,wheres,true_cardinality,postgres_estimate,postgres_optimization_time,execution_time
+10a,SELECT * FROM company_name cn WHERE cn.country_code = '[ru]',['company_name'],[],"[""cn.country_code = '[ru]'""]",1361,1386.0,0.0040268898010253,0.0542640686035156
+10a,SELECT * FROM role_type rt WHERE rt.role = 'actor',['role_type'],[],"[""rt.role = 'actor'""]",1,4.0,0.0016682147979736,0.000925064086914
+10b,SELECT * FROM company_name cn WHERE cn.country_code = '[ru]',['company_name'],[],"[""cn.country_code = '[ru]'""]",1361,1386.0,0.0009369850158691,0.0183379650115966
+10b,SELECT * FROM role_type rt WHERE rt.role = 'actor',['role_type'],[],"[""rt.role = 'actor'""]",1,4.0,0.0008070468902587,0.0007510185241699
+10c,SELECT * FROM company_name cn WHERE cn.country_code = '[us]',['company_name'],[],"[""cn.country_code = '[us]'""]",84843,85750.0,0.0015509128570556,0.0138139724731445
+11a,SELECT * FROM company_type ct WHERE ct.kind ='production companies',['company_type'],[],"[""ct.kind ='production companies'""]",1,4.0,0.0015082359313964,0.0009818077087402
+11a,SELECT * FROM keyword k WHERE k.keyword ='sequel',['keyword'],[],"[""k.keyword ='sequel'""]",1,1.0,0.0010952949523925,0.0109400749206542
+11b,SELECT * FROM company_type ct WHERE ct.kind ='production companies',['company_type'],[],"[""ct.kind ='production companies'""]",1,4.0,0.0011548995971679,0.0009539127349853
+11b,SELECT * FROM keyword k WHERE k.keyword ='sequel',['keyword'],[],"[""k.keyword ='sequel'""]",1,1.0,0.0009369850158691,0.0054688453674316
+11d,SELECT * FROM company_name cn WHERE cn.country_code !='[pl]',['company_name'],[],"[""cn.country_code !='[pl]'""]",210031,210236.0,0.0008888244628906,0.013962984085083
+12a,SELECT * FROM company_name cn WHERE cn.country_code = '[us]',['company_name'],[],"[""cn.country_code = '[us]'""]",84843,85750.0,0.0010550022125244,0.01344895362854
+12a,SELECT * FROM company_type ct WHERE ct.kind = 'production companies',['company_type'],[],"[""ct.kind = 'production companies'""]",1,4.0,0.0012679100036621,0.0011200904846191
+12a,SELECT * FROM info_type it1 WHERE it1.info = 'genres',['info_type'],[],"[""it1.info = 'genres'""]",1,1.0,0.0015668869018554,0.0014247894287109
+12a,SELECT * FROM info_type it2 WHERE it2.info = 'rating',['info_type'],[],"[""it2.info = 'rating'""]",1,1.0,0.0010051727294921,0.0010089874267578
+12b,SELECT * FROM company_name cn WHERE cn.country_code ='[us]',['company_name'],[],"[""cn.country_code ='[us]'""]",84843,85750.0,0.0011038780212402,0.0140140056610107
+12b,SELECT * FROM info_type it1 WHERE it1.info ='budget',['info_type'],[],"[""it1.info ='budget'""]",1,1.0,0.0010828971862792,0.0009593963623046
+12b,SELECT * FROM info_type it2 WHERE it2.info ='bottom 10 rank',['info_type'],[],"[""it2.info ='bottom 10 rank'""]",1,1.0,0.0010631084442138,0.0010039806365966
+12c,SELECT * FROM company_name cn WHERE cn.country_code = '[us]',['company_name'],[],"[""cn.country_code = '[us]'""]",84843,85750.0,0.0011031627655029,0.013273000717163
+12c,SELECT * FROM company_type ct WHERE ct.kind = 'production companies',['company_type'],[],"[""ct.kind = 'production companies'""]",1,4.0,0.0010652542114257,0.0009727478027343
+12c,SELECT * FROM info_type it1 WHERE it1.info = 'genres',['info_type'],[],"[""it1.info = 'genres'""]",1,1.0,0.0008950233459472,0.0009701251983642
+12c,SELECT * FROM info_type it2 WHERE it2.info = 'rating',['info_type'],[],"[""it2.info = 'rating'""]",1,1.0,0.000922679901123,0.0008549690246582
+13a,SELECT * FROM company_name cn WHERE cn.country_code ='[de]',['company_name'],[],"[""cn.country_code ='[de]'""]",9775,9729.0,0.0011427402496337,0.0114400386810302
+13a,SELECT * FROM company_type ct WHERE ct.kind ='production companies',['company_type'],[],"[""ct.kind ='production companies'""]",1,4.0,0.0009419918060302,0.0010108947753906
+13a,SELECT * FROM info_type it WHERE it.info ='rating',['info_type'],[],"[""it.info ='rating'""]",1,1.0,0.0010249614715576,0.0010051727294921
+13a,SELECT * FROM info_type it2 WHERE it2.info ='release dates',['info_type'],[],"[""it2.info ='release dates'""]",1,1.0,0.001004934310913,0.0009820461273193
+13a,SELECT * FROM kind_type kt WHERE kt.kind ='movie',['kind_type'],[],"[""kt.kind ='movie'""]",1,5.0,0.0013079643249511,0.0008630752563476
+13b,SELECT * FROM company_name cn WHERE cn.country_code ='[us]',['company_name'],[],"[""cn.country_code ='[us]'""]",84843,85750.0,0.0006730556488037,0.012775182723999
+13b,SELECT * FROM company_type ct WHERE ct.kind ='production companies',['company_type'],[],"[""ct.kind ='production companies'""]",1,4.0,0.000737190246582,0.0006279945373535
+13b,SELECT * FROM info_type it WHERE it.info ='rating',['info_type'],[],"[""it.info ='rating'""]",1,1.0,0.0007910728454589,0.0006008148193359
+13b,SELECT * FROM info_type it2 WHERE it2.info ='release dates',['info_type'],[],"[""it2.info ='release dates'""]",1,1.0,0.0009489059448242,0.0010061264038085
+13b,SELECT * FROM kind_type kt WHERE kt.kind ='movie',['kind_type'],[],"[""kt.kind ='movie'""]",1,5.0,0.0008749961853027,0.0006930828094482
+13c,SELECT * FROM company_name cn WHERE cn.country_code ='[us]',['company_name'],[],"[""cn.country_code ='[us]'""]",84843,85750.0,0.0010550022125244,0.0134150981903076
+13c,SELECT * FROM company_type ct WHERE ct.kind ='production companies',['company_type'],[],"[""ct.kind ='production companies'""]",1,4.0,0.0011491775512695,0.0009100437164306
+13c,SELECT * FROM info_type it WHERE it.info ='rating',['info_type'],[],"[""it.info ='rating'""]",1,1.0,0.0008859634399414,0.0020632743835449
+13c,SELECT * FROM info_type it2 WHERE it2.info ='release dates',['info_type'],[],"[""it2.info ='release dates'""]",1,1.0,0.0009169578552246,0.0008997917175292
+13c,SELECT * FROM kind_type kt WHERE kt.kind ='movie',['kind_type'],[],"[""kt.kind ='movie'""]",1,5.0,0.0010669231414794,0.0009157657623291
+13d,SELECT * FROM company_name cn WHERE cn.country_code ='[us]',['company_name'],[],"[""cn.country_code ='[us]'""]",84843,85750.0,0.0007460117340087,0.013545274734497
+13d,SELECT * FROM company_type ct WHERE ct.kind ='production companies',['company_type'],[],"[""ct.kind ='production companies'""]",1,4.0,0.0008268356323242,0.0004968643188476
+13d,SELECT * FROM info_type it WHERE it.info ='rating',['info_type'],[],"[""it.info ='rating'""]",1,1.0,0.0005388259887695,0.0003960132598876
+13d,SELECT * FROM info_type it2 WHERE it2.info ='release dates',['info_type'],[],"[""it2.info ='release dates'""]",1,1.0,0.0003881454467773,0.0003449916839599
+13d,SELECT * FROM kind_type kt WHERE kt.kind ='movie',['kind_type'],[],"[""kt.kind ='movie'""]",1,5.0,0.0003998279571533,0.0003361701965332
+14a,SELECT * FROM info_type it1 WHERE it1.info = 'countries',['info_type'],[],"[""it1.info = 'countries'""]",1,1.0,0.0005488395690917,0.0005080699920654
+14a,SELECT * FROM info_type it2 WHERE it2.info = 'rating',['info_type'],[],"[""it2.info = 'rating'""]",1,1.0,0.000464916229248,0.0004751682281494
+14a,SELECT * FROM kind_type kt WHERE kt.kind = 'movie',['kind_type'],[],"[""kt.kind = 'movie'""]",1,5.0,0.0005240440368652,0.0004060268402099
+14b,SELECT * FROM info_type it1 WHERE it1.info = 'countries',['info_type'],[],"[""it1.info = 'countries'""]",1,1.0,0.000680923461914,0.0004715919494628
+14b,SELECT * FROM info_type it2 WHERE it2.info = 'rating',['info_type'],[],"[""it2.info = 'rating'""]",1,1.0,0.0004048347473144,0.0003917217254638
+14b,SELECT * FROM kind_type kt WHERE kt.kind = 'movie',['kind_type'],[],"[""kt.kind = 'movie'""]",1,5.0,0.0004899501800537,0.0012202262878417
+14c,SELECT * FROM info_type it1 WHERE it1.info = 'countries',['info_type'],[],"[""it1.info = 'countries'""]",1,1.0,0.0010340213775634,0.0007290840148925
+14c,SELECT * FROM info_type it2 WHERE it2.info = 'rating',['info_type'],[],"[""it2.info = 'rating'""]",1,1.0,0.0005130767822265,0.0005292892456054
+15a,SELECT * FROM company_name cn WHERE cn.country_code = '[us]',['company_name'],[],"[""cn.country_code = '[us]'""]",84843,85750.0,0.0010030269622802,0.0134599208831787
+15a,SELECT * FROM info_type it1 WHERE it1.info = 'release dates',['info_type'],[],"[""it1.info = 'release dates'""]",1,1.0,0.0013210773468017,0.0010099411010742
+15b,SELECT * FROM company_name cn WHERE cn.country_code = '[us]' AND cn.name = 'YouTube',['company_name'],[],"[""cn.country_code = '[us]'"", ""cn.name = 'YouTube'""]",1,1.0,0.0011940002441406,0.0127880573272705
+15b,SELECT * FROM info_type it1 WHERE it1.info = 'release dates',['info_type'],[],"[""it1.info = 'release dates'""]",1,1.0,0.0010950565338134,0.0008819103240966
+15c,SELECT * FROM company_name cn WHERE cn.country_code = '[us]',['company_name'],[],"[""cn.country_code = '[us]'""]",84843,85750.0,0.001028299331665,0.013214111328125
+15c,SELECT * FROM info_type it1 WHERE it1.info = 'release dates',['info_type'],[],"[""it1.info = 'release dates'""]",1,1.0,0.00114107131958,0.0008869171142578
+15d,SELECT * FROM company_name cn WHERE cn.country_code = '[us]',['company_name'],[],"[""cn.country_code = '[us]'""]",84843,85750.0,0.0011558532714843,0.0139129161834716
+15d,SELECT * FROM info_type it1 WHERE it1.info = 'release dates',['info_type'],[],"[""it1.info = 'release dates'""]",1,1.0,0.0011978149414062,0.0008840560913085
+16a,SELECT * FROM company_name cn WHERE cn.country_code ='[us]',['company_name'],[],"[""cn.country_code ='[us]'""]",84843,85750.0,0.0010299682617187,0.0134849548339843
+16a,SELECT * FROM keyword k WHERE k.keyword ='character-name-in-title',['keyword'],[],"[""k.keyword ='character-name-in-title'""]",1,1.0,0.0016639232635498,0.0053930282592773
+16b,SELECT * FROM company_name cn WHERE cn.country_code ='[us]',['company_name'],[],"[""cn.country_code ='[us]'""]",84843,85750.0,0.0008599758148193,0.0135722160339355
+16b,SELECT * FROM keyword k WHERE k.keyword ='character-name-in-title',['keyword'],[],"[""k.keyword ='character-name-in-title'""]",1,1.0,0.0007519721984863,0.0051572322845458
+16c,SELECT * FROM company_name cn WHERE cn.country_code ='[us]',['company_name'],[],"[""cn.country_code ='[us]'""]",84843,85750.0,0.000561237335205,0.013599157333374
+16c,SELECT * FROM keyword k WHERE k.keyword ='character-name-in-title',['keyword'],[],"[""k.keyword ='character-name-in-title'""]",1,1.0,0.0010287761688232,0.0051658153533935
+16d,SELECT * FROM company_name cn WHERE cn.country_code ='[us]',['company_name'],[],"[""cn.country_code ='[us]'""]",84843,85750.0,0.0010979175567626,0.0136311054229736
+16d,SELECT * FROM keyword k WHERE k.keyword ='character-name-in-title',['keyword'],[],"[""k.keyword ='character-name-in-title'""]",1,1.0,0.0007510185241699,0.0049619674682617
+17a,SELECT * FROM company_name cn WHERE cn.country_code ='[us]',['company_name'],[],"[""cn.country_code ='[us]'""]",84843,85750.0,0.0012080669403076,0.0135421752929687
+17a,SELECT * FROM keyword k WHERE k.keyword ='character-name-in-title',['keyword'],[],"[""k.keyword ='character-name-in-title'""]",1,1.0,0.0019400119781494,0.0054829120635986
+17b,SELECT * FROM keyword k WHERE k.keyword ='character-name-in-title',['keyword'],[],"[""k.keyword ='character-name-in-title'""]",1,1.0,0.0009777545928955,0.0050878524780273
+17c,SELECT * FROM keyword k WHERE k.keyword ='character-name-in-title',['keyword'],[],"[""k.keyword ='character-name-in-title'""]",1,1.0,0.0008771419525146,0.0054349899291992
+17d,SELECT * FROM keyword k WHERE k.keyword ='character-name-in-title',['keyword'],[],"[""k.keyword ='character-name-in-title'""]",1,1.0,0.0045139789581298,0.006066083908081
+17e,SELECT * FROM company_name cn WHERE cn.country_code ='[us]',['company_name'],[],"[""cn.country_code ='[us]'""]",84843,85750.0,0.0008368492126464,0.0151090621948242
+17e,SELECT * FROM keyword k WHERE k.keyword ='character-name-in-title',['keyword'],[],"[""k.keyword ='character-name-in-title'""]",1,1.0,0.0009291172027587,0.0054140090942382
+17f,SELECT * FROM keyword k WHERE k.keyword ='character-name-in-title',['keyword'],[],"[""k.keyword ='character-name-in-title'""]",1,1.0,0.0005791187286376,0.0051629543304443
+18a,SELECT * FROM info_type it1 WHERE it1.info = 'budget',['info_type'],[],"[""it1.info = 'budget'""]",1,1.0,0.0017919540405273,0.0011661052703857
+18a,SELECT * FROM info_type it2 WHERE it2.info = 'votes',['info_type'],[],"[""it2.info = 'votes'""]",1,1.0,0.0011060237884521,0.0009968280792236
+18b,SELECT * FROM info_type it1 WHERE it1.info = 'genres',['info_type'],[],"[""it1.info = 'genres'""]",1,1.0,0.00128173828125,0.0012979507446289
+18b,SELECT * FROM info_type it2 WHERE it2.info = 'rating',['info_type'],[],"[""it2.info = 'rating'""]",1,1.0,0.0008420944213867,0.0006639957427978
+18c,SELECT * FROM info_type it1 WHERE it1.info = 'genres',['info_type'],[],"[""it1.info = 'genres'""]",1,1.0,0.0020890235900878,0.0012950897216796
+18c,SELECT * FROM info_type it2 WHERE it2.info = 'votes',['info_type'],[],"[""it2.info = 'votes'""]",1,1.0,0.0010201930999755,0.0008938312530517
+18c,SELECT * FROM name n WHERE n.gender = 'm',['name'],[],"[""n.gender = 'm'""]",1739579,1742340.0,0.0016090869903564,0.0957281589508056
+19a,SELECT * FROM company_name cn WHERE cn.country_code ='[us]',['company_name'],[],"[""cn.country_code ='[us]'""]",84843,85750.0,0.0012018680572509,0.0141921043395996
+19a,SELECT * FROM info_type it WHERE it.info = 'release dates',['info_type'],[],"[""it.info = 'release dates'""]",1,1.0,0.0015408992767333,0.0010790824890136
+19a,SELECT * FROM role_type rt WHERE rt.role ='actress',['role_type'],[],"[""rt.role ='actress'""]",1,4.0,0.002871036529541,0.0017099380493164
+19b,SELECT * FROM cast_info ci WHERE ci.note = '(voice)',['cast_info'],[],"[""ci.note = '(voice)'""]",713828,705290.0,0.0014111995697021,0.5638961791992188
+19b,SELECT * FROM company_name cn WHERE cn.country_code ='[us]',['company_name'],[],"[""cn.country_code ='[us]'""]",84843,85750.0,0.0010180473327636,0.0133099555969238
+19b,SELECT * FROM info_type it WHERE it.info = 'release dates',['info_type'],[],"[""it.info = 'release dates'""]",1,1.0,0.0007462501525878,0.0005950927734375
+19b,SELECT * FROM role_type rt WHERE rt.role ='actress',['role_type'],[],"[""rt.role ='actress'""]",1,4.0,0.0013558864593505,0.0013282299041748
+19c,SELECT * FROM company_name cn WHERE cn.country_code ='[us]',['company_name'],[],"[""cn.country_code ='[us]'""]",84843,85750.0,0.0014417171478271,0.0140140056610107
+19c,SELECT * FROM info_type it WHERE it.info = 'release dates',['info_type'],[],"[""it.info = 'release dates'""]",1,1.0,0.0010030269622802,0.0008299350738525
+19c,SELECT * FROM role_type rt WHERE rt.role ='actress',['role_type'],[],"[""rt.role ='actress'""]",1,4.0,0.0011510848999023,0.0008018016815185
+19d,SELECT * FROM company_name cn WHERE cn.country_code ='[us]',['company_name'],[],"[""cn.country_code ='[us]'""]",84843,85750.0,0.0014030933380126,0.0137050151824951
+19d,SELECT * FROM info_type it WHERE it.info = 'release dates',['info_type'],[],"[""it.info = 'release dates'""]",1,1.0,0.0011498928070068,0.0008840560913085
+19d,SELECT * FROM name n WHERE n.gender ='f',['name'],[],"[""n.gender ='f'""]",961555,948624.0,0.0012390613555908,0.0921070575714111
+19d,SELECT * FROM role_type rt WHERE rt.role ='actress',['role_type'],[],"[""rt.role ='actress'""]",1,4.0,0.0012507438659667,0.0009760856628417
+1a,SELECT * FROM company_type ct WHERE ct.kind = 'production companies',['company_type'],[],"[""ct.kind = 'production companies'""]",1,4.0,0.0008540153503417,0.0005979537963867
+1a,SELECT * FROM info_type it WHERE it.info = 'top 250 rank',['info_type'],[],"[""it.info = 'top 250 rank'""]",1,1.0,0.0006718635559082,0.0005509853363037
+1b,SELECT * FROM company_type ct WHERE ct.kind = 'production companies',['company_type'],[],"[""ct.kind = 'production companies'""]",1,4.0,0.0010478496551513,0.0006892681121826
+1b,SELECT * FROM info_type it WHERE it.info = 'bottom 10 rank',['info_type'],[],"[""it.info = 'bottom 10 rank'""]",1,1.0,0.0007801055908203,0.0007822513580322
+1c,SELECT * FROM company_type ct WHERE ct.kind = 'production companies',['company_type'],[],"[""ct.kind = 'production companies'""]",1,4.0,0.0010209083557128,0.0007359981536865
+1c,SELECT * FROM info_type it WHERE it.info = 'top 250 rank',['info_type'],[],"[""it.info = 'top 250 rank'""]",1,1.0,0.0006897449493408,0.0007219314575195
+1d,SELECT * FROM company_type ct WHERE ct.kind = 'production companies',['company_type'],[],"[""ct.kind = 'production companies'""]",1,4.0,0.0008330345153808,0.0006718635559082
+1d,SELECT * FROM info_type it WHERE it.info = 'bottom 10 rank',['info_type'],[],"[""it.info = 'bottom 10 rank'""]",1,1.0,0.0005381107330322,0.0004701614379882
+20a,SELECT * FROM comp_cast_type cct1 WHERE cct1.kind = 'cast',['comp_cast_type'],[],"[""cct1.kind = 'cast'""]",1,4.0,0.0014629364013671,0.0008838176727294
+20a,SELECT * FROM kind_type kt WHERE kt.kind = 'movie',['kind_type'],[],"[""kt.kind = 'movie'""]",1,5.0,0.001194953918457,0.0009350776672363
+20b,SELECT * FROM comp_cast_type cct1 WHERE cct1.kind = 'cast',['comp_cast_type'],[],"[""cct1.kind = 'cast'""]",1,4.0,0.0010590553283691,0.0006930828094482
+20b,SELECT * FROM kind_type kt WHERE kt.kind = 'movie',['kind_type'],[],"[""kt.kind = 'movie'""]",1,5.0,0.0007669925689697,0.0004529953002929
+20c,SELECT * FROM comp_cast_type cct1 WHERE cct1.kind = 'cast',['comp_cast_type'],[],"[""cct1.kind = 'cast'""]",1,4.0,0.0010821819305419,0.0007951259613037
+20c,SELECT * FROM kind_type kt WHERE kt.kind = 'movie',['kind_type'],[],"[""kt.kind = 'movie'""]",1,5.0,0.0010929107666015,0.00083589553833
+21a,SELECT * FROM company_type ct WHERE ct.kind ='production companies',['company_type'],[],"[""ct.kind ='production companies'""]",1,4.0,0.0037250518798828,0.0008730888366699
+21a,SELECT * FROM keyword k WHERE k.keyword ='sequel',['keyword'],[],"[""k.keyword ='sequel'""]",1,1.0,0.0008158683776855,0.0052301883697509
+21b,SELECT * FROM company_type ct WHERE ct.kind ='production companies',['company_type'],[],"[""ct.kind ='production companies'""]",1,4.0,0.0013692378997802,0.0011327266693115
+21b,SELECT * FROM keyword k WHERE k.keyword ='sequel',['keyword'],[],"[""k.keyword ='sequel'""]",1,1.0,0.0010619163513183,0.0052409172058105
+21c,SELECT * FROM company_type ct WHERE ct.kind ='production companies',['company_type'],[],"[""ct.kind ='production companies'""]",1,4.0,0.001173973083496,0.0007820129394531
+21c,SELECT * FROM keyword k WHERE k.keyword ='sequel',['keyword'],[],"[""k.keyword ='sequel'""]",1,1.0,0.0007631778717041,0.0051991939544677
+22a,SELECT * FROM company_name cn WHERE cn.country_code != '[us]',['company_name'],[],"[""cn.country_code != '[us]'""]",126230,125481.0,0.0009520053863525,0.0140769481658935
+22a,SELECT * FROM info_type it1 WHERE it1.info = 'countries',['info_type'],[],"[""it1.info = 'countries'""]",1,1.0,0.0012769699096679,0.0009253025054931
+22a,SELECT * FROM info_type it2 WHERE it2.info = 'rating',['info_type'],[],"[""it2.info = 'rating'""]",1,1.0,0.000972032546997,0.0010077953338623
+22b,SELECT * FROM company_name cn WHERE cn.country_code != '[us]',['company_name'],[],"[""cn.country_code != '[us]'""]",126230,125481.0,0.0010428428649902,0.014028787612915
+22b,SELECT * FROM info_type it1 WHERE it1.info = 'countries',['info_type'],[],"[""it1.info = 'countries'""]",1,1.0,0.0011978149414062,0.0008800029754638
+22b,SELECT * FROM info_type it2 WHERE it2.info = 'rating',['info_type'],[],"[""it2.info = 'rating'""]",1,1.0,0.000986099243164,0.0009291172027587
+22c,SELECT * FROM company_name cn WHERE cn.country_code != '[us]',['company_name'],[],"[""cn.country_code != '[us]'""]",126230,125481.0,0.0008010864257812,0.0138649940490722
+22c,SELECT * FROM info_type it1 WHERE it1.info = 'countries',['info_type'],[],"[""it1.info = 'countries'""]",1,1.0,0.0012049674987792,0.0009269714355468
+22c,SELECT * FROM info_type it2 WHERE it2.info = 'rating',['info_type'],[],"[""it2.info = 'rating'""]",1,1.0,0.000859260559082,0.0008778572082519
+22d,SELECT * FROM company_name cn WHERE cn.country_code != '[us]',['company_name'],[],"[""cn.country_code != '[us]'""]",126230,125481.0,0.0009222030639648,0.0137202739715576
+22d,SELECT * FROM info_type it1 WHERE it1.info = 'countries',['info_type'],[],"[""it1.info = 'countries'""]",1,1.0,0.0014221668243408,0.000964879989624
+22d,SELECT * FROM info_type it2 WHERE it2.info = 'rating',['info_type'],[],"[""it2.info = 'rating'""]",1,1.0,0.000917911529541,0.0008580684661865
+23a,SELECT * FROM comp_cast_type cct1 WHERE cct1.kind = 'complete+verified',['comp_cast_type'],[],"[""cct1.kind = 'complete+verified'""]",1,4.0,0.0013270378112792,0.0008208751678466
+23a,SELECT * FROM company_name cn WHERE cn.country_code = '[us]',['company_name'],[],"[""cn.country_code = '[us]'""]",84843,85750.0,0.0007438659667968,0.013416051864624
+23a,SELECT * FROM info_type it1 WHERE it1.info = 'release dates',['info_type'],[],"[""it1.info = 'release dates'""]",1,1.0,0.0009329319000244,0.0007150173187255
+23b,SELECT * FROM comp_cast_type cct1 WHERE cct1.kind = 'complete+verified',['comp_cast_type'],[],"[""cct1.kind = 'complete+verified'""]",1,4.0,0.0010678768157958,0.0006940364837646
+23b,SELECT * FROM company_name cn WHERE cn.country_code = '[us]',['company_name'],[],"[""cn.country_code = '[us]'""]",84843,85750.0,0.0005600452423095,0.0135550498962402
+23b,SELECT * FROM info_type it1 WHERE it1.info = 'release dates',['info_type'],[],"[""it1.info = 'release dates'""]",1,1.0,0.0013339519500732,0.0009927749633789
+23c,SELECT * FROM comp_cast_type cct1 WHERE cct1.kind = 'complete+verified',['comp_cast_type'],[],"[""cct1.kind = 'complete+verified'""]",1,4.0,0.0007569789886474,0.0005431175231933
+23c,SELECT * FROM company_name cn WHERE cn.country_code = '[us]',['company_name'],[],"[""cn.country_code = '[us]'""]",84843,85750.0,0.0006039142608642,0.0135829448699951
+23c,SELECT * FROM info_type it1 WHERE it1.info = 'release dates',['info_type'],[],"[""it1.info = 'release dates'""]",1,1.0,0.0007290840148925,0.000521183013916
+24a,SELECT * FROM company_name cn WHERE cn.country_code ='[us]',['company_name'],[],"[""cn.country_code ='[us]'""]",84843,85750.0,0.0013229846954345,0.01338791847229
+24a,SELECT * FROM info_type it WHERE it.info = 'release dates',['info_type'],[],"[""it.info = 'release dates'""]",1,1.0,0.0008299350738525,0.0007538795471191
+24a,SELECT * FROM role_type rt WHERE rt.role ='actress',['role_type'],[],"[""rt.role ='actress'""]",1,4.0,0.001209020614624,0.0007381439208984
+24b,SELECT * FROM company_name cn WHERE cn.country_code ='[us]' AND cn.name = 'DreamWorks Animation',['company_name'],[],"[""cn.country_code ='[us]'"", ""cn.name = 'DreamWorks Animation'""]",1,1.0,0.0008480548858642,0.012192964553833
+24b,SELECT * FROM info_type it WHERE it.info = 'release dates',['info_type'],[],"[""it.info = 'release dates'""]",1,1.0,0.0007917881011962,0.0009322166442871
+24b,SELECT * FROM role_type rt WHERE rt.role ='actress',['role_type'],[],"[""rt.role ='actress'""]",1,4.0,0.0010340213775634,0.0009520053863525
+25a,SELECT * FROM info_type it1 WHERE it1.info = 'genres',['info_type'],[],"[""it1.info = 'genres'""]",1,1.0,0.00136399269104,0.0010991096496582
+25a,SELECT * FROM info_type it2 WHERE it2.info = 'votes',['info_type'],[],"[""it2.info = 'votes'""]",1,1.0,0.0009500980377197,0.0010321140289306
+25a,SELECT * FROM movie_info mi WHERE mi.info = 'Horror',['movie_info'],[],"[""mi.info = 'Horror'""]",30801,27264.0,0.0023500919342041,0.3178188800811767
+25a,SELECT * FROM name n WHERE n.gender = 'm',['name'],[],"[""n.gender = 'm'""]",1739579,1742340.0,0.000972032546997,0.0995349884033203
+25b,SELECT * FROM info_type it1 WHERE it1.info = 'genres',['info_type'],[],"[""it1.info = 'genres'""]",1,1.0,0.0013041496276855,0.0009517669677734
+25b,SELECT * FROM info_type it2 WHERE it2.info = 'votes',['info_type'],[],"[""it2.info = 'votes'""]",1,1.0,0.0023622512817382,0.0011000633239746
+25b,SELECT * FROM movie_info mi WHERE mi.info = 'Horror',['movie_info'],[],"[""mi.info = 'Horror'""]",30801,27264.0,0.0016441345214843,0.313183069229126
+25b,SELECT * FROM name n WHERE n.gender = 'm',['name'],[],"[""n.gender = 'm'""]",1739579,1742340.0,0.0011568069458007,0.1006288528442382
+25c,SELECT * FROM info_type it1 WHERE it1.info = 'genres',['info_type'],[],"[""it1.info = 'genres'""]",1,1.0,0.0042731761932373,0.0008931159973144
+25c,SELECT * FROM info_type it2 WHERE it2.info = 'votes',['info_type'],[],"[""it2.info = 'votes'""]",1,1.0,0.0007398128509521,0.0006229877471923
+25c,SELECT * FROM name n WHERE n.gender = 'm',['name'],[],"[""n.gender = 'm'""]",1739579,1742340.0,0.0010523796081542,0.0992140769958496
+26a,SELECT * FROM comp_cast_type cct1 WHERE cct1.kind = 'cast',['comp_cast_type'],[],"[""cct1.kind = 'cast'""]",1,4.0,0.000760793685913,0.0005660057067871
+26a,SELECT * FROM info_type it2 WHERE it2.info = 'rating',['info_type'],[],"[""it2.info = 'rating'""]",1,1.0,0.0016579627990722,0.0007319450378417
+26a,SELECT * FROM kind_type kt WHERE kt.kind = 'movie',['kind_type'],[],"[""kt.kind = 'movie'""]",1,5.0,0.001129150390625,0.0008678436279296
+26b,SELECT * FROM comp_cast_type cct1 WHERE cct1.kind = 'cast',['comp_cast_type'],[],"[""cct1.kind = 'cast'""]",1,4.0,0.0010151863098144,0.0006201267242431
+26b,SELECT * FROM info_type it2 WHERE it2.info = 'rating',['info_type'],[],"[""it2.info = 'rating'""]",1,1.0,0.0014569759368896,0.000990867614746
+26b,SELECT * FROM kind_type kt WHERE kt.kind = 'movie',['kind_type'],[],"[""kt.kind = 'movie'""]",1,5.0,0.0010566711425781,0.0008809566497802
+26c,SELECT * FROM comp_cast_type cct1 WHERE cct1.kind = 'cast',['comp_cast_type'],[],"[""cct1.kind = 'cast'""]",1,4.0,0.0007898807525634,0.0005548000335693
+26c,SELECT * FROM info_type it2 WHERE it2.info = 'rating',['info_type'],[],"[""it2.info = 'rating'""]",1,1.0,0.0012037754058837,0.0006639957427978
+26c,SELECT * FROM kind_type kt WHERE kt.kind = 'movie',['kind_type'],[],"[""kt.kind = 'movie'""]",1,5.0,0.0011889934539794,0.0007119178771972
+27a,SELECT * FROM comp_cast_type cct2 WHERE cct2.kind = 'complete',['comp_cast_type'],[],"[""cct2.kind = 'complete'""]",1,4.0,0.0006062984466552,0.0006351470947265
+27a,SELECT * FROM company_type ct WHERE ct.kind ='production companies',['company_type'],[],"[""ct.kind ='production companies'""]",1,4.0,0.0009701251983642,0.0010499954223632
+27a,SELECT * FROM keyword k WHERE k.keyword ='sequel',['keyword'],[],"[""k.keyword ='sequel'""]",1,1.0,0.0015311241149902,0.0050899982452392
+27b,SELECT * FROM comp_cast_type cct2 WHERE cct2.kind = 'complete',['comp_cast_type'],[],"[""cct2.kind = 'complete'""]",1,4.0,0.0004711151123046,0.0003480911254882
+27b,SELECT * FROM company_type ct WHERE ct.kind ='production companies',['company_type'],[],"[""ct.kind ='production companies'""]",1,4.0,0.0012612342834472,0.000694990158081
+27b,SELECT * FROM keyword k WHERE k.keyword ='sequel',['keyword'],[],"[""k.keyword ='sequel'""]",1,1.0,0.000655174255371,0.0051820278167724
+27b,SELECT * FROM title t WHERE t.production_year = 1998,['title'],[],['t.production_year = 1998'],46583,44504.0,0.0017940998077392,0.0507771968841552
+27c,SELECT * FROM comp_cast_type cct1 WHERE cct1.kind = 'cast',['comp_cast_type'],[],"[""cct1.kind = 'cast'""]",1,4.0,0.0010087490081787,0.0006570816040039
+27c,SELECT * FROM company_type ct WHERE ct.kind ='production companies',['company_type'],[],"[""ct.kind ='production companies'""]",1,4.0,0.0012810230255126,0.0008559226989746
+27c,SELECT * FROM keyword k WHERE k.keyword ='sequel',['keyword'],[],"[""k.keyword ='sequel'""]",1,1.0,0.0006468296051025,0.0051229000091552
+28a,SELECT * FROM comp_cast_type cct1 WHERE cct1.kind = 'crew',['comp_cast_type'],[],"[""cct1.kind = 'crew'""]",1,4.0,0.0009260177612304,0.0007450580596923
+28a,SELECT * FROM comp_cast_type cct2 WHERE cct2.kind != 'complete+verified',['comp_cast_type'],[],"[""cct2.kind != 'complete+verified'""]",3,706.0,0.0005998611450195,0.0010030269622802
+28a,SELECT * FROM company_name cn WHERE cn.country_code != '[us]',['company_name'],[],"[""cn.country_code != '[us]'""]",126230,125481.0,0.0005700588226318,0.014441967010498
+28a,SELECT * FROM info_type it1 WHERE it1.info = 'countries',['info_type'],[],"[""it1.info = 'countries'""]",1,1.0,0.0007002353668212,0.0004730224609375
+28a,SELECT * FROM info_type it2 WHERE it2.info = 'rating',['info_type'],[],"[""it2.info = 'rating'""]",1,1.0,0.0004529953002929,0.0004003047943115
+28b,SELECT * FROM comp_cast_type cct1 WHERE cct1.kind = 'crew',['comp_cast_type'],[],"[""cct1.kind = 'crew'""]",1,4.0,0.0008318424224853,0.0005850791931152
+28b,SELECT * FROM comp_cast_type cct2 WHERE cct2.kind != 'complete+verified',['comp_cast_type'],[],"[""cct2.kind != 'complete+verified'""]",3,706.0,0.0004570484161376,0.0004060268402099
+28b,SELECT * FROM company_name cn WHERE cn.country_code != '[us]',['company_name'],[],"[""cn.country_code != '[us]'""]",126230,125481.0,0.0003561973571777,0.0140841007232666
+28b,SELECT * FROM info_type it1 WHERE it1.info = 'countries',['info_type'],[],"[""it1.info = 'countries'""]",1,1.0,0.001288890838623,0.000972032546997
+28b,SELECT * FROM info_type it2 WHERE it2.info = 'rating',['info_type'],[],"[""it2.info = 'rating'""]",1,1.0,0.0008790493011474,0.0008280277252197
+28c,SELECT * FROM comp_cast_type cct1 WHERE cct1.kind = 'cast',['comp_cast_type'],[],"[""cct1.kind = 'cast'""]",1,4.0,0.000809907913208,0.0004520416259765
+28c,SELECT * FROM comp_cast_type cct2 WHERE cct2.kind = 'complete',['comp_cast_type'],[],"[""cct2.kind = 'complete'""]",1,4.0,0.0004627704620361,0.0007328987121582
+28c,SELECT * FROM company_name cn WHERE cn.country_code != '[us]',['company_name'],[],"[""cn.country_code != '[us]'""]",126230,125481.0,0.0005130767822265,0.0139310359954833
+28c,SELECT * FROM info_type it1 WHERE it1.info = 'countries',['info_type'],[],"[""it1.info = 'countries'""]",1,1.0,0.0012338161468505,0.0008940696716308
+28c,SELECT * FROM info_type it2 WHERE it2.info = 'rating',['info_type'],[],"[""it2.info = 'rating'""]",1,1.0,0.00126314163208,0.0038459300994873
+29a,SELECT * FROM comp_cast_type cct1 WHERE cct1.kind ='cast',['comp_cast_type'],[],"[""cct1.kind ='cast'""]",1,4.0,0.0007178783416748,0.0004761219024658
+29a,SELECT * FROM comp_cast_type cct2 WHERE cct2.kind ='complete+verified',['comp_cast_type'],[],"[""cct2.kind ='complete+verified'""]",1,4.0,0.000417947769165,0.0003778934478759
+29a,SELECT * FROM char_name chn WHERE chn.name = 'Queen',['char_name'],[],"[""chn.name = 'Queen'""]",1,1.0,0.0004911422729492,0.054002046585083
+29a,SELECT * FROM company_name cn WHERE cn.country_code ='[us]',['company_name'],[],"[""cn.country_code ='[us]'""]",84843,85750.0,0.0012669563293457,0.0147242546081542
+29a,SELECT * FROM info_type it WHERE it.info = 'release dates',['info_type'],[],"[""it.info = 'release dates'""]",1,1.0,0.0008027553558349,0.000676155090332
+29a,SELECT * FROM info_type it3 WHERE it3.info = 'trivia',['info_type'],[],"[""it3.info = 'trivia'""]",1,1.0,0.0007202625274658,0.0011117458343505
+29a,SELECT * FROM keyword k WHERE k.keyword = 'computer-animation',['keyword'],[],"[""k.keyword = 'computer-animation'""]",1,1.0,0.0004496574401855,0.0049560070037841
+29a,SELECT * FROM role_type rt WHERE rt.role ='actress',['role_type'],[],"[""rt.role ='actress'""]",1,4.0,0.0014348030090332,0.0034458637237548
+29b,SELECT * FROM comp_cast_type cct1 WHERE cct1.kind ='cast',['comp_cast_type'],[],"[""cct1.kind ='cast'""]",1,4.0,0.0009682178497314,0.0005888938903808
+29b,SELECT * FROM comp_cast_type cct2 WHERE cct2.kind ='complete+verified',['comp_cast_type'],[],"[""cct2.kind ='complete+verified'""]",1,4.0,0.0005600452423095,0.0004901885986328
+29b,SELECT * FROM char_name chn WHERE chn.name = 'Queen',['char_name'],[],"[""chn.name = 'Queen'""]",1,1.0,0.0004630088806152,0.052649974822998
+29b,SELECT * FROM company_name cn WHERE cn.country_code ='[us]',['company_name'],[],"[""cn.country_code ='[us]'""]",84843,85750.0,0.0013561248779296,0.0134539604187011
+29b,SELECT * FROM info_type it WHERE it.info = 'release dates',['info_type'],[],"[""it.info = 'release dates'""]",1,1.0,0.0011260509490966,0.0009739398956298
+29b,SELECT * FROM info_type it3 WHERE it3.info = 'height',['info_type'],[],"[""it3.info = 'height'""]",1,1.0,0.0010507106781005,0.0009641647338867
+29b,SELECT * FROM keyword k WHERE k.keyword = 'computer-animation',['keyword'],[],"[""k.keyword = 'computer-animation'""]",1,1.0,0.0008618831634521,0.0052881240844726
+29b,SELECT * FROM role_type rt WHERE rt.role ='actress',['role_type'],[],"[""rt.role ='actress'""]",1,4.0,0.0013740062713623,0.0009207725524902
+29c,SELECT * FROM comp_cast_type cct1 WHERE cct1.kind ='cast',['comp_cast_type'],[],"[""cct1.kind ='cast'""]",1,4.0,0.0009129047393798,0.0011956691741943
+29c,SELECT * FROM comp_cast_type cct2 WHERE cct2.kind ='complete+verified',['comp_cast_type'],[],"[""cct2.kind ='complete+verified'""]",1,4.0,0.0008139610290527,0.0009350776672363
+29c,SELECT * FROM company_name cn WHERE cn.country_code ='[us]',['company_name'],[],"[""cn.country_code ='[us]'""]",84843,85750.0,0.0013113021850585,0.0138521194458007
+29c,SELECT * FROM info_type it WHERE it.info = 'release dates',['info_type'],[],"[""it.info = 'release dates'""]",1,1.0,0.001176118850708,0.0009169578552246
+29c,SELECT * FROM info_type it3 WHERE it3.info = 'trivia',['info_type'],[],"[""it3.info = 'trivia'""]",1,1.0,0.0009398460388183,0.0008637905120849
+29c,SELECT * FROM keyword k WHERE k.keyword = 'computer-animation',['keyword'],[],"[""k.keyword = 'computer-animation'""]",1,1.0,0.0009169578552246,0.0053303241729736
+29c,SELECT * FROM role_type rt WHERE rt.role ='actress',['role_type'],[],"[""rt.role ='actress'""]",1,4.0,0.0011470317840576,0.0009918212890625
+2a,SELECT * FROM company_name cn WHERE cn.country_code ='[de]',['company_name'],[],"[""cn.country_code ='[de]'""]",9775,9729.0,0.0008230209350585,0.0119979381561279
+2a,SELECT * FROM keyword k WHERE k.keyword ='character-name-in-title',['keyword'],[],"[""k.keyword ='character-name-in-title'""]",1,1.0,0.0009682178497314,0.005342960357666
+2b,SELECT * FROM company_name cn WHERE cn.country_code ='[nl]',['company_name'],[],"[""cn.country_code ='[nl]'""]",2340,2217.0,0.0011801719665527,0.0135281085968017
+2b,SELECT * FROM keyword k WHERE k.keyword ='character-name-in-title',['keyword'],[],"[""k.keyword ='character-name-in-title'""]",1,1.0,0.0012121200561523,0.0049750804901123
+2c,SELECT * FROM company_name cn WHERE cn.country_code ='[sm]',['company_name'],[],"[""cn.country_code ='[sm]'""]",1,24.0,0.0011041164398193,0.0122621059417724
+2c,SELECT * FROM keyword k WHERE k.keyword ='character-name-in-title',['keyword'],[],"[""k.keyword ='character-name-in-title'""]",1,1.0,0.0010900497436523,0.0051290988922119
+2d,SELECT * FROM company_name cn WHERE cn.country_code ='[us]',['company_name'],[],"[""cn.country_code ='[us]'""]",84843,85750.0,0.0010390281677246,0.0135910511016845
+2d,SELECT * FROM keyword k WHERE k.keyword ='character-name-in-title',['keyword'],[],"[""k.keyword ='character-name-in-title'""]",1,1.0,0.0011200904846191,0.0051751136779785
+30a,SELECT * FROM comp_cast_type cct2 WHERE cct2.kind ='complete+verified',['comp_cast_type'],[],"[""cct2.kind ='complete+verified'""]",1,4.0,0.000582218170166,0.0005660057067871
+30a,SELECT * FROM info_type it1 WHERE it1.info = 'genres',['info_type'],[],"[""it1.info = 'genres'""]",1,1.0,0.0013220310211181,0.0010139942169189
+30a,SELECT * FROM info_type it2 WHERE it2.info = 'votes',['info_type'],[],"[""it2.info = 'votes'""]",1,1.0,0.0010538101196289,0.0008728504180908
+30a,SELECT * FROM name n WHERE n.gender = 'm',['name'],[],"[""n.gender = 'm'""]",1739579,1742340.0,0.0020108222961425,0.1018190383911132
+30b,SELECT * FROM comp_cast_type cct2 WHERE cct2.kind ='complete+verified',['comp_cast_type'],[],"[""cct2.kind ='complete+verified'""]",1,4.0,0.0004711151123046,0.000392198562622
+30b,SELECT * FROM info_type it1 WHERE it1.info = 'genres',['info_type'],[],"[""it1.info = 'genres'""]",1,1.0,0.0008230209350585,0.0005280971527099
+30b,SELECT * FROM info_type it2 WHERE it2.info = 'votes',['info_type'],[],"[""it2.info = 'votes'""]",1,1.0,0.0004417896270751,0.0004072189331054
+30b,SELECT * FROM name n WHERE n.gender = 'm',['name'],[],"[""n.gender = 'm'""]",1739579,1742340.0,0.0013329982757568,0.1018519401550293
+30c,SELECT * FROM comp_cast_type cct1 WHERE cct1.kind = 'cast',['comp_cast_type'],[],"[""cct1.kind = 'cast'""]",1,4.0,0.0008201599121093,0.0005171298980712
+30c,SELECT * FROM comp_cast_type cct2 WHERE cct2.kind ='complete+verified',['comp_cast_type'],[],"[""cct2.kind ='complete+verified'""]",1,4.0,0.0004510879516601,0.0003869533538818
+30c,SELECT * FROM info_type it1 WHERE it1.info = 'genres',['info_type'],[],"[""it1.info = 'genres'""]",1,1.0,0.0014548301696777,0.0010108947753906
+30c,SELECT * FROM info_type it2 WHERE it2.info = 'votes',['info_type'],[],"[""it2.info = 'votes'""]",1,1.0,0.0009601116180419,0.0009219646453857
+30c,SELECT * FROM name n WHERE n.gender = 'm',['name'],[],"[""n.gender = 'm'""]",1739579,1742340.0,0.0015978813171386,0.1008577346801757
+31a,SELECT * FROM info_type it1 WHERE it1.info = 'genres',['info_type'],[],"[""it1.info = 'genres'""]",1,1.0,0.0011391639709472,0.00089693069458
+31a,SELECT * FROM info_type it2 WHERE it2.info = 'votes',['info_type'],[],"[""it2.info = 'votes'""]",1,1.0,0.0008387565612792,0.0008800029754638
+31a,SELECT * FROM name n WHERE n.gender = 'm',['name'],[],"[""n.gender = 'm'""]",1739579,1742340.0,0.0009019374847412,0.0989880561828613
+31b,SELECT * FROM info_type it1 WHERE it1.info = 'genres',['info_type'],[],"[""it1.info = 'genres'""]",1,1.0,0.0010738372802734,0.0009632110595703
+31b,SELECT * FROM info_type it2 WHERE it2.info = 'votes',['info_type'],[],"[""it2.info = 'votes'""]",1,1.0,0.0009710788726806,0.000777244567871
+31b,SELECT * FROM name n WHERE n.gender = 'm',['name'],[],"[""n.gender = 'm'""]",1739579,1742340.0,0.0011188983917236,0.0985829830169677
+31c,SELECT * FROM info_type it1 WHERE it1.info = 'genres',['info_type'],[],"[""it1.info = 'genres'""]",1,1.0,0.0008478164672851,0.0006318092346191
+31c,SELECT * FROM info_type it2 WHERE it2.info = 'votes',['info_type'],[],"[""it2.info = 'votes'""]",1,1.0,0.0009112358093261,0.0008521080017089
+32a,"SELECT * FROM keyword k WHERE k.keyword ='10,000-mile-club'",['keyword'],[],"[""k.keyword ='10,000-mile-club'""]",1,1.0,0.0013120174407958,0.0051550865173339
+32b,SELECT * FROM keyword k WHERE k.keyword ='character-name-in-title',['keyword'],[],"[""k.keyword ='character-name-in-title'""]",1,1.0,0.0008308887481689,0.0051000118255615
+33a,SELECT * FROM company_name cn1 WHERE cn1.country_code = '[us]',['company_name'],[],"[""cn1.country_code = '[us]'""]",84843,85750.0,0.0009090900421142,0.0134820938110351
+33a,SELECT * FROM info_type it1 WHERE it1.info = 'rating',['info_type'],[],"[""it1.info = 'rating'""]",1,1.0,0.0012991428375244,0.0010428428649902
+33a,SELECT * FROM info_type it2 WHERE it2.info = 'rating',['info_type'],[],"[""it2.info = 'rating'""]",1,1.0,0.0009090900421142,0.0008518695831298
+33b,SELECT * FROM company_name cn1 WHERE cn1.country_code = '[nl]',['company_name'],[],"[""cn1.country_code = '[nl]'""]",2340,2217.0,0.0011639595031738,0.0117959976196289
+33b,SELECT * FROM info_type it1 WHERE it1.info = 'rating',['info_type'],[],"[""it1.info = 'rating'""]",1,1.0,0.0012469291687011,0.0009658336639404
+33b,SELECT * FROM info_type it2 WHERE it2.info = 'rating',['info_type'],[],"[""it2.info = 'rating'""]",1,1.0,0.0046362876892089,0.0009188652038574
+33b,SELECT * FROM title t2 WHERE t2.production_year = 2007,['title'],[],['t2.production_year = 2007'],119565,117835.0,0.0015790462493896,0.0529191493988037
+33c,SELECT * FROM company_name cn1 WHERE cn1.country_code != '[us]',['company_name'],[],"[""cn1.country_code != '[us]'""]",126230,125481.0,0.0011799335479736,0.013913869857788
+33c,SELECT * FROM info_type it1 WHERE it1.info = 'rating',['info_type'],[],"[""it1.info = 'rating'""]",1,1.0,0.001033067703247,0.0006899833679199
+33c,SELECT * FROM info_type it2 WHERE it2.info = 'rating',['info_type'],[],"[""it2.info = 'rating'""]",1,1.0,0.0007250308990478,0.000648021697998
+4a,SELECT * FROM info_type it WHERE it.info ='rating',['info_type'],[],"[""it.info ='rating'""]",1,1.0,0.0011000633239746,0.0007143020629882
+4b,SELECT * FROM info_type it WHERE it.info ='rating',['info_type'],[],"[""it.info ='rating'""]",1,1.0,0.0013017654418945,0.0008039474487304
+4c,SELECT * FROM info_type it WHERE it.info ='rating',['info_type'],[],"[""it.info ='rating'""]",1,1.0,0.0010590553283691,0.0008337497711181
+5a,SELECT * FROM company_type ct WHERE ct.kind = 'production companies',['company_type'],[],"[""ct.kind = 'production companies'""]",1,4.0,0.0012507438659667,0.0008509159088134
+5b,SELECT * FROM company_type ct WHERE ct.kind = 'production companies',['company_type'],[],"[""ct.kind = 'production companies'""]",1,4.0,0.0011272430419921,0.0005748271942138
+5c,SELECT * FROM company_type ct WHERE ct.kind = 'production companies',['company_type'],[],"[""ct.kind = 'production companies'""]",1,4.0,0.0009829998016357,0.0006990432739257
+6a,SELECT * FROM keyword k WHERE k.keyword = 'marvel-cinematic-universe',['keyword'],[],"[""k.keyword = 'marvel-cinematic-universe'""]",1,1.0,0.0010898113250732,0.0056381225585937
+6c,SELECT * FROM keyword k WHERE k.keyword = 'marvel-cinematic-universe',['keyword'],[],"[""k.keyword = 'marvel-cinematic-universe'""]",1,1.0,0.0010607242584228,0.0050430297851562
+6e,SELECT * FROM keyword k WHERE k.keyword = 'marvel-cinematic-universe',['keyword'],[],"[""k.keyword = 'marvel-cinematic-universe'""]",1,1.0,0.0007719993591308,0.0048372745513916
+7a,SELECT * FROM info_type it WHERE it.info ='mini biography',['info_type'],[],"[""it.info ='mini biography'""]",1,1.0,0.0019152164459228,0.0007209777832031
+7a,SELECT * FROM link_type lt WHERE lt.link ='features',['link_type'],[],"[""lt.link ='features'""]",1,4.0,0.0006711483001708,0.0006492137908935
+7a,SELECT * FROM person_info pi WHERE pi.note ='Volker Boehm',['person_info'],[],"[""pi.note ='Volker Boehm'""]",64,29.0,0.0014700889587402,0.7495310306549072
+7b,SELECT * FROM info_type it WHERE it.info ='mini biography',['info_type'],[],"[""it.info ='mini biography'""]",1,1.0,0.0007789134979248,0.0004427433013916
+7b,SELECT * FROM link_type lt WHERE lt.link ='features',['link_type'],[],"[""lt.link ='features'""]",1,4.0,0.0004060268402099,0.0005271434783935
+7b,SELECT * FROM person_info pi WHERE pi.note ='Volker Boehm',['person_info'],[],"[""pi.note ='Volker Boehm'""]",64,29.0,0.0007927417755126,0.1189901828765869
+7c,SELECT * FROM info_type it WHERE it.info ='mini biography',['info_type'],[],"[""it.info ='mini biography'""]",1,1.0,0.0008201599121093,0.0004849433898925
+8a,SELECT * FROM cast_info ci WHERE ci.note ='(voice: English version)',['cast_info'],[],"[""ci.note ='(voice: English version)'""]",93095,91784.0,0.0014009475708007,1.0795352458953855
+8a,SELECT * FROM company_name cn WHERE cn.country_code ='[jp]',['company_name'],[],"[""cn.country_code ='[jp]'""]",6752,6972.0,0.0018730163574218,0.0222320556640625
+8a,SELECT * FROM role_type rt WHERE rt.role ='actress',['role_type'],[],"[""rt.role ='actress'""]",1,4.0,0.0013961791992187,0.0010302066802978
+8b,SELECT * FROM cast_info ci WHERE ci.note ='(voice: English version)',['cast_info'],[],"[""ci.note ='(voice: English version)'""]",93095,91784.0,0.0010919570922851,0.5716431140899658
+8b,SELECT * FROM company_name cn WHERE cn.country_code ='[jp]',['company_name'],[],"[""cn.country_code ='[jp]'""]",6752,6972.0,0.0015647411346435,0.0123109817504882
+8b,SELECT * FROM role_type rt WHERE rt.role ='actress',['role_type'],[],"[""rt.role ='actress'""]",1,4.0,0.0009379386901855,0.0007839202880859
+8c,SELECT * FROM company_name cn WHERE cn.country_code ='[us]',['company_name'],[],"[""cn.country_code ='[us]'""]",84843,85750.0,0.0008101463317871,0.013355016708374
+8c,SELECT * FROM role_type rt WHERE rt.role ='writer',['role_type'],[],"[""rt.role ='writer'""]",1,4.0,0.0006217956542968,0.0004210472106933
+8d,SELECT * FROM company_name cn WHERE cn.country_code ='[us]',['company_name'],[],"[""cn.country_code ='[us]'""]",84843,85750.0,0.0006318092346191,0.0130369663238525
+8d,SELECT * FROM role_type rt WHERE rt.role ='costume designer',['role_type'],[],"[""rt.role ='costume designer'""]",1,4.0,0.0007591247558593,0.0005679130554199
+9a,SELECT * FROM company_name cn WHERE cn.country_code ='[us]',['company_name'],[],"[""cn.country_code ='[us]'""]",84843,85750.0,0.0015552043914794,0.0135600566864013
+9a,SELECT * FROM role_type rt WHERE rt.role ='actress',['role_type'],[],"[""rt.role ='actress'""]",1,4.0,0.0009510517120361,0.0011777877807617
+9b,SELECT * FROM cast_info ci WHERE ci.note = '(voice)',['cast_info'],[],"[""ci.note = '(voice)'""]",713828,705290.0,0.0013110637664794,0.5609219074249268
+9b,SELECT * FROM company_name cn WHERE cn.country_code ='[us]',['company_name'],[],"[""cn.country_code ='[us]'""]",84843,85750.0,0.0013871192932128,0.0135529041290283
+9b,SELECT * FROM role_type rt WHERE rt.role ='actress',['role_type'],[],"[""rt.role ='actress'""]",1,4.0,0.0013470649719238,0.0009889602661132
+9c,SELECT * FROM company_name cn WHERE cn.country_code ='[us]',['company_name'],[],"[""cn.country_code ='[us]'""]",84843,85750.0,0.0013270378112792,0.0150032043457031
+9c,SELECT * FROM role_type rt WHERE rt.role ='actress',['role_type'],[],"[""rt.role ='actress'""]",1,4.0,0.0013179779052734,0.0009520053863525
+9d,SELECT * FROM company_name cn WHERE cn.country_code ='[us]',['company_name'],[],"[""cn.country_code ='[us]'""]",84843,85750.0,0.00136399269104,0.0139520168304443
+9d,SELECT * FROM name n WHERE n.gender ='f',['name'],[],"[""n.gender ='f'""]",961555,948624.0,0.0013401508331298,0.0904719829559326
+9d,SELECT * FROM role_type rt WHERE rt.role ='actress',['role_type'],[],"[""rt.role ='actress'""]",1,4.0,0.001317024230957,0.001101016998291
