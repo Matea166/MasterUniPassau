@@ -14,7 +14,12 @@ import tempfile
 import random
 from sklearn.preprocessing import LabelEncoder
 
-# --- 1. SETUP ---
+# --- 1. SETUP & STABILITY ---
+SEED = 42
+np.random.seed(SEED)
+random.seed(SEED)
+print(f"✅ Random seed set to {SEED} for reproducibility.")
+
 sys.path.append(os.getcwd())
 
 try:
@@ -34,17 +39,17 @@ except ImportError:
 # --- 2. CONFIGURATION ---
 DB_URI = "postgresql://postgres:postgres@localhost:5433/job"
 INPUT_FILE = "results_simple_queries.csv"
-OUTPUT_FILE = "results_bnsl_tuned.csv"
+OUTPUT_FILE = "results_bnsl_final_verified.csv"
 
-# Hyperparameters
+# Configuration
 STRUCT_SAMPLE_ROWS = 2000
-PARAM_SAMPLE_ROWS = 1000000
-# Increased buckets to better handle high-cardinality columns like 'name'
+PARAM_SAMPLE_ROWS = 1000000  # We will fetch this many rows RANDOMLY now
 BUCKETS_M = 500
 BUCKETS_N = 500
+SAFE_PARENT_THRESHOLD = 1000
 
 
-# --- 3. HELPER: PARSING ---
+# --- 3. HELPER: ROBUST PARSING ---
 def parse_simple_conditions_robust(wheres_val):
     try:
         cond_list = ast.literal_eval(wheres_val)
@@ -52,6 +57,8 @@ def parse_simple_conditions_robust(wheres_val):
         parsed = []
         for cond_str in cond_list:
             if not isinstance(cond_str, str): continue
+
+            # Remove alias prefix (e.g., "n.gender" -> "gender")
             if "." in cond_str:
                 clean = cond_str.split(".", 1)[1]
             else:
@@ -68,7 +75,9 @@ def parse_simple_conditions_robust(wheres_val):
                 col = m_num.group(1)
                 val = m_num.group(2)
 
-            if col and val: parsed.append({'col': col, 'val': val})
+            if col and val:
+                # Normalize Value (Strip Whitespace)
+                parsed.append({'col': col, 'val': val.strip()})
         return parsed
     except:
         return []
@@ -76,7 +85,7 @@ def parse_simple_conditions_robust(wheres_val):
 
 # --- 4. CORE LOGIC ---
 
-def project_dag_to_tree(dag):
+def project_dag_to_safe_tree(dag, df_sample):
     tree = nx.DiGraph()
     tree.add_nodes_from(dag.nodes)
     try:
@@ -86,18 +95,37 @@ def project_dag_to_tree(dag):
     for node in order:
         parents = list(dag.predecessors(node))
         if parents:
-            tree.add_edge(parents[0], node)
+            best_parent = None
+            for p in parents:
+                if df_sample[p].nunique() <= SAFE_PARENT_THRESHOLD:
+                    best_parent = p
+                    break
+            if best_parent:
+                tree.add_edge(best_parent, node)
     return tree
 
 
-def learn_params_tldks(structure, df):
+def learn_params_hybrid(structure, df):
     model = nx.DiGraph()
     model.add_nodes_from(structure.nodes)
     model.add_edges_from(structure.edges)
 
     for node in nx.topological_sort(model):
+        # DATA HYGIENE: Convert to string and STRIP whitespace
+        raw_series = df[node].fillna('MISSING').astype(str)
+        col_data = raw_series.str.strip().tolist()
+        n_unique = df[node].nunique()
+
+        # STRATEGY A: EXACT PMF (Low Cardinality)
+        if n_unique < 250:
+            counts = pd.Series(col_data).value_counts(normalize=True).to_dict()
+            model.nodes[node]['type'] = 'exact'
+            model.nodes[node]['dist'] = counts
+            continue
+
+        # STRATEGY B: HISTOGRAMS (High Cardinality)
+        model.nodes[node]['type'] = 'hist'
         parents = list(model.predecessors(node))
-        col_data = df[node].tolist()
 
         if not parents:
             try:
@@ -108,13 +136,16 @@ def learn_params_tldks(structure, df):
                 pass
         else:
             parent = parents[0]
-            parent_data = df[parent].tolist()
+            # Ensure parent data is also clean
+            parent_series = df[parent].fillna('MISSING').astype(str)
+            parent_data = parent_series.str.strip().tolist()
             try:
                 cpd = CPD(BUCKETS_M, BUCKETS_N, BUCKETS_M, BUCKETS_N)
                 cpd.fit(parent_data, col_data)
                 model.nodes[node]['dist'] = cpd
             except:
                 pass
+
     return model
 
 
@@ -130,82 +161,74 @@ def calculate_prob(model, conds, total_rows):
     for col, cond_list in col_conds.items():
         if col not in model.nodes: continue
 
-        dist = model.nodes[col].get('dist')
+        node_info = model.nodes[col]
+        dist_type = node_info.get('type')
+        dist = node_info.get('dist')
         if not dist: continue
-
-        buckets = []
-        if hasattr(dist, 'buckets'):
-            buckets = dist.buckets
-        elif hasattr(dist, 'on_hists'):
-            for h in dist.on_hists: buckets.extend(h.buckets)
 
         p_col = 0.0
 
         for c in cond_list:
+            # Value is already stripped in parser
             val = str(c['val'])
             match_freq = 0.0
 
-            for b in buckets:
-                freq = float(b.frequency)
-                left = str(b.left)
-                right = str(b.right)
+            # --- CASE A: EXACT PMF ---
+            if dist_type == 'exact':
+                match_freq = dist.get(val, 0.0)
 
-                # Check Numeric vs String nature
-                is_numeric_bucket = False
-                try:
-                    nl, nr = float(left), float(right)
-                    is_numeric_bucket = True
-                except:
-                    pass
-
-                # 1. Exact Match (MCV)
-                is_exact = False
-                if left == val:
-                    is_exact = True
-                elif is_numeric_bucket:
+                # Numeric fallback
+                if match_freq == 0:
                     try:
-                        if abs(float(left) - float(val)) < 0.0001: is_exact = True
+                        match_freq = dist.get(str(float(val)), 0.0)
                     except:
                         pass
 
-                if is_exact:
-                    match_freq = freq
-                    break
+                # Safety Net
+                if match_freq == 0: match_freq = 1.0 / total_rows
 
-                    # 2. Range Containment
-                in_range = False
-                try:
-                    if is_numeric_bucket:
-                        if float(left) <= float(val) <= float(right): in_range = True
-                    else:
-                        if left <= val <= right: in_range = True
-                except:
-                    pass
+            # --- CASE B: HISTOGRAMS ---
+            elif dist_type == 'hist':
+                buckets = []
+                if hasattr(dist, 'buckets'):
+                    buckets = dist.buckets
+                elif hasattr(dist, 'on_hists'):
+                    for h in dist.on_hists: buckets.extend(h.buckets)
 
-                if in_range:
-                    # CRITICAL FIX: Differentiate behavior
-                    if is_numeric_bucket:
-                        # Numeric: Density makes sense (e.g. Year)
-                        width = float(right) - float(left)
-                        if width > 0:
-                            match_freq = max(match_freq, freq / width)
-                        else:
-                            match_freq = max(match_freq, freq)
-                    else:
-                        # String: DO NOT guess density for Equality Queries.
-                        # If it's a string range bucket and NOT an exact match,
-                        # the value is likely rare or missing.
-                        # We do NOT add probability here. We let it fall through to the safety floor.
-                        # This prevents "Zimmer" from getting 10% of "Z" bucket.
+                for b in buckets:
+                    freq = float(b.frequency)
+                    left = str(b.left)
+                    right = str(b.right)
+
+                    if left == val:
+                        match_freq = freq
+                        break
+
+                    try:
+                        if abs(float(left) - float(val)) < 0.0001:
+                            match_freq = freq
+                            break
+                    except:
                         pass
 
-                        # Safety Floor / Rare Item Probability
-            if match_freq == 0:
-                if total_rows > 0:
-                    # Assume at least 1 row (or 0.5 for under-estimation safety)
+                    in_range = False
+                    try:
+                        if float(left) <= float(val) <= float(right): in_range = True
+                    except:
+                        if left <= val <= right: in_range = True
+
+                    if in_range:
+                        try:
+                            width = float(right) - float(left)
+                            if width > 0:
+                                match_freq = max(match_freq, freq / width)
+                            else:
+                                match_freq = max(match_freq, freq)
+                        except:
+                            match_freq = max(match_freq, freq * 0.05)
+
+                if match_freq == 0:
                     match_freq = 1.0 / total_rows
-                else:
-                    match_freq = 0.000001
 
             p_col = match_freq
 
@@ -216,7 +239,7 @@ def calculate_prob(model, conds, total_rows):
 
 # --- 5. MAIN ---
 def main():
-    print("--- STARTING BNSL-SA TUNED (Strict Equality) ---")
+    print("--- STARTING BNSL-SA VERIFIED SOLUTION (RANDOM SAMPLING) ---")
 
     if not os.path.exists(INPUT_FILE):
         print(f"Error: {INPUT_FILE} not found.")
@@ -244,13 +267,32 @@ def main():
     for table in tqdm.tqdm(unique_tables):
         try:
             conn = engine.connect()
-            table_counts[table] = conn.execute(text(f"SELECT COUNT(*) FROM {table}")).scalar()
 
+            # 1. Get total rows
+            count = conn.execute(text(f"SELECT COUNT(*) FROM {table}")).scalar()
+            table_counts[table] = count
+
+            # 2. Structure Learning (Small Sample - Head is fine)
             struct_data = pd.read_sql(text(f"SELECT * FROM {table} LIMIT {STRUCT_SAMPLE_ROWS}"), conn)
-            param_data = pd.read_sql(text(f"SELECT * FROM {table} LIMIT {PARAM_SAMPLE_ROWS}"), conn)
+
+            # 3. Parameter Learning (Large RANDOM Sample)
+            # Use TABLESAMPLE BERNOULLI for true randomness avoiding clustering bias
+            if count <= PARAM_SAMPLE_ROWS:
+                param_query = f"SELECT * FROM {table}"
+            else:
+                # Calculate percentage needed to get ~PARAM_SAMPLE_ROWS
+                pct = (PARAM_SAMPLE_ROWS / count) * 100
+                # Add 10% buffer to be safe, cap at 100
+                pct = min(pct * 1.1, 100.0)
+                # BERNOULLI scans the whole table but picks rows randomly.
+                # This fixes the "All Males" bug.
+                param_query = f"SELECT * FROM {table} TABLESAMPLE BERNOULLI({pct}) LIMIT {PARAM_SAMPLE_ROWS}"
+
+            param_data = pd.read_sql(text(param_query), conn)
+
             conn.close()
 
-            # SA Structure
+            # --- BNSL LOGIC ---
             bnsl_data = struct_data.copy()
             for c in bnsl_data.columns:
                 if bnsl_data[c].dtype == 'object':
@@ -263,7 +305,6 @@ def main():
                 bnsl_data.to_csv(tmp.name, sep=' ', index=False, header=False)
                 tmp_path = tmp.name
 
-            # Note: We keep reads low for speed, 20 is usually fine for single-table
             cmd = [sys.executable, "-m", "bnslqa", "solve", tmp_path, "SA", "--reads", "20"]
             result = subprocess.run(cmd, capture_output=True, text=True)
             os.remove(tmp_path)
@@ -285,8 +326,10 @@ def main():
                 except:
                     pass
 
-            # Params (High Buckets)
-            tree = project_dag_to_tree(structure)
+            # Params (Hybrid Verified)
+            tree = project_dag_to_safe_tree(structure, struct_data)
+
+            # Clean Parameter Data IN PLACE
             clean_param = param_data.copy()
             for c in clean_param.columns:
                 if clean_param[c].dtype == 'object':
@@ -294,10 +337,11 @@ def main():
                 else:
                     clean_param[c] = clean_param[c].fillna(0)
 
-            model = learn_params_tldks(tree, clean_param)
+            model = learn_params_hybrid(tree, clean_param)
             models[table] = model
 
         except Exception as e:
+            # print(f"Error {table}: {e}")
             pass
 
     # ESTIMATE
@@ -315,7 +359,6 @@ def main():
                 prob = calculate_prob(model, conds, total_rows)
             else:
                 prob = 1.0
-
             est = prob * total_rows
             if est < 1: est = 1
         else:
@@ -336,7 +379,7 @@ def main():
     print("\n" + "=" * 40)
     print(f"Subset: {len(df)} Simple Queries")
     print(f"Postgres Mean Q-Error: {df['q_pg'].mean():.2f}")
-    print(f"BNSL-SA Tuned Q-Error: {df['q_bn'].mean():.2f}")
+    print(f"BNSL-SA Verified Q-Error: {df['q_bn'].mean():.2f}")
     print("=" * 40)
 
     # BREAKDOWN
