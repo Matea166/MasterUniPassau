@@ -1,7 +1,7 @@
 from time import time_ns
 import os
 import torch
-from bnslqa.solvers.qubo_matrix import calcQUBOMatrix
+from bnslqa.solvers.qubo_matrix import calcQUBOMatrix, printMatrix
 from bnslqa.solvers.solver_utils import getExpectedSolution, printInfoResults, getNumExamples, getData
 
 from dimod.reference.samplers import ExactSolver
@@ -95,6 +95,8 @@ def main(args):
   dsName = path[path.find('/')+1:path.find('.')]
   label = '{} - {} reads'.format(dsName,nReads)
   minXt,minY,readFound,occurrences,annealTimeRes = dwaveSolve(Q,indexQUBO,posOfIndex,label,method=method,nReads=nReads,annealTime=annealTime)
+  print(" QUBO MATRIX ")
+  printMatrix(Q, indexQUBO)
   printInfoResults(expXt,expY,minXt,minY,n)
   print('Method: {}\nNumber of reads: {}\nOccurrencies of minX: {}\nFound minX at read: {}\nQUBO formulation time: {}\nAnnealing time: {}'.format(method,nReads,occurrences,readFound, calcQUBOTime/10**6, annealTimeRes/10**6))
   #write data to csv file
