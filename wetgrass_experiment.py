@@ -6,9 +6,9 @@ import itertools
 # ==========================================
 # CONFIGURATION
 # ==========================================
-DATASET_FILE = "datasets/WetGrass_test.txt"
+DATASET_FILE = "datasets/WetGrass.txt"
 # Command to run your existing Simulated Annealing solver
-SOLVER_CMD = [sys.executable, "-m", "bnslqa", "solve", DATASET_FILE, "SA", "--reads", "1000"]
+SOLVER_CMD = [sys.executable, "-m", "bnslqa", "solve", DATASET_FILE, "SA", "--reads", "20"]
 
 # THE QUERY: Count rows where Sprinkler='On' AND Rain='True'
 # Based on your data generation: State 0 usually equals 'True'/'On'
@@ -68,7 +68,7 @@ for r in range(n_vars):  # Row = Parent
 print(f"Structure extracted for calculation: {parents}")
 
 print("\n==========================================")
-print("PHASE 2: DYNAMIC INFERENCE (NO CHEATING)")
+print("PHASE 2: DYNAMIC INFERENCE ")
 print("==========================================")
 
 # Load the raw data to learn parameters (CPTs) for the structure we just found
