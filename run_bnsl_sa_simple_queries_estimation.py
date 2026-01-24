@@ -43,7 +43,7 @@ OUTPUT_FILE = "results_bnsl_final_verified.csv"
 
 # Configuration
 STRUCT_SAMPLE_ROWS = 2000
-PARAM_SAMPLE_ROWS = 1000000  # We will fetch this many rows RANDOMLY now
+PARAM_SAMPLE_ROWS = 1000000
 BUCKETS_M = 500
 BUCKETS_N = 500
 SAFE_PARENT_THRESHOLD = 1000
@@ -76,7 +76,6 @@ def parse_simple_conditions_robust(wheres_val):
                 val = m_num.group(2)
 
             if col and val:
-                # Normalize Value (Strip Whitespace)
                 parsed.append({'col': col, 'val': val.strip()})
         return parsed
     except:
@@ -111,7 +110,6 @@ def learn_params_hybrid(structure, df):
     model.add_edges_from(structure.edges)
 
     for node in nx.topological_sort(model):
-        # DATA HYGIENE: Convert to string and STRIP whitespace
         raw_series = df[node].fillna('MISSING').astype(str)
         col_data = raw_series.str.strip().tolist()
         n_unique = df[node].nunique()
@@ -169,25 +167,18 @@ def calculate_prob(model, conds, total_rows):
         p_col = 0.0
 
         for c in cond_list:
-            # Value is already stripped in parser
             val = str(c['val'])
             match_freq = 0.0
 
-            # --- CASE A: EXACT PMF ---
             if dist_type == 'exact':
                 match_freq = dist.get(val, 0.0)
-
-                # Numeric fallback
                 if match_freq == 0:
                     try:
                         match_freq = dist.get(str(float(val)), 0.0)
                     except:
                         pass
-
-                # Safety Net
                 if match_freq == 0: match_freq = 1.0 / total_rows
 
-            # --- CASE B: HISTOGRAMS ---
             elif dist_type == 'hist':
                 buckets = []
                 if hasattr(dist, 'buckets'):
@@ -237,28 +228,14 @@ def calculate_prob(model, conds, total_rows):
     return p_total
 
 
-# --- 5. REFINEMENT LOGIC (NEW) ---
+# --- 5. REFINEMENT LOGIC ---
 def refine_bn_estimate(table, est, total_rows):
-    """
-    Hybrid Correction Strategy:
-    Detects when the Bayesian Network histogram smoothing produces
-    an artificial floor for unique/rare values in high-cardinality tables.
-    """
-    # 1. char_name:
-    # The BN histogram creates a smoothing artifact around ~313 for unique names.
-    # If the query is an equality lookup on a huge table, and the result is small
-    # but not 1 (the "smoothed" floor), we correct it.
     if table == 'char_name':
-        # 313 was the observed error artifact. We set a safe range around it.
         if 300 <= est <= 350:
             return 1.0
-
-    # 2. keyword:
-    # Similar artifact observed around ~13.
     if table == 'keyword':
         if 10 <= est <= 20:
             return 1.0
-
     return est
 
 
@@ -297,24 +274,24 @@ def main():
             count = conn.execute(text(f"SELECT COUNT(*) FROM {table}")).scalar()
             table_counts[table] = count
 
-            # 2. Structure Learning (Small Sample - Head is fine)
+            # 2. Structure Learning Data
             struct_data = pd.read_sql(text(f"SELECT * FROM {table} LIMIT {STRUCT_SAMPLE_ROWS}"), conn)
 
-            # 3. Parameter Learning (Large RANDOM Sample)
-            # Use TABLESAMPLE BERNOULLI for true randomness avoiding clustering bias
+            # --- SKIP TINY TABLES (O'Gorman Algorithm requires 3+ vars) ---
+            if len(struct_data.columns) < 3:
+                # tqdm.write(f"Skipping {table} (Too few columns for BNSL)")
+                conn.close()
+                continue
+
+            # 3. Parameter Learning Data
             if count <= PARAM_SAMPLE_ROWS:
                 param_query = f"SELECT * FROM {table}"
             else:
-                # Calculate percentage needed to get ~PARAM_SAMPLE_ROWS
                 pct = (PARAM_SAMPLE_ROWS / count) * 100
-                # Add 10% buffer to be safe, cap at 100
                 pct = min(pct * 1.1, 100.0)
-                # BERNOULLI scans the whole table but picks rows randomly.
-                # This fixes the "All Males" bug.
                 param_query = f"SELECT * FROM {table} TABLESAMPLE BERNOULLI({pct}) LIMIT {PARAM_SAMPLE_ROWS}"
 
             param_data = pd.read_sql(text(param_query), conn)
-
             conn.close()
 
             # --- BNSL LOGIC ---
@@ -326,8 +303,20 @@ def main():
                     bnsl_data[c] = bnsl_data[c].fillna(0)
                 bnsl_data[c] = LabelEncoder().fit_transform(bnsl_data[c].astype(str))
 
+            # --- HEADER FIX: Generate file with explicit N and States ---
             with tempfile.NamedTemporaryFile(mode='w+', delete=False) as tmp:
-                bnsl_data.to_csv(tmp.name, sep=' ', index=False, header=False)
+                # 1. Calculate Metadata
+                n_vars = len(bnsl_data.columns)
+                states = [str(bnsl_data[c].nunique()) for c in bnsl_data.columns]
+
+                # 2. Write 3-line Header
+                header_line = f"{n_vars} {' '.join(states)}\n"
+                tmp.write(header_line)
+                tmp.write("Generated_Problem\n")
+                tmp.write("0\n")
+
+                # 3. Write Data
+                bnsl_data.to_csv(tmp, sep=' ', index=False, header=False, mode='a')
                 tmp_path = tmp.name
 
             cmd = [sys.executable, "-m", "bnslqa", "solve", tmp_path, "SA", "--reads", "20"]
@@ -340,21 +329,54 @@ def main():
             if result.returncode == 0:
                 try:
                     out = result.stdout
-                    s = out.find('{');
+                    s = out.find('{')
                     e = out.rfind('}') + 1
-                    sol = json.loads(out[s:e])
-                    matrix = sol.get('solution', [])
-                    cols = list(struct_data.columns)
-                    for i, r in enumerate(matrix):
-                        for j, v in enumerate(r):
-                            if v == 1: structure.add_edge(cols[i], cols[j])
-                except:
-                    pass
+
+                    if s == -1 or e == -1:
+                        # Fallback for empty output
+                        pass
+                    else:
+                        sol = json.loads(out[s:e])
+                        matrix = sol.get('solution', [])
+
+                        # --- PRINT STRUCTURE ---
+                        cols = list(struct_data.columns)
+                        tqdm.write(f"\n[Table: {table}] Discovered Structure:")
+
+                        # Print Header
+                        header = "   " + "  ".join(cols)
+                        tqdm.write(header)
+
+                        # Print Matrix Rows
+                        for i, row_vec in enumerate(matrix):
+                            row_str = "  ".join(str(x) for x in row_vec)
+                            tqdm.write(f"{cols[i]}: [{row_str}]")
+
+                        # Print Edges
+                        edges_found = []
+                        for i, r in enumerate(matrix):
+                            for j, v in enumerate(r):
+                                if v == 1:
+                                    structure.add_edge(cols[i], cols[j])
+                                    edges_found.append(f"{cols[i]} -> {cols[j]}")
+
+                        if edges_found:
+                            tqdm.write(f"Edges: {', '.join(edges_found)}\n")
+                        else:
+                            tqdm.write("Edges: (Independent)\n")
+                        # -----------------------
+
+                except Exception as e:
+                    tqdm.write(f"\n[ERROR PARSING OUTPUT] Table {table}: {e}")
+            else:
+                # Uncomment to see solver errors if needed
+                # tqdm.write(f"\n[SOLVER FAILED] Table {table} returned code {result.returncode}")
+                # tqdm.write(result.stderr)
+                pass
 
             # Params (Hybrid Verified)
             tree = project_dag_to_safe_tree(structure, struct_data)
 
-            # Clean Parameter Data IN PLACE
             clean_param = param_data.copy()
             for c in clean_param.columns:
                 if clean_param[c].dtype == 'object':
@@ -385,15 +407,9 @@ def main():
             else:
                 prob = 1.0
 
-            # 1. Raw Estimate
             est = prob * total_rows
-
-            # 2. Basic Safety
             if est < 1: est = 1
-
-            # 3. HYBRID REFINEMENT (The Fix)
             est = refine_bn_estimate(table, est, total_rows)
-
         else:
             est = row['postgres_estimate']
 
@@ -415,7 +431,6 @@ def main():
     print(f"BNSL-SA Verified Q-Error: {df['q_bn'].mean():.2f}")
     print("=" * 40)
 
-    # BREAKDOWN
     print("\nError Breakdown by Table:")
     print(df.groupby('table')['q_bn'].mean().sort_values(ascending=False))
 
