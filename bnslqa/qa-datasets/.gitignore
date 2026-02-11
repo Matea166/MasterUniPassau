@@ -1,4 +1,4 @@
 # ignore everything
-*
+LC.txt
 # except this file
 !.gitignore

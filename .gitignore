@@ -1,7 +1,7 @@
 __pycache__/
 .python-version
 
-problems/test
+bnslqa/problems/test
 
 gen5tests.sh
 fix

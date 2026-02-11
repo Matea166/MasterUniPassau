@@ -1,17 +1,16 @@
 import pandas as pd
 import operator
 import os
-import sys
 import graphviz
-from tldks_2020.bn import BayesianNetwork
-from tldks_2020.rel import Relation
+from bnsl.tldks_2020.bn import BayesianNetwork
+from bnsl.tldks_2020.rel import Relation
 
 # ==========================================
 # 1. CONFIGURATION
 # ==========================================
-CSV_FILE = "NHANES_age_prediction/"
-DATA_PATH = "datasets/data/NHANES_age_prediction.csv"
-OUTPUT_DIR = "output_bn"
+CSV_FILE = "NHANES_age_prediction"
+DATA_PATH = f"bn/data/{CSV_FILE}.csv"
+OUTPUT_DIR = "../graphs"
 RANDOM_STATE = 42
 
 # Using ALL features
@@ -80,8 +79,8 @@ print("Training Complete.")
 # ==========================================
 print("\n--- 3. Generating Graph ---")
 try:
-    dot_file = os.path.join(OUTPUT_DIR, "nhanes_full_bn.dot")
-    png_file = os.path.join(OUTPUT_DIR, "nhanes_full_bn.png")
+    dot_file = os.path.join(OUTPUT_DIR, f"{CSV_FILE}_bn.dot")
+    png_file = os.path.join(OUTPUT_DIR, f"{CSV_FILE}_bn.png")
     
     with open(dot_file, "w") as f:
         f.write(str(bn.to_dot()))
@@ -198,6 +197,11 @@ def estimate_cardinality(bn, total_rows, query_id, filters):
 # ==========================================
 
 queries = [
+
+    # ID = Id for the query, Filters = List of conditions (col, operator, value)
+    # col = Column to filter on, op = Operator (>, <, =, !=), val = Value to compare against
+
+
     # Q1: High Insulin (LBXIN > 20)
     {'id': 'Q1_HighInsulin', 'filters': [{'col': 'LBXIN', 'op': '>', 'val': 20.0}]},
     
