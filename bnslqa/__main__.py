@@ -11,7 +11,7 @@ def main():
 
   solver_parser = subparsers.add_parser('solve', help='estimate BN structure from data',
                                         description='',
-                                        epilog='''Example: \'python -m bnslqa solve datasets/WasteExp.txt QA -r 10000 -a 99\'
+                                        epilog='''Example: \'python -m bnslqa solve qa-datasets/WasteExp.txt QA -r 10000 -a 99\'
                                         will use D-Wave\'s Quantum Annealer to solve the WasteExp problem, with 10000 reads
                                         each with an annealing time of 99 microseconds''')
   solver_parser.add_argument('dataset', type=str, help='dataset path')
@@ -27,7 +27,7 @@ def main():
                                            description='Generate a dataset for a specific problem',
                                            epilog='''Example: \'python -m bnslqa generate problems/Waste.json --size 10000 --expected\'
                                            will generate an expected dataset of size 10000 for the problem Waste
-                                           as datasets/WasteExp.txt''')
+                                           as qa-datasets/WasteExp.txt''')
   generator_parser.add_argument('problem', type=str,
                                 help='path to the json file defining the problem')
   generator_parser.add_argument('-s', '--size', default=10**4, type=int,
@@ -35,7 +35,7 @@ def main():
   generator_parser.add_argument('-e', '--expected', action='store_true',
                                 help='generate a dataset with expected values (no variance)')
   generator_parser.add_argument('-n', '--name', default=None, type=str,
-                                help='dataset name, will be saved in datasets/NAME.txt [default: based on parameters and problem definition]')
+                                help='dataset name, will be saved in qa-datasets/NAME.txt [default: based on parameters and problem definition]')
   generator_parser.add_argument('-l', '--legacy', action='store_true',
                                 help='MHP only: generate the dataset the same way as used for the original experiments. Note: this already the case for the other problems')
   generator_parser.set_defaults(func=gen.main)

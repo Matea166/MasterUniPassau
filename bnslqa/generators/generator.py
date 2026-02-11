@@ -138,11 +138,11 @@ def main(args):
       if varsTopOrder is None:
         args.parser.exit(1,'Error: cannot find a topological order for \'{}\'. Is the problem acyclic?\n'.format(problemPath))
     else:
-      # for backwards compatibility (datasets generated exactly as for the experiments)
+      # for backwards compatibility (qa-datasets generated exactly as for the experiments)
       varsTopOrder = problem['toporder']
 
     dsName = name if name is not None else ''.join([problem['name'], 'Exp' if expected else ''])
-    with open('datasets/{}.txt'.format(dsName), 'w') as out:
+    with open('qa-datasets/{}.txt'.format(dsName), 'w') as out:
       nVars = len(variables)
       out.write(' '.join( [str(nVars), '{} '.format(maxVarLen)*nVars, '\n'] ))
 
@@ -152,4 +152,4 @@ def main(args):
         generateExpected(out, variables, varsTopOrder, states, examples, countV)
       else:
         generate(out, variables, varsTopOrder, states, examples, countV)
-      print('Generated dataset: datasets/{}.txt'.format(dsName))
+      print('Generated dataset: qa-datasets/{}.txt'.format(dsName))

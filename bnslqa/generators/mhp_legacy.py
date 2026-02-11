@@ -60,7 +60,7 @@ def main(args):
       "car": [0,0,0]
     }
     dsName = name if name is not None else ''.join(['MHP', 'Exp' if expected else ''])
-    with open('datasets/{}.txt'.format(dsName), 'w') as out:
+    with open('qa-datasets/{}.txt'.format(dsName), 'w') as out:
       nVars = 3
       maxVarLen = 3
       out.write(' '.join( [str(nVars), '{} '.format(maxVarLen)*nVars, '\n'] ))
@@ -69,4 +69,4 @@ def main(args):
         generateExpected(out, examples, countV)
       else:
         generate(out, examples, countV)
-      print('Generated dataset: datasets/{}.txt'.format(dsName))
+      print('Generated dataset: qa-datasets/{}.txt'.format(dsName))
