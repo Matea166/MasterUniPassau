@@ -1,0 +1,111 @@
+mother_query_name,sql,relations,joins,wheres,true_cardinality,postgres_estimate,postgres_optimization_time,execution_time
+10a,SELECT * FROM title AS t WHERE t.production_year > 2005,"('t',)",[],"({'gt': ['t.production_year', 2005]},)",1012920,1005730.0,0.0013298988342285,0.2126777172088623
+10a,SELECT * FROM cast_info AS ci WHERE ci.note LIKE '%(voice)%',"('ci',)",[],"({'like': ['ci.note', {'literal': '%(voice)%'}]},)",790340,840569.0,0.0013649463653564,1.9548099040985107
+10a,SELECT * FROM cast_info AS ci WHERE ci.note LIKE '%(uncredited)%',"('ci',)",[],"({'like': ['ci.note', {'literal': '%(uncredited)%'}]},)",1004570,917895.0,0.0008854866027832,1.9836792945861816
+10a,SELECT * FROM cast_info AS ci WHERE ci.note LIKE '%(voice)%' AND ci.note LIKE '%(uncredited)%',"('ci',)",[],"({'like': ['ci.note', {'literal': '%(voice)%'}]}, {'like': ['ci.note', {'literal': '%(uncredited)%'}]})",32288,21296.0,0.0010795593261718,2.0498945713043213
+10a,SELECT * FROM role_type AS rt WHERE rt.role = 'actor',"('rt',)",[],"({'eq': ['rt.role', {'literal': 'actor'}]},)",1,1.0,0.0016727447509765,0.0007543563842773
+10a,SELECT * FROM company_name AS cn WHERE cn.country_code = '[ru]',"('cn',)",[],"({'eq': ['cn.country_code', {'literal': '[ru]'}]},)",1361,220.0,0.002063512802124,0.0349411964416503
+10b,SELECT * FROM title AS t WHERE t.production_year > 2010,"('t',)",[],"({'gt': ['t.production_year', 2010]},)",391666,386095.0,0.0008926391601562,0.1884691715240478
+10b,SELECT * FROM cast_info AS ci WHERE ci.note LIKE '%(producer)%',"('ci',)",[],"({'like': ['ci.note', {'literal': '%(producer)%'}]},)",1435439,1502367.0,0.0009262561798095,2.0530381202697754
+10b,SELECT * FROM role_type AS rt WHERE rt.role = 'actor',"('rt',)",[],"({'eq': ['rt.role', {'literal': 'actor'}]},)",1,1.0,0.0007014274597167,0.0006589889526367
+10b,SELECT * FROM company_name AS cn WHERE cn.country_code = '[ru]',"('cn',)",[],"({'eq': ['cn.country_code', {'literal': '[ru]'}]},)",1361,220.0,0.0008261203765869,0.0284497737884521
+10c,SELECT * FROM title AS t WHERE t.production_year > 1990,"('t',)",[],"({'gt': ['t.production_year', 1990]},)",1749032,1737490.0,0.0010526180267333,0.404254674911499
+10c,SELECT * FROM cast_info AS ci WHERE ci.note LIKE '%(producer)%',"('ci',)",[],"({'like': ['ci.note', {'literal': '%(producer)%'}]},)",1435439,1502367.0,0.0010533332824707,3.833189010620117
+10c,SELECT * FROM company_name AS cn WHERE cn.country_code = '[us]',"('cn',)",[],"({'eq': ['cn.country_code', {'literal': '[us]'}]},)",84843,84528.0,0.0011911392211914,0.0547614097595214
+11d,SELECT * FROM title AS t WHERE t.production_year > 1950,"('t',)",[],"({'gt': ['t.production_year', 1950]},)",2287271,2287310.0,0.0121898651123046,0.2591683864593506
+11d,"SELECT * FROM keyword AS k WHERE k.keyword IN ('sequel', 'revenge', 'based-on-novel')","('k',)",[],"({'in': ['k.keyword', {'literal': ['sequel', 'revenge', 'based-on-novel']}]},)",3,3.0,0.0073747634887695,0.040762186050415
+11d,SELECT * FROM movie_companies AS mc WHERE mc.note IS NOT NULL,"('mc',)",[],"({'exists': 'mc.note'},)",1337140,1344832.0,0.0020716190338134,0.2014305591583252
+11d,SELECT * FROM company_type AS ct WHERE ct.kind <> 'production companies',"('ct',)",[],"({'neq': ['ct.kind', {'literal': 'production companies'}]},)",3,3.0,0.0009617805480957,0.0005254745483398
+11d,SELECT * FROM company_type AS ct WHERE ct.kind IS NOT NULL,"('ct',)",[],"({'exists': 'ct.kind'},)",4,4.0,0.0008063316345214,0.0006816387176513
+11d,SELECT * FROM company_type AS ct WHERE ct.kind <> 'production companies' AND ct.kind IS NOT NULL,"('ct',)",[],"({'neq': ['ct.kind', {'literal': 'production companies'}]}, {'exists': 'ct.kind'})",3,3.0,0.0016992092132568,0.0022358894348144
+11d,SELECT * FROM company_name AS cn WHERE cn.country_code <> '[pl]',"('cn',)",[],"({'neq': ['cn.country_code', {'literal': '[pl]'}]},)",210031,211121.0,0.0052509307861328,0.0437400341033935
+12a,SELECT * FROM title AS t WHERE t.production_year >= 2005 AND t.production_year <= 2008,"('t',)",[],"({'and': [{'gte': ['t.production_year', 2005]}, {'lte': ['t.production_year', 2008]}]},)",445860,446604.0,0.0118558406829833,0.302457332611084
+12a,"SELECT * FROM movie_info AS mi WHERE mi.info IN ('Drama', 'Horror')","('mi',)",[],"({'in': ['mi.info', {'literal': ['Drama', 'Horror']}]},)",274644,295809.0,0.0031712055206298,1.920151710510254
+12a,SELECT * FROM movie_info_idx AS mi_idx WHERE mi_idx.info > '8.0',"('mi_idx',)",[],"({'gt': ['mi_idx.info', {'literal': '8.0'}]},)",52862,49798.0,0.0023167133331298,0.1447687149047851
+12a,SELECT * FROM info_type AS it1 WHERE it1.info = 'genres',"('it1',)",[],"({'eq': ['it1.info', {'literal': 'genres'}]},)",1,1.0,0.0014481544494628,0.0009272098541259
+12a,SELECT * FROM info_type AS it2 WHERE it2.info = 'rating',"('it2',)",[],"({'eq': ['it2.info', {'literal': 'rating'}]},)",1,1.0,0.0023951530456542,0.0015347003936767
+12a,SELECT * FROM company_type AS ct WHERE ct.kind = 'production companies',"('ct',)",[],"({'eq': ['ct.kind', {'literal': 'production companies'}]},)",1,1.0,0.0018608570098876,0.0009043216705322
+12a,SELECT * FROM company_name AS cn WHERE cn.country_code = '[us]',"('cn',)",[],"({'eq': ['cn.country_code', {'literal': '[us]'}]},)",84843,84528.0,0.0014185905456542,0.0844674110412597
+12c,SELECT * FROM title AS t WHERE t.production_year >= 2000 AND t.production_year <= 2010,"('t',)",[],"({'and': [{'gte': ['t.production_year', 2000]}, {'lte': ['t.production_year', 2010]}]},)",1042800,1034638.0,0.0007784366607666,0.2203233242034912
+12c,"SELECT * FROM movie_info AS mi WHERE mi.info IN ('Drama', 'Horror', 'Western', 'Family')","('mi',)",[],"({'in': ['mi.info', {'literal': ['Drama', 'Horror', 'Western', 'Family']}]},)",327313,348650.0,0.000899314880371,1.1807920932769775
+12c,SELECT * FROM movie_info_idx AS mi_idx WHERE mi_idx.info > '7.0',"('mi_idx',)",[],"({'gt': ['mi_idx.info', {'literal': '7.0'}]},)",192967,193373.0,0.0008327960968017,0.1296300888061523
+12c,SELECT * FROM info_type AS it1 WHERE it1.info = 'genres',"('it1',)",[],"({'eq': ['it1.info', {'literal': 'genres'}]},)",1,1.0,0.0007159709930419,0.0006184577941894
+12c,SELECT * FROM info_type AS it2 WHERE it2.info = 'rating',"('it2',)",[],"({'eq': ['it2.info', {'literal': 'rating'}]},)",1,1.0,0.0006768703460693,0.0006556510925292
+12c,SELECT * FROM company_type AS ct WHERE ct.kind = 'production companies',"('ct',)",[],"({'eq': ['ct.kind', {'literal': 'production companies'}]},)",1,1.0,0.0005662441253662,0.0005168914794921
+12c,SELECT * FROM company_name AS cn WHERE cn.country_code = '[us]',"('cn',)",[],"({'eq': ['cn.country_code', {'literal': '[us]'}]},)",84843,84528.0,0.0005664825439453,0.0348942279815673
+13a,SELECT * FROM info_type AS it2 WHERE it2.info = 'release dates',"('it2',)",[],"({'eq': ['it2.info', {'literal': 'release dates'}]},)",1,1.0,0.0113787651062011,0.0010371208190917
+13a,SELECT * FROM kind_type AS kt WHERE kt.kind = 'movie',"('kt',)",[],"({'eq': ['kt.kind', {'literal': 'movie'}]},)",1,1.0,0.0012176036834716,0.0006847381591796
+13a,SELECT * FROM company_name AS cn WHERE cn.country_code = '[de]',"('cn',)",[],"({'eq': ['cn.country_code', {'literal': '[de]'}]},)",9775,9933.0,0.0014851093292236,0.0315041542053222
+13a,SELECT * FROM company_type AS ct WHERE ct.kind = 'production companies',"('ct',)",[],"({'eq': ['ct.kind', {'literal': 'production companies'}]},)",1,1.0,0.0009784698486328,0.000586986541748
+13a,SELECT * FROM info_type AS it WHERE it.info = 'rating',"('it',)",[],"({'eq': ['it.info', {'literal': 'rating'}]},)",1,1.0,0.0007159709930419,0.0004472732543945
+13d,SELECT * FROM info_type AS it2 WHERE it2.info = 'release dates',"('it2',)",[],"({'eq': ['it2.info', {'literal': 'release dates'}]},)",1,1.0,0.000770092010498,0.0004904270172119
+13d,SELECT * FROM kind_type AS kt WHERE kt.kind = 'movie',"('kt',)",[],"({'eq': ['kt.kind', {'literal': 'movie'}]},)",1,1.0,0.0004422664642333,0.0004281997680664
+13d,SELECT * FROM company_name AS cn WHERE cn.country_code = '[us]',"('cn',)",[],"({'eq': ['cn.country_code', {'literal': '[us]'}]},)",84843,84528.0,0.0004782676696777,0.023345947265625
+13d,SELECT * FROM company_type AS ct WHERE ct.kind = 'production companies',"('ct',)",[],"({'eq': ['ct.kind', {'literal': 'production companies'}]},)",1,1.0,0.0005342960357666,0.0004224777221679
+13d,SELECT * FROM info_type AS it WHERE it.info = 'rating',"('it',)",[],"({'eq': ['it.info', {'literal': 'rating'}]},)",1,1.0,0.0004665851593017,0.0004692077636718
+14c,"SELECT * FROM kind_type AS kt WHERE kt.kind IN ('movie', 'episode')","('kt',)",[],"({'in': ['kt.kind', {'literal': ['movie', 'episode']}]},)",2,2.0,0.0009384155273437,0.0003788471221923
+14c,SELECT * FROM title AS t WHERE t.production_year > 2005,"('t',)",[],"({'gt': ['t.production_year', 2005]},)",1012920,1005730.0,0.0044772624969482,0.1481969356536865
+14c,"SELECT * FROM movie_info AS mi WHERE mi.info IN ('Sweden', 'Norway', 'Germany', 'Denmark', 'Swedish', 'Danish', 'Norwegian', 'German', 'USA', 'American')","('mi',)",[],"({'in': ['mi.info', {'literal': ['Sweden', 'Norway', 'Germany', 'Denmark', 'Swedish', 'Danish', 'Norwegian', 'German', 'USA', 'American']}]},)",716210,700302.0,0.0005755424499511,1.3514611721038818
+14c,SELECT * FROM movie_info_idx AS mi_idx WHERE mi_idx.info < '8.5',"('mi_idx',)",[],"({'lt': ['mi_idx.info', {'literal': '8.5'}]},)",1343555,1345799.0,0.0009088516235351,0.1203205585479736
+14c,SELECT * FROM keyword AS k WHERE k.keyword IS NOT NULL,"('k',)",[],"({'exists': 'k.keyword'},)",134170,134170.0,0.010514497756958,0.0234386920928955
+14c,"SELECT * FROM keyword AS k WHERE k.keyword IN ('murder', 'murder-in-title', 'blood', 'violence')","('k',)",[],"({'in': ['k.keyword', {'literal': ['murder', 'murder-in-title', 'blood', 'violence']}]},)",3,4.0,0.0005967617034912,0.0218317508697509
+14c,"SELECT * FROM keyword AS k WHERE k.keyword IS NOT NULL AND k.keyword IN ('murder', 'murder-in-title', 'blood', 'violence')","('k',)",[],"({'exists': 'k.keyword'}, {'in': ['k.keyword', {'literal': ['murder', 'murder-in-title', 'blood', 'violence']}]})",3,4.0,0.000563621520996,0.0227530002593994
+14c,SELECT * FROM info_type AS it1 WHERE it1.info = 'countries',"('it1',)",[],"({'eq': ['it1.info', {'literal': 'countries'}]},)",1,1.0,0.0016050338745117,0.0005011558532714
+14c,SELECT * FROM info_type AS it2 WHERE it2.info = 'rating',"('it2',)",[],"({'eq': ['it2.info', {'literal': 'rating'}]},)",1,1.0,0.0004668235778808,0.0003769397735595
+15d,SELECT * FROM title AS t WHERE t.production_year > 1990,"('t',)",[],"({'gt': ['t.production_year', 1990]},)",1749032,1737490.0,0.0006496906280517,0.1737036705017089
+15d,SELECT * FROM movie_info AS mi WHERE mi.note LIKE '%internet%',"('mi',)",[],"({'like': ['mi.note', {'literal': '%internet%'}]},)",10810,12419.0,0.0039889812469482,0.9013407230377196
+15d,SELECT * FROM info_type AS it1 WHERE it1.info = 'release dates',"('it1',)",[],"({'eq': ['it1.info', {'literal': 'release dates'}]},)",1,1.0,0.0008819103240966,0.0006370544433593
+15d,SELECT * FROM company_name AS cn WHERE cn.country_code = '[us]',"('cn',)",[],"({'eq': ['cn.country_code', {'literal': '[us]'}]},)",84843,84528.0,0.0008823871612548,0.0542869567871093
+16b,SELECT * FROM keyword AS k WHERE k.keyword = 'character-name-in-title',"('k',)",[],"({'eq': ['k.keyword', {'literal': 'character-name-in-title'}]},)",1,1.0,0.0128414630889892,0.0277819633483886
+16b,SELECT * FROM company_name AS cn WHERE cn.country_code = '[us]',"('cn',)",[],"({'eq': ['cn.country_code', {'literal': '[us]'}]},)",84843,84528.0,0.0016367435455322,0.0573134422302246
+16c,SELECT * FROM title AS t WHERE t.episode_nr < 100,"('t',)",[],"({'lt': ['t.episode_nr', 100]},)",946906,951516.0,0.0043153762817382,0.1299958229064941
+16c,SELECT * FROM keyword AS k WHERE k.keyword = 'character-name-in-title',"('k',)",[],"({'eq': ['k.keyword', {'literal': 'character-name-in-title'}]},)",1,1.0,0.0007164478302001,0.0127367973327636
+16c,SELECT * FROM company_name AS cn WHERE cn.country_code = '[us]',"('cn',)",[],"({'eq': ['cn.country_code', {'literal': '[us]'}]},)",84843,84528.0,0.0005216598510742,0.0227172374725341
+16d,SELECT * FROM title AS t WHERE t.episode_nr >= 5,"('t',)",[],"({'gte': ['t.episode_nr', 5]},)",848064,849271.0,0.01041841506958,0.1322324275970459
+16d,SELECT * FROM title AS t WHERE t.episode_nr < 100,"('t',)",[],"({'lt': ['t.episode_nr', 100]},)",946906,951516.0,0.0005362033843994,0.1246492862701416
+16d,SELECT * FROM title AS t WHERE t.episode_nr >= 5 AND t.episode_nr < 100,"('t',)",[],"({'gte': ['t.episode_nr', 5]}, {'lt': ['t.episode_nr', 100]})",692556,697481.0,0.0004963874816894,0.1309237480163574
+16d,SELECT * FROM keyword AS k WHERE k.keyword = 'character-name-in-title',"('k',)",[],"({'eq': ['k.keyword', {'literal': 'character-name-in-title'}]},)",1,1.0,0.0005817413330078,0.014183759689331
+16d,SELECT * FROM company_name AS cn WHERE cn.country_code = '[us]',"('cn',)",[],"({'eq': ['cn.country_code', {'literal': '[us]'}]},)",84843,84528.0,0.0004637241363525,0.0199651718139648
+17a,SELECT * FROM name AS n WHERE n.name LIKE 'B%',"('n',)",[],"({'like': ['n.name', {'literal': 'B%'}]},)",343399,337402.0,0.0062122344970703,0.1651275157928466
+17a,SELECT * FROM keyword AS k WHERE k.keyword = 'character-name-in-title',"('k',)",[],"({'eq': ['k.keyword', {'literal': 'character-name-in-title'}]},)",1,1.0,0.0005474090576171,0.0109496116638183
+17a,SELECT * FROM company_name AS cn WHERE cn.country_code = '[us]',"('cn',)",[],"({'eq': ['cn.country_code', {'literal': '[us]'}]},)",84843,84528.0,0.0004549026489257,0.0202395915985107
+17b,SELECT * FROM name AS n WHERE n.name LIKE 'Z%',"('n',)",[],"({'like': ['n.name', {'literal': 'Z%'}]},)",36174,414.0,0.0006787776947021,0.159053087234497
+17b,SELECT * FROM keyword AS k WHERE k.keyword = 'character-name-in-title',"('k',)",[],"({'eq': ['k.keyword', {'literal': 'character-name-in-title'}]},)",1,1.0,0.0004317760467529,0.010948896408081
+17c,SELECT * FROM name AS n WHERE n.name LIKE 'X%',"('n',)",[],"({'like': ['n.name', {'literal': 'X%'}]},)",2664,414.0,0.0006642341613769,0.1778004169464111
+17c,SELECT * FROM keyword AS k WHERE k.keyword = 'character-name-in-title',"('k',)",[],"({'eq': ['k.keyword', {'literal': 'character-name-in-title'}]},)",1,1.0,0.0006566047668457,0.0117053985595703
+17d,SELECT * FROM name AS n WHERE n.name LIKE '%Bert%',"('n',)",[],"({'like': ['n.name', {'literal': '%Bert%'}]},)",5216,414.0,0.0006909370422363,0.1910750865936279
+17d,SELECT * FROM keyword AS k WHERE k.keyword = 'character-name-in-title',"('k',)",[],"({'eq': ['k.keyword', {'literal': 'character-name-in-title'}]},)",1,1.0,0.0004205703735351,0.0105350017547607
+17e,SELECT * FROM keyword AS k WHERE k.keyword = 'character-name-in-title',"('k',)",[],"({'eq': ['k.keyword', {'literal': 'character-name-in-title'}]},)",1,1.0,0.0006511211395263,0.0101199150085449
+17e,SELECT * FROM company_name AS cn WHERE cn.country_code = '[us]',"('cn',)",[],"({'eq': ['cn.country_code', {'literal': '[us]'}]},)",84843,84528.0,0.0004785060882568,0.0203089714050292
+17f,SELECT * FROM name AS n WHERE n.name LIKE '%B%',"('n',)",[],"({'like': ['n.name', {'literal': '%B%'}]},)",536716,714253.0,0.000676155090332,0.2035491466522216
+17f,SELECT * FROM keyword AS k WHERE k.keyword = 'character-name-in-title',"('k',)",[],"({'eq': ['k.keyword', {'literal': 'character-name-in-title'}]},)",1,1.0,0.0004761219024658,0.011155366897583
+18a,"SELECT * FROM cast_info AS ci WHERE ci.note IN ('(producer)', '(executive producer)')","('ci',)",[],"({'in': ['ci.note', {'literal': ['(producer)', '(executive producer)']}]},)",2379271,2414114.0,0.0056383609771728,1.412888526916504
+18a,SELECT * FROM name AS n WHERE n.gender = 'm',"('n',)",[],"({'eq': ['n.gender', {'literal': 'm'}]},)",1739579,1752748.0,0.0007317066192626,0.2239773273468017
+18a,SELECT * FROM name AS n WHERE n.name LIKE '%Tim%',"('n',)",[],"({'like': ['n.name', {'literal': '%Tim%'}]},)",15502,692.0,0.000584602355957,0.2183506488800048
+18a,SELECT * FROM name AS n WHERE n.gender = 'm' AND n.name LIKE '%Tim%',"('n',)",[],"({'eq': ['n.gender', {'literal': 'm'}]}, {'like': ['n.name', {'literal': '%Tim%'}]})",9062,291.0,0.0005688667297363,0.2288219928741455
+18a,SELECT * FROM info_type AS it1 WHERE it1.info = 'budget',"('it1',)",[],"({'eq': ['it1.info', {'literal': 'budget'}]},)",1,1.0,0.005465030670166,0.0006029605865478
+18a,SELECT * FROM info_type AS it2 WHERE it2.info = 'votes',"('it2',)",[],"({'eq': ['it2.info', {'literal': 'votes'}]},)",1,1.0,0.0006580352783203,0.0003843307495117
+18b,SELECT * FROM title AS t WHERE t.production_year >= 2008 AND t.production_year <= 2014,"('t',)",[],"({'and': [{'gte': ['t.production_year', 2008]}, {'lte': ['t.production_year', 2014]}]},)",784488,775976.0,0.0079004764556884,0.2081539630889892
+18b,"SELECT * FROM movie_info AS mi WHERE mi.info IN ('Horror', 'Thriller')","('mi',)",[],"({'in': ['mi.info', {'literal': ['Horror', 'Thriller']}]},)",73047,73582.0,0.0074098110198974,1.1470928192138672
+18b,SELECT * FROM movie_info AS mi WHERE mi.note IS NULL,"('mi',)",[],"({'missing': 'mi.note'},)",13398746,13366723.0,0.0004677772521972,0.8206994533538818
+18b,"SELECT * FROM movie_info AS mi WHERE mi.info IN ('Horror', 'Thriller') AND mi.note IS NULL","('mi',)",[],"({'in': ['mi.info', {'literal': ['Horror', 'Thriller']}]}, {'missing': 'mi.note'})",73047,66388.0,0.0006711483001708,0.7295920848846436
+18b,SELECT * FROM movie_info_idx AS mi_idx WHERE mi_idx.info > '8.0',"('mi_idx',)",[],"({'gt': ['mi_idx.info', {'literal': '8.0'}]},)",52862,49798.0,0.010190725326538,0.1131563186645507
+18b,"SELECT * FROM cast_info AS ci WHERE ci.note IN ('(writer)', '(head writer)', '(written by)', '(story)', '(story editor)')","('ci',)",[],"({'in': ['ci.note', {'literal': ['(writer)', '(head writer)', '(written by)', '(story)', '(story editor)']}]},)",1244716,1266836.0,0.002791404724121,2.2280428409576416
+18b,SELECT * FROM name AS n WHERE n.gender IS NOT NULL,"('n',)",[],"({'exists': 'n.gender'},)",2701134,2703096.0,0.0015318393707275,0.3710052967071533
+18b,SELECT * FROM name AS n WHERE n.gender = 'f',"('n',)",[],"({'eq': ['n.gender', {'literal': 'f'}]},)",961555,950349.0,0.000741958618164,0.2589466571807861
+18b,SELECT * FROM name AS n WHERE n.gender IS NOT NULL AND n.gender = 'f',"('n',)",[],"({'exists': 'n.gender'}, {'eq': ['n.gender', {'literal': 'f'}]})",961555,616396.0,0.0004293918609619,0.2885427474975586
+18b,SELECT * FROM info_type AS it1 WHERE it1.info = 'genres',"('it1',)",[],"({'eq': ['it1.info', {'literal': 'genres'}]},)",1,1.0,0.001357078552246,0.0005626678466796
+18b,SELECT * FROM info_type AS it2 WHERE it2.info = 'rating',"('it2',)",[],"({'eq': ['it2.info', {'literal': 'rating'}]},)",1,1.0,0.0005688667297363,0.0003960132598876
+18c,"SELECT * FROM movie_info AS mi WHERE mi.info IN ('Horror', 'Action', 'Sci-Fi', 'Thriller', 'Crime', 'War')","('mi',)",[],"({'in': ['mi.info', {'literal': ['Horror', 'Action', 'Sci-Fi', 'Thriller', 'Crime', 'War']}]},)",188971,193842.0,0.0017259120941162,0.9633920192718506
+18c,"SELECT * FROM cast_info AS ci WHERE ci.note IN ('(writer)', '(head writer)', '(written by)', '(story)', '(story editor)')","('ci',)",[],"({'in': ['ci.note', {'literal': ['(writer)', '(head writer)', '(written by)', '(story)', '(story editor)']}]},)",1244716,1248914.0,0.0124411582946777,1.772723913192749
+18c,SELECT * FROM name AS n WHERE n.gender = 'm',"('n',)",[],"({'eq': ['n.gender', {'literal': 'm'}]},)",1739579,1734902.0,0.0013492107391357,0.2571029663085937
+18c,SELECT * FROM info_type AS it1 WHERE it1.info = 'genres',"('it1',)",[],"({'eq': ['it1.info', {'literal': 'genres'}]},)",1,1.0,0.0006992816925048,0.0004105567932128
+18c,SELECT * FROM info_type AS it2 WHERE it2.info = 'votes',"('it2',)",[],"({'eq': ['it2.info', {'literal': 'votes'}]},)",1,1.0,0.0010619163513183,0.0004317760467529
+22d,"SELECT * FROM kind_type AS kt WHERE kt.kind IN ('movie', 'episode')","('kt',)",[],"({'in': ['kt.kind', {'literal': ['movie', 'episode']}]},)",2,2.0,0.0060451030731201,0.0008246898651123
+22d,SELECT * FROM title AS t WHERE t.production_year > 2005,"('t',)",[],"({'gt': ['t.production_year', 2005]},)",1012920,1012848.0,0.001969575881958,0.1491665840148925
+22d,"SELECT * FROM movie_info AS mi WHERE mi.info IN ('Sweden', 'Norway', 'Germany', 'Denmark', 'Swedish', 'Danish', 'Norwegian', 'German', 'USA', 'American')","('mi',)",[],"({'in': ['mi.info', {'literal': ['Sweden', 'Norway', 'Germany', 'Denmark', 'Swedish', 'Danish', 'Norwegian', 'German', 'USA', 'American']}]},)",716210,668383.0,0.0041570663452148,0.9905951023101808
+22d,SELECT * FROM movie_info_idx AS mi_idx WHERE mi_idx.info < '8.5',"('mi_idx',)",[],"({'lt': ['mi_idx.info', {'literal': '8.5'}]},)",1343555,1342553.0,0.0009968280792236,0.0882487297058105
+22d,"SELECT * FROM keyword AS k WHERE k.keyword IN ('murder', 'murder-in-title', 'blood', 'violence')","('k',)",[],"({'in': ['k.keyword', {'literal': ['murder', 'murder-in-title', 'blood', 'violence']}]},)",3,4.0,0.0039148330688476,0.0225038528442382
+22d,SELECT * FROM info_type AS it1 WHERE it1.info = 'countries',"('it1',)",[],"({'eq': ['it1.info', {'literal': 'countries'}]},)",1,1.0,0.0008468627929687,0.0003631114959716
+22d,SELECT * FROM info_type AS it2 WHERE it2.info = 'rating',"('it2',)",[],"({'eq': ['it2.info', {'literal': 'rating'}]},)",1,1.0,0.0004370212554931,0.0003607273101806
+22d,SELECT * FROM company_name AS cn WHERE cn.country_code <> '[us]',"('cn',)",[],"({'neq': ['cn.country_code', {'literal': '[us]'}]},)",126230,127415.0,0.0009388923645019,0.0311865806579589
