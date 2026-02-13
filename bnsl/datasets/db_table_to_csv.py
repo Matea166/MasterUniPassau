@@ -12,7 +12,7 @@ OUTPUT = os.path.join(BASE_DIR, "data", f"{TABLE}.csv")
 
 conn = psycopg2.connect(
     host="localhost",
-    port=5432,
+    port=5433,
     dbname="job",
     user="postgres",
     password="postgres"
