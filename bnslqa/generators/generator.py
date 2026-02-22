@@ -9,6 +9,13 @@ def addCounts(out, variables, variableRealisations, examples,
   p = 1
   for varName in variables:
     p *= probV[varName]
+  # NEW CODE: Capture and print the probability BEFORE generating rows
+
+  setting = ' '.join(map(str, [variableRealisations[varName] for varName in variables]))
+
+    # Print the exact mathematical probability derived from the JSON
+  print(f"States [{setting}] -> Exact Joint Probability: {p:.6f}")
+  # END OF NEW CODE
 
   gen = examples * p
   cumulProb += p
