@@ -22,7 +22,7 @@ CSV_FILE="Movie_Link"
 os.makedirs(OUTPUT_DIR, exist_ok=True)
 
 # ALIGN BN DATA WITH SA SOLVER (Long-Tail Binning)
-MAX_STATES = 5
+MAX_STATES = 50
 df_bn = df_raw[columns].copy()
 
 for col in columns:
