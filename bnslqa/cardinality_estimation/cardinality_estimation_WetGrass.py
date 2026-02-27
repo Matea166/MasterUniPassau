@@ -85,7 +85,7 @@ except Exception as e:
     print(f"[Graph] Failed: {e}")
 
 # ==========================================
-# 5. PRINT THE RAW PROBABILITY TABLES
+# 5. MATHEMATICAL TRANSPARENCY (Print CPTs)
 # ==========================================
 print("\n--- 3.5 Mathematical Transparency: Learned CPTs ---")
 print("These are the exact mathematical tables the inference engine uses to answer queries.")
