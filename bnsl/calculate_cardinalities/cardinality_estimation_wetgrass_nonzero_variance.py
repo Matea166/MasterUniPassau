@@ -8,8 +8,8 @@ import graphviz
 # 1. CONFIGURATION
 # ==========================================
 CSV_FILE = "WetGrass_variance_non_zero"
-DATA_PATH = f"bn/data/{CSV_FILE}.csv"
-OUTPUT_DIR = "../output_bn"
+DATA_PATH = f"../datasets/data/{CSV_FILE}.csv"
+OUTPUT_DIR = "../graphs"
 
 os.makedirs(OUTPUT_DIR, exist_ok=True)
 
@@ -44,16 +44,20 @@ print("Bayesian Network training complete.")
 # ==========================================
 print("\n--- Generating Graph ---")
 try:
-    dot_file = os.path.join(OUTPUT_DIR, f"{CSV_FILE}_bn.dot")
-    png_file = os.path.join(OUTPUT_DIR, f"{CSV_FILE}_bn.png")
+    dot_source = "digraph G {\n  rankdir=TB;\n  node [shape=ellipse];\n"
 
-    with open(dot_file, "w") as f:
-        f.write(str(bn.to_dot()))
+    for u, v in bn.edges():
+        u_clean = str(u).replace(":", "_").replace(" ", "_").replace("<", "lt").replace(">", "gt")
+        v_clean = str(v).replace(":", "_").replace(" ", "_").replace("<", "lt").replace(">", "gt")
+        dot_source += f'  "{u_clean}" -> "{v_clean}";\n'
 
-    graphviz.render("dot", "png", dot_file, outfile=png_file)
-    print(f"[Graph] Saved to: {png_file}")
+    dot_source += "}"
+    outfile = graphviz.Source(dot_source).render(filename=f"{CSV_FILE}_bn", directory=OUTPUT_DIR, format="png",
+                                                 cleanup=True)
+    print(f"[Graph] Saved successfully to: {outfile}")
+
 except Exception as e:
-    print(f"[Graph] Warning: {e}")
+    print(f"[Graph] Failed: {e}")
 
 # ==========================================
 # 5. PURE BN ESTIMATION ENGINE
