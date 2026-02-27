@@ -77,7 +77,7 @@ except Exception as e:
 
 
 # ==========================================
-# 5.  PRINT THE RAW PROBABILITY TABLES
+# 5. MATHEMATICAL TRANSPARENCY (Print CPTs)
 # ==========================================
 print("\n--- 3.5 Mathematical Transparency: Learned CPTs ---")
 for node in bn.nodes():
