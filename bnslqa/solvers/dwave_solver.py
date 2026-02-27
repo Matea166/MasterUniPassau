@@ -48,7 +48,10 @@ def getMinInfo(record):
 def writeCSV(n, probName, alpha, method, nReads, annealTime,
              dsName, calcQUBOTime, annealTimeRes, readFound,
              occurrences, minY, expY, minXt, path):
-  with open('./tests/tests_anneal.csv', 'a') as file:
+  current_dir = os.path.dirname(os.path.abspath(__file__))
+  parent_dir = os.path.dirname(current_dir)
+  csv_path = os.path.join(parent_dir, 'tests', 'tests_anneal.csv')
+  with open(csv_path, 'a') as file:
     examples = getNumExamples(path)
     if method != 'QA':
       annealTime = '-'
