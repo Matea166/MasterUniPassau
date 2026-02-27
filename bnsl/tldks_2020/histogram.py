@@ -23,30 +23,33 @@ class Histogram:
     def __len__(self):
         return len(self.buckets)
 
-    def __getitem__(self, idx):
-        if isinstance(idx, slice):
-            h = Histogram(self.m, self.n)
-            h.buckets = self.buckets[idx]
-            return h
-        return self.buckets[idx]
+    def __getitem__(self, given):
+        if isinstance(given, slice):
+            sub_hist = Histogram(self.m, self.n)
+            sub_hist.buckets = self.buckets[given]
+            return sub_hist
+        return self.buckets[given]
 
     def __mul__(self, other):
-        """Multiply two histograms (Decimal-safe)."""
+        # Multiply two histograms (Decimal-safe).
         hist = copy.copy(self)
 
-        for i, b in enumerate(hist.buckets):
-            if b.cardinality == 1:
-                p = other.p(b.left)
+        for i, bucket in enumerate(hist.buckets):
+            if bucket.cardinality == 1:
+                p = other.p(bucket.left)
                 p = decimal.Decimal(str(p))
             else:
-                _, buckets = other.find_buckets(b.left, b.right)
+                _, buckets = other.find_buckets(bucket.left, bucket.right)
                 if not buckets:
                     p = decimal.Decimal(0)
                 else:
-                    total = sum(bb.frequency for bb in buckets)
+                    total = sum(bucket.frequency for bucket in buckets)
                     p = total / decimal.Decimal(len(buckets))
 
             hist.buckets[i].frequency *= p
+
+        # Handling nones (nulls)
+        hist.null_frac *= other.null_frac
 
         return hist
 
@@ -68,10 +71,10 @@ class Histogram:
 
         if self.n > 0:
             height = (
-                len(values)
-                - sum(b.frequency for b in self.buckets)
-                - self.null_frac
-            ) / self.n
+                             len(values)
+                             - sum(b.frequency for b in self.buckets)
+                             - self.null_frac
+                     ) / self.n
 
             current = None
             for val, cnt in sorted(counter.items()):
@@ -111,7 +114,7 @@ class Histogram:
         if val < self.buckets[0].left or val > self.buckets[-1].right:
             return -1, None
 
-        i = bisect.bisect_left([b.left for b in self.buckets], val)
+        i = bisect.bisect_left(self, val)
         i = min(i, len(self.buckets) - 1)
 
         b = self.buckets[i]
@@ -121,7 +124,7 @@ class Histogram:
         return -1, None
 
     def p(self, val):
-        """Return P(val)."""
+        # Return P(val).
         if val is None:
             return self.null_frac
 
