@@ -31,7 +31,7 @@ class BayesianNetwork(nx.DiGraph):
     # FIT
     # ------------------------------------------------------------------
     def fit(self, relation):
-        """Fits the BayesianNetwork to a Relation."""
+        # Fits the BayesianNetwork to a Relation.
 
         # Drop columns with unique values
         n_uniques = relation.nunique()
@@ -70,7 +70,7 @@ class BayesianNetwork(nx.DiGraph):
         return self
 
     def fit_sql(self, sql: str, con: sqlalchemy.engine.base.Connection):
-        """Fits the BayesianNetwork to a Relation derived from SQL."""
+        # Fits the BayesianNetwork to a Relation derived from SQL.
         relation = rel.Relation(pd.read_sql(sql, con=con))
         return self.fit(relation)
 
@@ -78,7 +78,7 @@ class BayesianNetwork(nx.DiGraph):
     # UPDATE (CPDs)
     # ------------------------------------------------------------------
     def update(self, relation, by_m=30, by_n=30, on_m=30, on_n=30):
-        """Updates the distributions of the network."""
+        # Updates the distributions of the network.
 
         if self.number_of_nodes() == 0:
             return self
@@ -110,28 +110,21 @@ class BayesianNetwork(nx.DiGraph):
     # INFERENCE
     # ------------------------------------------------------------------
     def infer(self, query):
-        """Returns the estimated selectivity of a query."""
+        #Returns the estimated selectivity of a query.
 
         def walk(node):
-            cpd_dist = self.nodes[node]['dist']
+            cpd = self.nodes[node]['dist']
 
             for child in self.successors(node):
-                cpd_dist *= walk(child)
+                cpd *= walk(child)
 
             condition = query.get(node)
             if condition is not None:
-                if isinstance(condition, tuple):
-                    left, right = condition
-                    hist = cpd_dist.by_hist
-                    _, buckets = hist.find_buckets(left, right)
-                    return sum(b.frequency for b in buckets)
-                else:
-                    return cpd_dist.p_by(condition)
+                return cpd.p_by(condition)
 
-
-            hist = cpd_dist.by_hist
+            hist = cpd.by_hist
             for i, (bucket, on_hist) in enumerate(
-                zip(cpd_dist.by_hist.buckets, cpd_dist.on_hists)
+                zip(cpd.by_hist.buckets, cpd.on_hists)
             ):
                 bucket.frequency = sum(b.frequency for b in on_hist)
                 bucket.cardinality = decimal.Decimal(1)
@@ -147,18 +140,12 @@ class BayesianNetwork(nx.DiGraph):
 
         condition = query.get(root)
         if condition is not None:
-            if isinstance(condition, tuple):
-                left, right = condition
-                _, buckets = hist.find_buckets(left, right)
-                return sum(b.frequency for b in buckets)
-            else:
-                return hist.p(condition)
-
+            return hist.p(condition)
 
         return sum(b.frequency for b in hist.buckets)
 
     def p(self, **query):
-        """Convenience wrapper around infer()."""
+        # Convenience wrapper around infer()
         relevant = self.steiner_tree(query.keys())
         return float(relevant.infer(query))
 
@@ -167,11 +154,11 @@ class BayesianNetwork(nx.DiGraph):
     # ------------------------------------------------------------------
     @property
     def root(self):
-        """Returns the root node of the network."""
+        # Returns the root node of the network
         return next(nx.topological_sort(self))
 
     def steiner_tree(self, nodes):
-        """Returns the minimal subtree containing given nodes."""
+        # Returns the minimal subtree containing given nodes.
         nodes = list(nodes)
         bunch = set()
 
@@ -186,21 +173,21 @@ class BayesianNetwork(nx.DiGraph):
         return BayesianNetwork(self.subgraph(bunch))
 
     def to_dot(self):
-        """Returns a pydot object representing the BayesianNetwork."""
+    # Returns a pydot object representing the BayesianNetwork
         return nx.nx_pydot.to_pydot(self)
 
     def draw(self):
-        """Produces a GraphViz representation."""
+        # Produces a GraphViz representation.
         if not GRAPHVIZ_INSTALLED:
             raise RuntimeError('graphviz needs to be installed')
         return graphviz.Source(self.to_dot())
 
     def rename(self, mapping):
-        """Renames each node according to a mapping."""
+        # Renames each node according to a mapping.
         return BayesianNetwork(nx.relabel_nodes(self, mapping))
 
     def copy(self):
-        """Returns an independent copy."""
+        # Returns an independent copy.
         return BayesianNetwork(super().copy())
 
 
@@ -208,7 +195,7 @@ class BayesianNetwork(nx.DiGraph):
 # CHOW–LIU
 # ----------------------------------------------------------------------
 def build_chow_liu(relation):
-    """Builds a Chow–Liu tree from a relation."""
+    # Builds a Chow–Liu tree from a relation.
 
     mut_info_graph = nx.Graph()
 
