@@ -2,14 +2,14 @@ import psycopg2
 import pandas as pd
 
 # ---------- CONFIG ----------
-DB_NAME = "wetgrass_variance_zero"
+DB_NAME = "nhanes"
 DB_USER = "postgres"
 DB_PASSWORD = "postgres"
 DB_HOST = "localhost"
 DB_PORT = "5433"
 
-CSV_FILE = "bn/data/WetGrass_variance_zero.csv"
-TABLE_NAME = "wetgrass_data"
+CSV_FILE = "data/NHANES_age_prediction.csv"
+TABLE_NAME = "nhanes_data"
 # ----------------------------
 
 # Connect to PostgreSQL
@@ -29,9 +29,10 @@ df = pd.read_csv(CSV_FILE)
 # Insert query
 insert_query = f"""
 INSERT INTO {TABLE_NAME} (
-    cloud, sprinkler, rain, wetgrass
+    seqn, age_group, ridageyr, riagendr, paq605,
+    bmxbmi, lbxglu, diq010, lbxglt, lbxin
 )
-VALUES (%s, %s, %s, %s)
+VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
 """
 
 # Insert rows
