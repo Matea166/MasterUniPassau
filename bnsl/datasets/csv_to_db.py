@@ -2,13 +2,13 @@ import psycopg2
 import pandas as pd
 
 # ---------- CONFIG ----------
-DB_NAME = "wetgrass_variance_zero"
+DB_NAME = "wetgrass_variance_nonzero"
 DB_USER = "postgres"
 DB_PASSWORD = "postgres"
 DB_HOST = "localhost"
 DB_PORT = "5433"
 
-CSV_FILE = "bn/data/WetGrass_variance_zero.csv"
+CSV_FILE = "data/WetGrass_variance_non_zero.csv"
 TABLE_NAME = "wetgrass_data"
 # ----------------------------
 
