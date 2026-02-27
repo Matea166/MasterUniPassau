@@ -99,9 +99,9 @@ def print_bn_estimate(bn, df, filters):
 print("\n--- Executing Queries ---")
 # Example queries for your movie_links data
 print_bn_estimate(bn, df, {'link_type_id': 6})
-print_bn_estimate(bn, df, {'movie_id': 50, 'link_type_id': 6})
+print_bn_estimate(bn, df, {'movie_id': 132249, 'link_type_id': 6})
+print_bn_estimate(bn, df, {'movie_id': 132249, 'linked_movie_id': 1715497, 'link_type_id': 13})
+print_bn_estimate(bn, df, {'movie_id': 132249, 'linked_movie_id': 1715497})
+print_bn_estimate(bn, df, {'movie_id': 132249, 'linked_movie_id': 5})
 print_bn_estimate(bn, df, {'movie_id': 50, 'linked_movie_id': 257907, 'link_type_id': 6})
-print_bn_estimate(bn, df, {'linked_movie_id': 257907})
-print_bn_estimate(bn, df, {'movie_id': 164083, 'linked_movie_id': 164081, 'link_type_id': 2})
-
 print("\nProcessing Complete.")
