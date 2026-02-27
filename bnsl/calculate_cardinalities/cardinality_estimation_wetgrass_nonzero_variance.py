@@ -7,7 +7,7 @@ import graphviz
 # ==========================================
 # 1. CONFIGURATION
 # ==========================================
-CSV_FILE = "title"
+CSV_FILE = "WetGrass_variance_non_zero"
 DATA_PATH = f"bn/data/{CSV_FILE}.csv"
 OUTPUT_DIR = "../output_bn"
 
@@ -17,30 +17,25 @@ os.makedirs(OUTPUT_DIR, exist_ok=True)
 # 2. LOAD DATA
 # ==========================================
 print(f"--- Loading Data from {DATA_PATH} ---")
-if not os.path.exists(DATA_PATH):
-    raise FileNotFoundError(f"File not found at {DATA_PATH}")
+df = pd.read_csv(DATA_PATH)
 
-df = pd.read_csv(DATA_PATH, low_memory=False, escapechar='\\')
-print(f"Total rows in dataset: {len(df)}")
-
-# Fill missing values and convert all columns to string strictly
-df = df.fillna('MISSING')
+# ==========================================
+# 2a. PREPROCESSING CATEGORICAL DATA
+# ==========================================
+# All columns are binary/categorical, ensure they are strings
 for col in df.columns:
     df[col] = df[col].astype(str)
 
-# ==========================================
-# 3. TRAIN BAYESIAN NETWORK
-# ==========================================
-print("\n--- Training Bayesian Network (Strict Researcher Method) ---")
+print(f"Total rows in dataset: {len(df)}")
 
-# Pass the FULL dataset.
+# ==========================================
+# 3. TRAIN BAYESIAN NETWORK (DISCRETE STRUCTURE)
+# ==========================================
+print("\n--- Training Bayesian Network ---")
+
 relation = Relation(df)
-
-# .fit() automatically samples down to cl_max_rows (30K) to build the graph fast.
 bn = BayesianNetwork(cl_max_rows=30000).fit(relation)
-
-# .update() uses the FULL dataset to calculate highly accurate histograms.
-bn.update(relation)
+bn.update(relation)  # no continuous variables, just reinforce counts
 
 print("Bayesian Network training complete.")
 
@@ -60,39 +55,29 @@ try:
 except Exception as e:
     print(f"[Graph] Warning: {e}")
 
-
 # ==========================================
 # 5. PURE BN ESTIMATION ENGINE
 # ==========================================
 def print_bn_estimate(bn, df, filters):
-    """
-    Strict Pure BN Estimator for Database Queries
-    """
-    # --------------------------
-    # True cardinality (Ground Truth)
-    # --------------------------
+
+   # Strict Pure BN Estimator for Database Queries
+
+    # True cardinality
     subset = df.copy()
     for col, val in filters.items():
         subset = subset[subset[col] == val]
     true_card = len(subset)
 
-    # --------------------------
     # Column-wise independent probabilities
-    # --------------------------
     col_probs = {}
     for col, val in filters.items():
-        p = bn.p(**{col: val})
-        col_probs[col] = p
+        col_probs[col] = bn.p(**{col: val})
 
-    # --------------------------
-    # Joint probability (Selectivity) & Cardinality
-    # --------------------------
+    # Joint probability & estimated cardinality
     est_prob = bn.p(**filters)
     est_card = est_prob * len(df)
 
-    # --------------------------
     # Print results
-    # --------------------------
     print(f"\n=== BN QUERY [{', '.join([f'{k}={v}' for k, v in filters.items()])}] ===")
     print(f"True Cardinality: {true_card} rows")
     print(f"Estimated Cardinality: {est_card:.2f} rows\n")
@@ -104,11 +89,14 @@ def print_bn_estimate(bn, df, filters):
     print("-" * 40)
     print(f"Joint Selectivity: {est_prob:.10f}")
 
-
 # ==========================================
 # 6. EXECUTING BENCHMARK QUERIES
 # ==========================================
 print("\n--- Executing Queries ---")
-print_bn_estimate(bn, df, {'episode_nr': '66.0', 'season_nr': '1.0'})
-print_bn_estimate(bn, df, {'kind_id': '7.0', 'season_nr': '1.0'})
+print_bn_estimate(bn, df, {'WetGrass': 'f'})
+print_bn_estimate(bn, df, {'Rain': 'f', 'WetGrass': 'f'})
+print_bn_estimate(bn, df, {'Sprinkler': 'off', 'Rain': 'f', 'WetGrass': 'f'})
+print_bn_estimate(bn, df, {'Cloud': 'f', 'Sprinkler': 'off', 'Rain': 'f'})
+print_bn_estimate(bn, df, {'Cloud': 't', 'Sprinkler': 'on', 'Rain': 'f'})
+print_bn_estimate(bn, df, {'Cloud': 't', 'Sprinkler': 'off', 'Rain': 't', 'WetGrass': 'f'})
 print("\nProcessing Complete.")
