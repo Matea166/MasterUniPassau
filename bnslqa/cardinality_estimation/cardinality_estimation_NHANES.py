@@ -61,7 +61,7 @@ bn.fit(df, estimator=MaximumLikelihoodEstimator)
 print("Maximum Likelihood Estimation complete. CPTs built.")
 
 # ==========================================
-# 4. VISUALIZE THE QUBO MATRIX (Graphviz)
+# 4. VISUALIZE THE QUBO MATRIX
 # ==========================================
 print("\n--- 2. Generating QUBO DAG Visualization ---")
 try:
