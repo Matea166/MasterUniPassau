@@ -130,12 +130,12 @@ def estimate_cardinality(query_dict, test_name):
 print("\n--- 4. Running Cardinality Benchmark ---")
 
 queries = [
-    ("Test A: ", {'Bread': 1}), 
-    ("Test B: ", {'Beer': 1, 'Diapers': 1}), 
-    ("Test C: ", {'Milk': 1, 'Diapers': 1}), 
-    ("Test D: ", {'Eggs': 1, 'Cola': 1}), 
-    ("Test E: ", {'Bread': 1, 'Diapers': 1, 'Milk': 1}), 
-    ("Test F: ", {'Beer': 1, 'Bread': 0, 'Cola': 1, 'Diapers': 1, 'Eggs': 0, 'Milk': 1})
+    ("Q1: ", {'Bread': 1}),
+    ("Q2: ", {'Beer': 1, 'Diapers': 1}),
+    ("Q3: ", {'Milk': 1, 'Diapers': 1}),
+    ("Q4: ", {'Eggs': 1, 'Cola': 1}),
+    ("Q5: ", {'Bread': 1, 'Diapers': 1, 'Milk': 1}),
+    ("Q6: ", {'Beer': 1, 'Bread': 0, 'Cola': 1, 'Diapers': 1, 'Eggs': 0, 'Milk': 1})
 ]
 
 for name, q in queries:
