@@ -8,3 +8,6 @@ networkx~=2.8.8
 sqlalchemy~=2.0.45
 scikit-learn~=1.6.1
 dimod~=0.10.17
+psycopg2-binary==2.9.11
+numpy==1.26.4
+pgmpy==0.1.23
