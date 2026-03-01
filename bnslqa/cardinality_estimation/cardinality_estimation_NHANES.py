@@ -143,12 +143,12 @@ def estimate_cardinality(query_dict, test_name):
 print("\n--- 4. Running Cardinality Benchmark ---")
 
 queries = [
-    ("Test A: Marginalization", {'DIQ010': 1}),
-    ("Test B: Direct Edge Test", {'BMXBMI': 3, 'DIQ010': 0}),
-    ("Test C: V-Structure Test", {'age_group': 1, 'BMXBMI': 3, 'DIQ010': 0}),
-    ("Test D: Heavy Hitter", {'age_group': 0, 'BMXBMI': 1, 'DIQ010': 1}),
-    ("Test E: Needle in Haystack", {'age_group': 0, 'BMXBMI': 0, 'DIQ010': 0}),
-    ("Test F: Full Dimensionality", {'age_group': 1, 'RIAGENDR': 0, 'BMXBMI': 2, 'DIQ010': 1})
+    ("Q1: Marginalization", {'DIQ010': 1}),
+    ("Q2: Direct Edge Test", {'BMXBMI': 3, 'DIQ010': 0}),
+    ("Q3: V-Structure Test", {'age_group': 1, 'BMXBMI': 3, 'DIQ010': 0}),
+    ("Q4: Heavy Hitter", {'age_group': 0, 'BMXBMI': 1, 'DIQ010': 1}),
+    ("Q5: Needle in Haystack", {'age_group': 0, 'BMXBMI': 0, 'DIQ010': 0}),
+    ("Q6: Full Dimensionality", {'age_group': 1, 'RIAGENDR': 0, 'BMXBMI': 2, 'DIQ010': 1})
 ]
 
 for name, q in queries:

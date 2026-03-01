@@ -140,12 +140,12 @@ def estimate_cardinality(query_dict, test_name):
 print("\n--- 4. Running Cardinality Benchmark ---")
 
 queries = [
-    ("Test A: Simple Marginal", {'wetgrass': 'f'}),
-    ("Test B: Direct Edge", {'rain': 'f', 'wetgrass': 'f'}),
-    ("Test C: V-Structure Interaction", {'sprinkler': 'off', 'rain': 'f', 'wetgrass': 'f'}),
-    ("Test D: Explaining Away", {'cloud': 'f', 'sprinkler': 'off', 'rain': 'f'}),
-    ("Test E: Logical Anomaly", {'cloud': 't', 'sprinkler': 'on', 'rain': 'f'}),
-    ("Test F: Full Dimensionality", {'cloud': 't', 'sprinkler': 'off', 'rain': 't', 'wetgrass': 'f'})
+    ("Q1: Simple Marginal", {'wetgrass': 'f'}),
+    ("Q2: Direct Edge", {'rain': 'f', 'wetgrass': 'f'}),
+    ("Q3: V-Structure Interaction", {'sprinkler': 'off', 'rain': 'f', 'wetgrass': 'f'}),
+    ("Q4: Explaining Away", {'cloud': 'f', 'sprinkler': 'off', 'rain': 'f'}),
+    ("Q5: Logical Anomaly", {'cloud': 't', 'sprinkler': 'on', 'rain': 'f'}),
+    ("Q6: Full Dimensionality", {'cloud': 't', 'sprinkler': 'off', 'rain': 't', 'wetgrass': 'f'})
 ]
 
 for name, q in queries:
