@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/opt/homebrew/bin/bash
 
 BASE_DIR="./dispatch_output/solver_outputs"
 OUTPUT_BASE="q-error_output"
