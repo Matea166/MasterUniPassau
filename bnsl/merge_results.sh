@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/opt/homebrew/bin/bash
 
 # Paths
 SA_SQA_DIR="../bnsl-qa/dispatch_output/results"
