@@ -124,3 +124,35 @@ for (_, q_dict), sql in zip(queries, queries_sql):
 
 csv_filename = os.path.join(output_dir, f"graph_{graph_index}_cardinality.csv")
 pd.DataFrame(results_data).to_csv(csv_filename, index=False)
+
+
+# ==========================================
+# 6. BENCHMARK QUERIES & CSV EXPORT
+# ==========================================
+queries = [
+    ("Test A", {'wetgrass': 'f'}),
+    ("Test B", {'rain': 'f', 'wetgrass': 'f'}),
+    ("Test C", {'sprinkler': 'off', 'rain': 'f', 'wetgrass': 'f'}),
+    ("Test D", {'cloud': 'f', 'sprinkler': 'off', 'rain': 'f'}),
+    ("Test E", {'cloud': 't', 'sprinkler': 'on', 'rain': 'f'}),
+    ("Test F", {'cloud': 't', 'sprinkler': 'off', 'rain': 't', 'wetgrass': 'f'})
+]
+
+queries_sql = [
+    "SELECT * FROM wetgrass_data WHERE wetgrass = 'f'",
+    "SELECT * FROM wetgrass_data WHERE rain = 'f' AND wetgrass = 'f'",
+    "SELECT * FROM wetgrass_data WHERE sprinkler = 'off' AND rain = 'f' AND wetgrass = 'f'",
+    "SELECT * FROM wetgrass_data WHERE cloud = 'f' AND sprinkler = 'off' AND rain = 'f'",
+    "SELECT * FROM wetgrass_data WHERE cloud = 't' AND sprinkler = 'on' AND rain = 'f'",
+    "SELECT * FROM wetgrass_data WHERE cloud = 't' AND sprinkler = 'off' AND rain = 't' AND wetgrass = 'f'"
+]
+
+results_data = []
+for (_, q_dict), sql in zip(queries, queries_sql):
+    est_card = estimate_cardinality(q_dict)
+    results_data.append({"query_sql": sql, "estimated_cardinality": f"{est_card:.5f}"})
+
+# Save intermediate CSV
+
+csv_filename = os.path.join(output_dir, f"graph_{graph_index}_cardinality.csv")
+pd.DataFrame(results_data).to_csv(csv_filename, index=False)
