@@ -9,10 +9,10 @@ export PGPASSWORD=postgres
 wget wget https://bonsai.cedardb.com/job/imdb.tgz --no-check-certificate
 tar xz -f imdb.tgz --directory /tmp
 
-# We'll be doing the following a lot...
+
 execute="psql -h $POSTGRES_HOST -p 5432 -d $POSTGRES_DB -U $POSTGRES_USER -a"
 
-# Delete everything for idempotency
+
 $execute -c "DROP SCHEMA public CASCADE;"
 $execute -c "CREATE SCHEMA public;"
 $execute -c "GRANT ALL ON SCHEMA public TO postgres;"
