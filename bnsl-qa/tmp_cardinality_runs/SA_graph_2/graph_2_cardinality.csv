@@ -1,0 +1,7 @@
+query_sql,estimated_cardinality
+SELECT * FROM movie_link WHERE link_type_id = 6,5503.00000
+SELECT * FROM movie_link WHERE movie_id = 132249 AND link_type_id = 6,410.00000
+SELECT * FROM movie_link WHERE movie_id = 132249 AND linked_movie_id = 1715497 AND link_type_id = 13,0.01406
+SELECT * FROM movie_link WHERE movie_id = 132249 AND linked_movie_id = 1715497,1.00000
+SELECT * FROM movie_link WHERE movie_id = 132249 AND link_type_id = 5,0.00000
+SELECT * FROM movie_link WHERE movie_id = 50 AND linked_movie_id = 257907 AND link_type_id = 6,2143.98519

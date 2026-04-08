@@ -1,0 +1,7 @@
+sa_query_sql,pg_query_sql,true_cardinality,est_cardinality,est_selectivity
+SELECT * FROM nhanes_data WHERE DIQ010 = 1,SELECT * FROM nhanes_data WHERE DIQ010 = 2,2199,2199.0,0.9653204565
+SELECT * FROM nhanes_data WHERE BMXBMI = 3 AND DIQ010 = 0,SELECT * FROM nhanes_data WHERE BMXBMI >= 30.0 AND DIQ010 = 1,9,9.0,0.0039508341
+SELECT * FROM nhanes_data WHERE age_group = 1 AND BMXBMI = 3 AND DIQ010 = 0,SELECT * FROM nhanes_data WHERE age_group = 'Senior' AND BMXBMI >= 30.0 AND DIQ010 = 1,4,3.43,0.0015050796
+SELECT * FROM nhanes_data WHERE age_group = 0 AND BMXBMI = 1 AND DIQ010 = 1,SELECT * FROM nhanes_data WHERE age_group = 'Adult' AND BMXBMI >= 18.5 AND BMXBMI < 25.0 AND DIQ010 = 2,675,657.57,0.2886612200
+SELECT * FROM nhanes_data WHERE age_group = 0 AND BMXBMI = 0 AND DIQ010 = 0,SELECT * FROM nhanes_data WHERE age_group = 'Adult' AND BMXBMI < 18.5 AND DIQ010 = 1,0,0.0,0.0000000000
+SELECT * FROM nhanes_data WHERE age_group = 1 AND RIAGENDR = 0 AND BMXBMI = 2 AND DIQ010 = 1,SELECT * FROM nhanes_data WHERE age_group = 'Senior' AND RIAGENDR = 1 AND BMXBMI >= 25.0 AND BMXBMI < 30.0 AND DIQ010 = 2,75,58.78,0.0258038947

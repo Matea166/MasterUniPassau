@@ -1,6 +1,0 @@
-*
-!.gitignore
-!generator.py
-!generator_utils.py
-!mhp_legacy.py
-!__init__.py

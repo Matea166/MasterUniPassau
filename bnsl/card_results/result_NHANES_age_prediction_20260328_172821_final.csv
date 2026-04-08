@@ -1,0 +1,7 @@
+query_sql,true_cardinality,bn_est_cardinality,pg_est_cardinality
+"SELECT * FROM nhanes_data WHERE DIQ010 = 1",2199,2199.0,2199
+"SELECT * FROM nhanes_data WHERE BMXBMI = 3 AND DIQ010 = 0",9,9.0,7
+"SELECT * FROM nhanes_data WHERE age_group = 1 AND BMXBMI = 3 AND DIQ010 = 0",4,3.43,1
+"SELECT * FROM nhanes_data WHERE age_group = 0 AND BMXBMI = 1 AND DIQ010 = 1",675,657.57,635
+"SELECT * FROM nhanes_data WHERE age_group = 0 AND BMXBMI = 0 AND DIQ010 = 0",0,0.0,1
+"SELECT * FROM nhanes_data WHERE age_group = 1 AND RIAGENDR = 0 AND BMXBMI = 2 AND DIQ010 = 1",75,58.78,53

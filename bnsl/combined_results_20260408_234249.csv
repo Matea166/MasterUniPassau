@@ -1,0 +1,7 @@
+query,SA,SQA,BNSL,true,postgres_est
+SELECT * FROM wetgrass_data WHERE wetgrass = 'f',Graph_1: 17.46 | Graph_2: 17.46 | Graph_3: 17.46,Graph_1: 17.46 | Graph_2: 20.862 | Graph_3: 17.46,18.0,18,18
+SELECT * FROM wetgrass_data WHERE rain = 'f' AND wetgrass = 'f',Graph_1: 17.46 | Graph_2: 17.46 | Graph_3: 17.46,Graph_1: 17.46 | Graph_2: 20.862 | Graph_3: 17.46,18.0,18,11
+SELECT * FROM wetgrass_data WHERE sprinkler = 'off' AND rain = 'f' AND wetgrass = 'f',Graph_1: 17.46 | Graph_2: 17.46 | Graph_3: 17.46,Graph_1: 17.46 | Graph_2: 20.862 | Graph_3: 17.46,18.0,18,4
+SELECT * FROM wetgrass_data WHERE cloud = 'f' AND sprinkler = 'off' AND rain = 'f',Graph_1: 9.8 | Graph_2: 9.8 | Graph_3: 9.8,Graph_1: 9.8 | Graph_2: 8.54 | Graph_3: 9.8,10.5,10,16
+SELECT * FROM wetgrass_data WHERE cloud = 't' AND sprinkler = 'on' AND rain = 'f',Graph_1: 2.4 | Graph_2: 2.4 | Graph_3: 2.4,Graph_1: 2.4 | Graph_2: 3.66 | Graph_3: 2.4,3.15,2,11
+SELECT * FROM wetgrass_data WHERE cloud = 't' AND sprinkler = 'off' AND rain = 't' AND wetgrass = 'f',Graph_1: 0.0 | Graph_2: 0.0 | Graph_3: 0.0,Graph_1: 0.0 | Graph_2: 0.0 | Graph_3: 0.0,0.0,0,1
