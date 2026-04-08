@@ -1,17 +1,22 @@
-from bnsl.tldks_2020.bn import BayesianNetwork
-from bnsl.tldks_2020.rel import Relation
 import pandas as pd
 import os
+import sys
+sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..', '..')))
+from datetime import datetime
+from bnsl.tldks_2020.bn import BayesianNetwork
+from bnsl.tldks_2020.rel import Relation
 import graphviz
 
 # ==========================================
 # 1. CONFIGURATION
 # ==========================================
 CSV_FILE = "movie_link"
-DATA_PATH = f"../datasets/data/{CSV_FILE}.csv"
+DATA_PATH = f"datasets/data/{CSV_FILE}.csv"
 OUTPUT_DIR = "../graphs"
+RESULTS_DIR = "card_results"
 
 os.makedirs(OUTPUT_DIR, exist_ok=True)
+os.makedirs(RESULTS_DIR, exist_ok=True)
 
 # ==========================================
 # 2. LOAD DATA
@@ -19,27 +24,24 @@ os.makedirs(OUTPUT_DIR, exist_ok=True)
 print(f"--- Loading Data from {DATA_PATH} ---")
 df = pd.read_csv(DATA_PATH)
 
-# Drop 'id' column since we don't want it
-if 'id' in df.columns:
-    df = df.drop(columns=['id'])
+# Remove ID column if present
+if "id" in df.columns:
+    df = df.drop(columns=["id"])
 
+# Treat all values as strings
+for col in df.columns:
+    df[col] = df[col].astype(str)
+
+print(f"Total rows in dataset: {len(df)}")
 print(f"Columns used for BN: {df.columns.tolist()}")
-print(f"Total rows: {len(df)}")
 
 # ==========================================
-# 3. TRAIN BAYESIAN NETWORK (DISCRETE STRUCTURE)
+# 3. TRAIN BAYESIAN NETWORK
 # ==========================================
 print("\n--- Training Bayesian Network ---")
-
-# All columns are discrete already
-relation_discrete = Relation(df)
-
-# Fit BN on discrete data
-bn = BayesianNetwork(cl_max_rows=30000).fit(relation_discrete)
-
-# Update BN with full data to get accurate probabilities
-bn.update(relation_discrete)
-
+relation = Relation(df)
+bn = BayesianNetwork(cl_max_rows=30000).fit(relation)
+bn.update(relation)
 print("Bayesian Network training complete.")
 
 # ==========================================
@@ -47,61 +49,90 @@ print("Bayesian Network training complete.")
 # ==========================================
 print("\n--- Generating Graph ---")
 try:
-    dot_source = "digraph G {\n  rankdir=TB;\n  node [shape=ellipse];\n"
+    dot_file = os.path.join(OUTPUT_DIR, f"{CSV_FILE}_bn.dot")
+    png_file = os.path.join(OUTPUT_DIR, f"{CSV_FILE}_bn.png")
 
-    for u, v in bn.edges():
-        u_clean = str(u).replace(":", "_").replace(" ", "_").replace("<", "lt").replace(">", "gt")
-        v_clean = str(v).replace(":", "_").replace(" ", "_").replace("<", "lt").replace(">", "gt")
-        dot_source += f'  "{u_clean}" -> "{v_clean}";\n'
+    with open(dot_file, "w") as f:
+        f.write(str(bn.to_dot()))
 
-    dot_source += "}"
-    outfile = graphviz.Source(dot_source).render(filename=f"{CSV_FILE}_bn", directory=OUTPUT_DIR, format="png",
-                                                 cleanup=True)
-    print(f"[Graph] Saved successfully to: {outfile}")
-
+    graphviz.render("dot", "png", dot_file, outfile=png_file)
+    print(f"[Graph] Saved to: {png_file}")
 except Exception as e:
-    print(f"[Graph] Failed: {e}")
+    print(f"[Graph] Warning: {e}")
 
 # ==========================================
-# 5. PURE BN ESTIMATION ENGINE
+# 5. CSV EXPORT & ESTIMATION LOGIC
 # ==========================================
-def print_bn_estimate(bn, df, filters):
+def parse_sql_to_filter(sql, df_columns):
     """
-    Strict Pure BN Estimator for Database Queries
+    Parses SQL and matches columns to the DataFrame headers case-insensitively.
     """
-    # True cardinality
+    where_clause = sql.split("WHERE")[-1].strip()
+    conditions = [c.strip() for c in where_clause.split("AND")]
+    filters = {}
+
+    col_map = {c.lower(): c for c in df_columns}
+
+    for cond in conditions:
+        parts = cond.replace("'", "").split("=")
+        sql_col = parts[0].strip().lower()
+        val = parts[1].strip()
+
+        if sql_col in col_map:
+            filters[col_map[sql_col]] = val
+        else:
+            print(f"Warning: Column '{sql_col}' not found in dataset.")
+
+    return filters
+
+
+# SQL-style queries for movie_link
+queries_sql = [
+    "SELECT * FROM movie_link WHERE link_type_id = 6",
+    "SELECT * FROM movie_link WHERE movie_id = 132249 AND link_type_id = 6",
+    "SELECT * FROM movie_link WHERE movie_id = 132249 AND linked_movie_id = 1715497 AND link_type_id = 13",
+    "SELECT * FROM movie_link WHERE movie_id = 132249 AND linked_movie_id = 1715497",
+    "SELECT * FROM movie_link WHERE movie_id = 132249 AND linked_movie_id = 5",
+    "SELECT * FROM movie_link WHERE movie_id = 50 AND linked_movie_id = 257907 AND link_type_id = 6"
+]
+
+results_log = []
+
+print("\n--- Running Queries and Logging Results ---")
+for sql in queries_sql:
+
+    filters = parse_sql_to_filter(sql, df.columns)
+
+    # 1. True Cardinality
     subset = df.copy()
     for col, val in filters.items():
         subset = subset[subset[col] == val]
+
     true_card = len(subset)
 
-    # Column-wise probabilities
-    col_probs = {col: bn.p(**{col: val}) for col, val in filters.items()}
-
-    # Joint probability & estimated cardinality
+    # 2. BN Estimate
     est_prob = bn.p(**filters)
     est_card = est_prob * len(df)
 
-    # Print results
-    print(f"\n=== BN QUERY [{', '.join([f'{k}={v}' for k, v in filters.items()])}] ===")
-    print(f"True Cardinality: {true_card} rows")
-    print(f"Estimated Cardinality: {est_card:.2f} rows\n")
-    print("Column-wise BN probabilities:")
-    for col, p in col_probs.items():
-        print(f"  {col} = {filters[col]} -> P = {p:.10f}")
-    print("-" * 40)
-    print(f"Joint Selectivity: {est_prob:.10f}")
+    # 3. Store results
+    results_log.append({
+        "query_sql": sql,
+        "true_cardinality": true_card,
+        "bn_est_cardinality": round(est_card, 2),
+        "est_selectivity": f"{est_prob:.10f}"
+    })
 
+    print(f"Query: {sql}")
+    print(f" -> True: {true_card} | Est: {est_card:.2f} (Prob: {est_prob:.6f})")
 
 # ==========================================
-# 6. EXECUTING BENCHMARK QUERIES
+# 6. SAVE CSV FILE
 # ==========================================
-print("\n--- Executing Queries ---")
-# Example queries for your movie_links data
-print_bn_estimate(bn, df, {'link_type_id': 6})
-print_bn_estimate(bn, df, {'movie_id': 132249, 'link_type_id': 6})
-print_bn_estimate(bn, df, {'movie_id': 132249, 'linked_movie_id': 1715497, 'link_type_id': 13})
-print_bn_estimate(bn, df, {'movie_id': 132249, 'linked_movie_id': 1715497})
-print_bn_estimate(bn, df, {'movie_id': 132249, 'linked_movie_id': 5})
-print_bn_estimate(bn, df, {'movie_id': 50, 'linked_movie_id': 257907, 'link_type_id': 6})
-print("\nProcessing Complete.")
+timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+output_filename = f"result_{CSV_FILE}_{timestamp}.csv"
+output_path = os.path.join(RESULTS_DIR, output_filename)
+
+results_df = pd.DataFrame(results_log)
+results_df.to_csv(output_path, index=False)
+
+print(f"\nProcessing Complete. Results saved to: {output_path}")
