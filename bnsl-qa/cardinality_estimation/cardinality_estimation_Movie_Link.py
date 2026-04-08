@@ -2,26 +2,40 @@ import pandas as pd
 import numpy as np
 import os
 import graphviz
+import sys
+import ast
 import warnings
-from pgmpy.models import BayesianNetwork
+import networkx as nx  # Added for cycle detection
+from pgmpy.models import DiscreteBayesianNetwork
 from pgmpy.estimators import MaximumLikelihoodEstimator
 from pgmpy.inference import VariableElimination
 
-# Hide Pandas FutureWarnings
 warnings.simplefilter(action='ignore', category=FutureWarning)
 
+if len(sys.argv) < 4:
+    print("Usage: python script.py '<matrix>' <output_dir> <graph_index>")
+    sys.exit(1)
+
+sa_matrix_str = sys.argv[1]
+output_dir = sys.argv[2]
+graph_index = sys.argv[3]
+sa_matrix = ast.literal_eval(sa_matrix_str)
+os.makedirs(output_dir, exist_ok=True)
+
 # ==========================================
-# 1. LOAD AND PREPARE THE DATASET
+# 1. LOAD AND PREPARE DATASET
 # ==========================================
-print("Loading the Movie Link dataset...")
-df_raw = pd.read_csv("../../bnsl/datasets/data/movie_link.csv")
+# Check if file exists to prevent silent crash
+
+dataset_path = "../bnsl/datasets/data/movie_link.csv"
+
+try:
+    df_raw = pd.read_csv(dataset_path)
+except Exception as e:
+    print(f"CRITICAL ERROR: Could not read dataset {dataset_path}: {e}")
+    sys.exit(1)
 
 columns = ['movie_id', 'link_type_id', 'linked_movie_id']
-OUTPUT_DIR="../QUBO_images"
-CSV_FILE="Movie_Link"
-os.makedirs(OUTPUT_DIR, exist_ok=True)
-
-# ALIGN BN DATA WITH SA SOLVER (Long-Tail Binning)
 MAX_STATES = 50
 df_bn = df_raw[columns].copy()
 
@@ -35,138 +49,90 @@ total_rows = len(df_raw)
 num_vars = len(columns)
 
 # ==========================================
-# 2. INGEST YOUR SA SOLVER STRUCTURE
+# 2. STRUCTURE DEFINITION & CYCLE BREAKER
 # ==========================================
-sa_matrix = [
-    [0, 0, 0],
-    [0, 0, 0],
-    [1, 1, 0]
-]
 adj_matrix = np.array(sa_matrix)
-
 edges = []
 for i in range(num_vars):
     for j in range(num_vars):
         if adj_matrix[i, j] == 1:
             edges.append((columns[i], columns[j]))
 
-print("\n--- 1. QUBO Learned Structure ---")
-print(f"Edges discovered by SA: {edges}")
+# Use NetworkX to find and break cycles
+G = nx.DiGraph(edges)
+while not nx.is_directed_acyclic_graph(G):
+    cycle = nx.find_cycle(G, orientation="original")
+    print(f"[Warning] Cycle detected in Graph {graph_index}: {cycle}. Removing edge {cycle[-1][:2]} to fix.")
+    G.remove_edge(*cycle[-1][:2])
+
+final_edges = list(G.edges())
 
 # ==========================================
 # 3. BUILD AND TRAIN THE BAYESIAN NETWORK
 # ==========================================
-print("\n--- 2. Parameter Learning (Calculating CPTs) ---")
-# Unified to match NHANES exactly
-bn = BayesianNetwork(edges)
+bn = DiscreteBayesianNetwork(final_edges)
 bn.add_nodes_from(columns)
-
-# Unified to use MaximumLikelihoodEstimator
 bn.fit(df_bn, estimator=MaximumLikelihoodEstimator)
-print("Maximum Likelihood Estimation complete. CPTs built.")
-
-# ==========================================
-# 4. VISUALIZE THE QUBO DAG (Graphviz)
-# ==========================================
-print("\n--- 3. Generating QUBO DAG Visualization ---")
-try:
-    dot_source = "digraph G {\n  rankdir=TB;\n  node [shape=ellipse];\n"
-
-    for u, v in bn.edges():
-        u_clean = str(u).replace(":", "_").replace(" ", "_").replace("<", "lt").replace(">", "gt")
-        v_clean = str(v).replace(":", "_").replace(" ", "_").replace("<", "lt").replace(">", "gt")
-        dot_source += f'  "{u_clean}" -> "{v_clean}";\n'
-
-    dot_source += "}"
-    outfile = graphviz.Source(dot_source).render(filename=f"{CSV_FILE}_bn", directory=OUTPUT_DIR, format="png", cleanup=True)
-    print(f"[Graph] Saved successfully to: {outfile}")
-
-except Exception as e:
-    print(f"[Graph] Failed: {e}")
-
-# ==========================================
-# 5. MATHEMATICAL TRANSPARENCY (Print CPTs)
-# ==========================================
-print("\n--- 3.5 Mathematical Transparency: Learned CPTs ---")
-import shutil
-import collections
-original_get_terminal_size = shutil.get_terminal_size
-FakeTerminal = collections.namedtuple('terminal_size', ['columns', 'lines'])
-shutil.get_terminal_size = lambda fallback=(80, 24): FakeTerminal(1000, 24)
-
-for node in bn.nodes():
-    print(f"\nConditional Probability Table (CPT) for {node}:")
-    cpd = bn.get_cpds(node)
-    print(cpd)
-
-shutil.get_terminal_size = original_get_terminal_size
-
 inference = VariableElimination(bn)
-print("\nVariable Elimination inference engine ready.")
 
 # ==========================================
-# 6. CARDINALITY ESTIMATION ENGINE
+# 4. VISUALIZE THE (FIXED) DAG
 # ==========================================
-def estimate_cardinality(query_dict, test_name):
-    # 1. True Cardinality from raw data
-    subset = df_raw.copy()
-    for col, val in query_dict.items():
-        subset = subset[subset[col] == val]
-    true_card = len(subset)
+try:
+    dot_source = "digraph G {\n  rankdir=TB;\n  node [shape=ellipse, style=filled, fillcolor=lightblue];\n"
+    for col in columns:
+        dot_source += f'  "{col}";\n'
+    for u, v in bn.edges():
+        dot_source += f'  "{u}" -> "{v}";\n'
+    dot_source += "}"
 
-    # 2. Safely translate raw query into Binned States ("Other" fallback)
+    graph_filename = os.path.join(output_dir, f"Graph_{graph_index}")
+    graphviz.Source(dot_source).render(filename=graph_filename, format="png", cleanup=True)
+except Exception as e:
+    print(f"[Graph] Visualization Failed: {e}")
+
+
+# ==========================================
+# 5. CARDINALITY ESTIMATION
+# ==========================================
+def estimate_cardinality(query_dict):
     bn_query = {}
     for col, val in query_dict.items():
         val_str = str(val)
         valid_states = df_bn[col].unique()
-        if val_str in valid_states:
-            bn_query[col] = val_str
-        else:
-            bn_query[col] = 'Other'
+        bn_query[col] = val_str if val_str in valid_states else 'Other'
 
-    # 3. Marginal Inference
-    col_probs = {}
-    for col, val in bn_query.items():
-        try:
-            marg_result = inference.query(variables=[col], evidence={}, show_progress=False)
-            col_probs[col] = marg_result.get_value(**{col: val})
-        except Exception:
-            col_probs[col] = 0.0
-
-    # 4. Joint Inference
     try:
         result = inference.query(variables=list(bn_query.keys()), evidence={}, show_progress=False)
         est_prob = result.get_value(**bn_query)
     except Exception:
         est_prob = 0.0
+    return est_prob * total_rows
 
-    est_card = est_prob * total_rows
-    error = abs(true_card - est_card)
 
-    print(f"\n=== [{test_name}] ===")
-    print(f"Raw Query: {query_dict}")
-    print(f"BN Translated Query: {bn_query}")
-    print(f"True Cardinality: {true_card} rows")
-    print(f"Estimated Cardinality: {est_card:.2f} rows (Abs Error: {error:.2f})")
-    print("Column-wise BN marginal probabilities:")
-    for col, p in col_probs.items():
-        print(f"  {col} = {bn_query[col]} -> P = {p:.10f}")
-    print("-" * 40)
-    print(f"Joint Selectivity: {est_prob:.10f}")
-
-# ==========================================
-# 7. RUN THE BENCHMARK QUERIES
-# ==========================================
-print("\n--- 4. Running Cardinality Benchmark ---")
-
+# --- RUN QUERIES ---
 queries = [
-    ("Q1: Baseline Marginal", {'link_type_id': 6}),
-    ("Q2: Direct Parent-Child", {'movie_id': 132249, 'link_type_id': 6}),
-    ("Q3: Topological Triad", {'movie_id': 132249, 'linked_movie_id': 1715497, 'link_type_id': 13}),
-    ("Q4: Confounding/Existence", {'movie_id': 132249, 'linked_movie_id': 1715497}),
-    ("Q5: Low Selectivity Anomaly", {'movie_id': 132249, 'link_type_id': 5}),
-    ("Q6: The Long-Tail / 'Other' Test", {'movie_id': 50, 'linked_movie_id': 257907, 'link_type_id': 6})
+    ("Q1", {'link_type_id': 6}),
+    ("Q2", {'movie_id': 132249, 'link_type_id': 6}),
+    ("Q3", {'movie_id': 132249, 'linked_movie_id': 1715497, 'link_type_id': 13}),
+    ("Q4", {'movie_id': 132249, 'linked_movie_id': 1715497}),
+    ("Q5", {'movie_id': 132249, 'link_type_id': 5}),
+    ("Q6", {'movie_id': 50, 'linked_movie_id': 257907, 'link_type_id': 6})
 ]
 
-for name, q in queries:
-    estimate_cardinality(q, name)
+queries_sql = [
+    "SELECT * FROM movie_link WHERE link_type_id = 6",
+    "SELECT * FROM movie_link WHERE movie_id = 132249 AND link_type_id = 6",
+    "SELECT * FROM movie_link WHERE movie_id = 132249 AND linked_movie_id = 1715497 AND link_type_id = 13",
+    "SELECT * FROM movie_link WHERE movie_id = 132249 AND linked_movie_id = 1715497",
+    "SELECT * FROM movie_link WHERE movie_id = 132249 AND link_type_id = 5",
+    "SELECT * FROM movie_link WHERE movie_id = 50 AND linked_movie_id = 257907 AND link_type_id = 6"
+]
+
+results_data = []
+for (_, q_dict), sql in zip(queries, queries_sql):
+    est_card = estimate_cardinality(q_dict)
+    results_data.append({"query_sql": sql, "estimated_cardinality": f"{est_card:.5f}"})
+
+csv_filename = os.path.join(output_dir, f"graph_{graph_index}_cardinality.csv")
+pd.DataFrame(results_data).to_csv(csv_filename, index=False)
