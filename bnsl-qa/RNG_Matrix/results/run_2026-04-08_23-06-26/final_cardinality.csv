@@ -1,7 +1,0 @@
-query_sql,graph_1,graph_2,graph_3,graph_4
-SELECT * FROM wetgrass_data WHERE wetgrass = 'f',18.0,18.0,18.0,18.0
-SELECT * FROM wetgrass_data WHERE rain = 'f' AND wetgrass = 'f',9.47368,18.0,18.0,9.9
-SELECT * FROM wetgrass_data WHERE sprinkler = 'off' AND rain = 'f' AND wetgrass = 'f',9.47368,18.0,18.0,9.9
-SELECT * FROM wetgrass_data WHERE cloud = 'f' AND sprinkler = 'off' AND rain = 'f',7.36842,10.0,10.4878,16.71463
-SELECT * FROM wetgrass_data WHERE cloud = 't' AND sprinkler = 'on' AND rain = 'f',3.96774,2.0,10.5,6.35122
-SELECT * FROM wetgrass_data WHERE cloud = 't' AND sprinkler = 'off' AND rain = 't' AND wetgrass = 'f',4.26316,0.0,0.0,5.4
