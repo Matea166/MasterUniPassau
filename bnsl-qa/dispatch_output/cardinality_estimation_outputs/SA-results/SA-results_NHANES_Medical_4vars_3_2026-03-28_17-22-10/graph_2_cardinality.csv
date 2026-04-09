@@ -1,7 +1,0 @@
-query_sql,estimated_cardinality
-SELECT * FROM nhanes_data WHERE DIQ010 = 1,2199.00000
-SELECT * FROM nhanes_data WHERE BMXBMI = 3 AND DIQ010 = 0,9.00000
-SELECT * FROM nhanes_data WHERE age_group = 1 AND BMXBMI = 3 AND DIQ010 = 0,4.00000
-SELECT * FROM nhanes_data WHERE age_group = 0 AND BMXBMI = 1 AND DIQ010 = 1,675.00000
-SELECT * FROM nhanes_data WHERE age_group = 0 AND BMXBMI = 0 AND DIQ010 = 0,0.00000
-SELECT * FROM nhanes_data WHERE age_group = 1 AND RIAGENDR = 0 AND BMXBMI = 2 AND DIQ010 = 1,75.60000

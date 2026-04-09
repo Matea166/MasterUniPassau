@@ -1,7 +1,0 @@
-query_sql,estimated_cardinality
-SELECT * FROM transactions WHERE Bread = 1,77.95000
-SELECT * FROM transactions WHERE Beer = 1 AND Diapers = 1,63.00000
-SELECT * FROM transactions WHERE Milk = 1 AND Diapers = 1,57.65319
-SELECT * FROM transactions WHERE Eggs = 1 AND Cola = 1,0.00000
-SELECT * FROM transactions WHERE Bread = 1 AND Diapers = 1 AND Milk = 1,35.60319
-SELECT * FROM transactions WHERE Beer = 1 AND Bread = 0 AND Cola = 1 AND Diapers = 1 AND Eggs = 0 AND Milk = 1,22.05000

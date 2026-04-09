@@ -1,7 +1,0 @@
-query_sql,Graph_1.png,Graph_2.png,Graph_3.png,Graph_4.png,Graph_5.png
-SELECT * FROM transactions WHERE Bread = 1,84.0,83.73,77.95,84.0,81.39241
-SELECT * FROM transactions WHERE Beer = 1 AND Diapers = 1,63.0,66.42,63.0,63.0,63.0
-SELECT * FROM transactions WHERE Milk = 1 AND Diapers = 1,61.0,64.78,57.65319,61.0,58.39241
-SELECT * FROM transactions WHERE Eggs = 1 AND Cola = 1,0.0,0.0,0.0,5.33333,0.0
-SELECT * FROM transactions WHERE Bread = 1 AND Diapers = 1 AND Milk = 1,45.0,51.66,35.60319,50.33333,39.78481
-SELECT * FROM transactions WHERE Beer = 1 AND Bread = 0 AND Cola = 1 AND Diapers = 1 AND Eggs = 0 AND Milk = 1,16.0,13.12,22.05,10.66667,18.60759
