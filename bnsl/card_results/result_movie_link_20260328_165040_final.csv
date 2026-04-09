@@ -1,7 +1,0 @@
-query_sql,true_cardinality,bn_est_cardinality,pg_est_cardinality
-"SELECT * FROM movie_link WHERE link_type_id = 6",5503,3160.76,5503
-"SELECT * FROM movie_link WHERE movie_id = 132249 AND link_type_id = 6",410,0.26,104
-"SELECT * FROM movie_link WHERE movie_id = 132249 AND linked_movie_id = 1715497 AND link_type_id = 13",1,0.0,1
-"SELECT * FROM movie_link WHERE movie_id = 132249 AND linked_movie_id = 1715497",1,0.0,1
-"SELECT * FROM movie_link WHERE movie_id = 132249 AND linked_movie_id = 5",0,0.0,1
-"SELECT * FROM movie_link WHERE movie_id = 50 AND linked_movie_id = 257907 AND link_type_id = 6",1,0.0,1

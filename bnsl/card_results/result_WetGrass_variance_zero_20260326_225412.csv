@@ -1,7 +1,0 @@
-query_sql,true_cardinality,est_cardinality,est_selectivity
-SELECT * FROM wetgrass_data WHERE wetgrass = 'f',18,18.0,0.1800000000
-SELECT * FROM wetgrass_data WHERE rain = 'f' AND wetgrass = 'f',18,18.0,0.1800000000
-SELECT * FROM wetgrass_data WHERE sprinkler = 'off' AND rain = 'f' AND wetgrass = 'f',18,18.0,0.1800000000
-SELECT * FROM wetgrass_data WHERE cloud = 'f' AND sprinkler = 'off' AND rain = 'f',10,10.5,0.1049550706
-SELECT * FROM wetgrass_data WHERE cloud = 't' AND sprinkler = 'on' AND rain = 'f',2,3.15,0.0314634146
-SELECT * FROM wetgrass_data WHERE cloud = 't' AND sprinkler = 'off' AND rain = 't' AND wetgrass = 'f',0,0.0,0.0000000000
