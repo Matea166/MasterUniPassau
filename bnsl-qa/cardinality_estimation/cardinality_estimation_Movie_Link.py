@@ -36,7 +36,7 @@ except Exception as e:
     sys.exit(1)
 
 columns = ['movie_id', 'link_type_id', 'linked_movie_id']
-MAX_STATES = 50
+MAX_STATES = 15
 df_bn = df_raw[columns].copy()
 
 for col in columns:
