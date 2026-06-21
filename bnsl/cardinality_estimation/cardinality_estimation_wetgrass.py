@@ -1,8 +1,8 @@
 import pandas as pd
 import os
 from datetime import datetime
-from phd.bn import BayesianNetwork
-from phd.rel import Relation
+from bnsl.tldks_2020.bn import BayesianNetwork
+from bnsl.tldks_2020.rel import Relation
 import graphviz
 
 # ==========================================
