@@ -1,4 +1,4 @@
-#!/usr/bin/env bash
+#!/bin/bash
 
 BASE_DIR="./dispatch_output/solver_outputs"
 OUTPUT_BASE="q-error_output"
@@ -46,7 +46,7 @@ while true; do
     done
 
     echo "Add another SA/SQA pair? (y/n)"
-    read -r add_more
+    read add_more
     if [[ "$add_more" != "y" ]]; then
         break
     fi
@@ -78,7 +78,7 @@ echo "Selected pairs saved to: $pairs_file"
 
 echo "Running graph generator..."
 
-python3 qerror-graph-generation.py "$pairs_file" "$card_file"
+python3 graph_gen.py "$pairs_file" "$card_file"
 
 echo "================================"
 echo "Finished"
