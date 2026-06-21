@@ -17,7 +17,19 @@ bins = [0, 18.5, 25.0, 30.0, 150.0]
 labels = [0, 1, 2, 3]
 df['BMXBMI'] = pd.cut(df['BMXBMI'], bins=bins, labels=labels, right=False).astype(int)
 
-# 3. Safe 1-to-1 Label Mapping (Zero Data Loss)
+mapping_dir = "qa-datasets/mappings"
+os.makedirs(mapping_dir, exist_ok=True)
+
+for col in ['age_group', 'RIAGENDR', 'DIQ010']:
+    categories = df[col].astype('category').cat.categories
+    mapping = dict(enumerate(categories))
+
+    pd.DataFrame(
+        [{"code": code, "category": category} for code, category in mapping.items()]
+    ).to_csv(os.path.join(mapping_dir, f"NHANES_{col}_mapping.csv"), index=False)
+
+
+# 3. Encode non-BMI categorical variables
 df['age_group'] = df['age_group'].astype('category').cat.codes
 df['RIAGENDR'] = df['RIAGENDR'].astype('category').cat.codes
 df['DIQ010'] = df['DIQ010'].astype('category').cat.codes
