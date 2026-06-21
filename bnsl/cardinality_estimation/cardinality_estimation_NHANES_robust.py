@@ -88,10 +88,9 @@ for i in range(len(sa_queries)):
         "sa_query_sql": sa_sql,
         "pg_query_sql": pg_sql,
         "true_cardinality": true_card,
-        "est_cardinality": round(est_card, 2),
+        "bn_est_cardinality": round(est_card, 2),
         "est_selectivity": f"{est_prob:.10f}"
     })
-
 # ==========================================
 # 6. SAVE CSV FILE
 # ==========================================
