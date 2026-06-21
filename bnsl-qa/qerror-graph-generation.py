@@ -22,13 +22,15 @@ with open(pairs_file, "r") as file:
 
 def parse_metadata(fname):
     base = os.path.basename(fname)
-    dataset_match = re.search(r'results_(.*?)_VARIANCE', base)
+
+    dataset_match = re.search(r'results_(.*?)_(?:SA|SQA)_', base)
     dataset = dataset_match.group(1) if dataset_match else "Unknown"
-    # Matches _SA_Trials_Reads_
+
     numbers = re.findall(r'_(?:SA|SQA)_(\d+)_(\d+)_', base)
     if numbers:
         trials, reads = numbers[0]
         return dataset, trials, reads
+
     return dataset, "Unknown", "Unknown"
 
 fig, ax = plt.subplots(figsize=(10, 6))
@@ -63,13 +65,20 @@ for i, (sa_f, sqa_f) in enumerate(zip(sa_files, sqa_files)):
     ax.plot(x, sa_q, marker='o', color=sa_blues[i % 3], label=f"SA - {sa_reads} Reads - Trials {trials}")
     ax.plot(x, sqa_q, marker='s', linestyle='--', color=sqa_purples[i % 3], label=f"SQA - {sqa_reads} Reads - Trials {trials}")
 
-# BNSL / Postgres
 card_df = pd.read_csv(card_file)
-# FIX: Dataset size is the total rows in the original data, not query count.
-# We extract it from the card_file if possible, or use your known 100 rows.
 
-bn_q = np.sort(np.maximum(card_df["bn_est_cardinality"]/np.maximum(card_df["true_cardinality"],1), 1))
-pg_q = np.sort(np.maximum(card_df["pg_est_cardinality"]/np.maximum(card_df["true_cardinality"],1), 1))
+def q_error_calc(est, true):
+    est = np.asarray(est, dtype=float)
+    true = np.asarray(true, dtype=float)
+
+    est_safe = np.maximum(est, 1)
+    true_safe = np.maximum(true, 1)
+
+    return np.sort(np.maximum(est_safe / true_safe, true_safe / est_safe))
+
+
+bn_q = q_error_calc(card_df["bn_est_cardinality"], card_df["true_cardinality"])
+pg_q = q_error_calc(card_df["pg_est_cardinality"], card_df["true_cardinality"])
 
 x_bench = np.arange(1, len(bn_q) + 1)
 ax.plot(x_bench, bn_q, marker='^', color='orange', label="BNSL")
