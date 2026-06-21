@@ -16,9 +16,9 @@ print(f"Original Dataset: {len(df)} rows.")
 # ==========================================
 # 2. STABLE LONG-TAIL BINNING (The 6-State Fix)
 # ==========================================
-# Capped at 5 to prevent BDeu log-gamma function overflow during QUBO reads.
-# This keeps the Top 5 most important hubs and merges the rest into "Other" (the 6th state).
-MAX_STATES = 5
+# Capped at 15 to prevent BDeu log-gamma function overflow during QUBO reads.
+# This keeps the Top 15 most important hubs and merges the rest into "Other" (the 16th state).
+MAX_STATES = 15
 
 
 def cap_states(series, max_states):
