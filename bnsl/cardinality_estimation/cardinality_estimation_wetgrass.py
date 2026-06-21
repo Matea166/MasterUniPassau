@@ -47,7 +47,7 @@ except Exception as e:
     print(f"[Graph] Warning: {e}")
 
 # ==========================================
-# 4. CSV EXPORT LOGIC
+# 5. CSV EXPORT LOGIC
 # ==========================================
 def parse_sql_to_filter(sql, df_columns):
     """
@@ -108,7 +108,7 @@ for sql in queries_sql:
     })
 
 # ==========================================
-# 5. SAVE CSV FILE
+# 6. SAVE CSV FILE
 # ==========================================
 timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
 output_filename = f"result_{CSV_FILE}_{timestamp}.csv"
