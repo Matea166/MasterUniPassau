@@ -1,4 +1,4 @@
-#!/opt/homebrew/bin/bash
+#!/usr/bin/env bash
 
 # Configuration
 DB_CONTAINER="job_db_fixed"
