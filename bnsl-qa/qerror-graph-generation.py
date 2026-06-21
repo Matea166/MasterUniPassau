@@ -11,11 +11,6 @@ from matplotlib.ticker import FixedLocator, FixedFormatter
 pairs_file = sys.argv[1]
 card_file = sys.argv[2]
 
-# --- USER PARAMETER ---
-# Update this for the movie_link table size (usually 29997 in JOB)
-DATASET_SIZE = "29997"
-# ----------------------
-
 sa_files = []
 sqa_files = []
 
