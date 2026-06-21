@@ -11,7 +11,10 @@ print(f"Loaded {len(df)} rows from {csv_filename}")
 num_vars = len(df.columns)
 states_per_var = ["2"] * num_vars  # Every item is binary (0 or 1)
 
-#Create the 30-zero dummy matrix for the ground truth placeholder
+
+# Create the dummy adjacency-matrix placeholder.
+# Its length is num_vars * (num_vars - 1).
+
 dummy_length = num_vars * (num_vars - 1)
 dummy_matrix = " ".join(["0"] * dummy_length)
 
