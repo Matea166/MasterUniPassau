@@ -148,7 +148,7 @@ queries = [
     #       AND BMXBMI >= 25.0
     #       AND BMXBMI < 30.0
     #       AND DIQ010 = 1
-    {"age_group": 0, "BMXBMI": 2, "DIQ010": 1},
+    {"age_group": 0, "BMXBMI": 2, "DIQ010": 0},
 
     # Q6: SELECT * FROM nhanes_data
     #     WHERE age_group = 'Senior'
