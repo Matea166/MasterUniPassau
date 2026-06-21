@@ -36,14 +36,11 @@ except Exception as e:
     sys.exit(1)
 
 columns = ['movie_id', 'link_type_id', 'linked_movie_id']
-MAX_STATES = 15
+
 df_bn = df_raw[columns].copy()
 
 for col in columns:
     df_bn[col] = df_bn[col].astype(str)
-    top_items = df_bn[col].value_counts().nlargest(MAX_STATES).index
-    df_bn[col] = df_bn[col].where(df_bn[col].isin(top_items), 'Other')
-    df_bn[col] = df_bn[col].astype('category')
 
 total_rows = len(df_raw)
 num_vars = len(columns)
@@ -95,20 +92,24 @@ except Exception as e:
 # ==========================================
 # 5. CARDINALITY ESTIMATION
 # ==========================================
+
 def estimate_cardinality(query_dict):
     bn_query = {}
+
     for col, val in query_dict.items():
-        val_str = str(val)
-        valid_states = df_bn[col].unique()
-        bn_query[col] = val_str if val_str in valid_states else 'Other'
+        bn_query[col] = str(val)
 
     try:
-        result = inference.query(variables=list(bn_query.keys()), evidence={}, show_progress=False)
+        result = inference.query(
+            variables=list(bn_query.keys()),
+            evidence={},
+            show_progress=False
+        )
         est_prob = result.get_value(**bn_query)
     except Exception:
         est_prob = 0.0
-    return est_prob * total_rows
 
+    return est_prob * total_rows
 
 # --- RUN QUERIES ---
 queries = [
