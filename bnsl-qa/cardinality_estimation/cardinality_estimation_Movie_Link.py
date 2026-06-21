@@ -41,8 +41,8 @@ df_bn = df_raw[columns].copy()
 
 for col in columns:
     df_bn[col] = df_bn[col].astype(str)
-
-total_rows = len(df_raw)
+    
+total_rows = len(df_bn)
 num_vars = len(columns)
 
 # ==========================================
