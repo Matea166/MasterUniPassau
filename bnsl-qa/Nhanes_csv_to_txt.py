@@ -34,7 +34,7 @@ df['age_group'] = df['age_group'].astype('category').cat.codes
 df['RIAGENDR'] = df['RIAGENDR'].astype('category').cat.codes
 df['DIQ010'] = df['DIQ010'].astype('category').cat.codes
 
-print("First 5 rows of perfectly formatted data:")
+print("First 5 rows of encoded NHANES solver input:")
 print(df.head())
 
 # ==========================================
