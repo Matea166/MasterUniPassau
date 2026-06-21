@@ -35,7 +35,7 @@ print("\n--- Training Bayesian Network ---")
 discrete_cols = ['age_group', 'RIAGENDR', 'DIQ010', 'BMXBMI']
 relation_discrete = Relation(df[discrete_cols])
 bn = BayesianNetwork(cl_max_rows=30000).fit(relation_discrete)
-bn.update(Relation(df))
+bn.update(relation_discrete)
 
 # ==========================================
 # 4. GENERATE GRAPH
