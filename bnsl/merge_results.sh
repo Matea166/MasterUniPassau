@@ -1,4 +1,4 @@
-#!/opt/homebrew/bin/bash
+#!/usr/bin/env bash
 # Paths
 SA_SQA_DIR="../bnsl-qa/dispatch_output/results"
 BN_DIR="card_results"
@@ -10,7 +10,7 @@ echo "==========================================="
 
 # 1. Choose SA file
 echo -e "\n--- Step 1: Select SA Result File ---"
-SA_FILES=($(ls $SA_SQA_DIR/*.csv 2>/dev/null))
+mapfile -t SA_FILES < <(find "$SA_SQA_DIR" -maxdepth 1 -type f -name "*SA*.csv")
 if [ ${#SA_FILES[@]} -eq 0 ]; then
     echo "No SA files found in $SA_SQA_DIR"
     exit 1
@@ -21,7 +21,7 @@ done
 
 # 2. Choose SQA file
 echo -e "\n--- Step 2: Select SQA Result File ---"
-SQA_FILES=($(ls $SA_SQA_DIR/*.csv 2>/dev/null))
+mapfile -t SQA_FILES < <(find "$SA_SQA_DIR" -maxdepth 1 -type f -name "*SQA*.csv")
 select sqa_file in "${SQA_FILES[@]}"; do
     [ -n "$sqa_file" ] && break
 done
@@ -35,7 +35,7 @@ done
 
 # 4. Choose RNG Matrix file
 echo -e "\n--- Step 4: Add RNG Matrix results? (y/n) ---"
-read add_rng
+read -r add_rng
 rng_file="NONE"
 
 if [[ "$add_rng" == "y" ]]; then
