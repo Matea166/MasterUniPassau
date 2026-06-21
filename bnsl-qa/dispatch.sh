@@ -8,62 +8,74 @@ progress_bar() {
     local current_time=$(date +%s)
     local elapsed=$((current_time - start_time))
     local eta=0
-
+    
     if [ $current -gt 0 ]; then
         eta=$((elapsed * (total - current) / current))
     fi
-
+    
     local progress=$((current * 20 / total))
     local bar=$(printf "%-${progress}s" "#" | sed 's/ /#/g')
     local empty=$(printf "%-$((20 - progress))s" "-")
-
+    
     printf "\rProgress: [%s%s] %d/%d | Elapsed: %ds | ETA: %ds " "$bar" "$empty" "$current" "$total" "$elapsed" "$eta"
 }
 
 # --- 1. SELECTION MENU ---
 echo "=== BNSL-QA-PYTHON AUTOMATION PIPELINE ==="
 
-echo "Select a dataset from /datasets:"
-select dataset_path in qa-datasets/*; do
-    if [ -n "$dataset_path" ]; then
-        dataset_name=$(basename "$dataset_path" | cut -d. -f1)
+echo ""
+echo "Select pipeline mode:"
+select mode in "Run solver now" "Use previous unique matrices"; do
+    if [ -n "$mode" ]; then
         break
     else
         echo "Invalid option."
     fi
 done
 
-echo ""
-echo "Select Solver:"
-select solver in "SA" "SQA"; do
-    if [ -n "$solver" ]; then break; else echo "Invalid option."; fi
-done
-
-echo ""
-read -p "Enter number of trials: " executions
-read -p "Enter number of annealing reads: " reads
-
 timestamp=$(date +"%Y-%m-%d_%H-%M-%S")
 
-# --- 2. SOLVER EXECUTION ---
-solver_out_base="dispatch_output/solver_outputs/${solver}"
-solver_run_dir="${solver_out_base}/${solver}_Matrix_${dataset_name}_${executions}_${reads}_${timestamp}"
-mkdir -p "$solver_run_dir"
-matrix_file="${solver_run_dir}/adjacency_matrix.txt"
+if [ "$mode" = "Run solver now" ]; then
 
-echo -e "\nRunning $solver solver $executions times..."
-start_time=$(date +%s)
-progress_bar 0 $executions $start_time
+    echo "Select a dataset from /datasets:"
+    select dataset_path in datasets/*.txt; do
+        if [ -n "$dataset_path" ]; then
+            dataset_name=$(basename "$dataset_path" | cut -d. -f1)
+            break
+        else
+            echo "Invalid option."
+        fi
+    done
 
-for i in $(seq 1 $executions); do
-    python -m bnslqa solve "$dataset_path" $solver --reads $reads >> "$matrix_file" 2>&1
-    progress_bar $i $executions $start_time
-done
-echo -e "\nOutputs saved to: $matrix_file"
+    echo ""
+    echo "Select Solver:"
+    select solver in "SA" "SQA"; do
+        if [ -n "$solver" ]; then break; else echo "Invalid option."; fi
+    done
 
-# --- 3. EXTRACT UNIQUE MATRICES ---
-unique_matrix_file="${solver_run_dir}/unique_adjacency_matrix.txt"
-python -c "
+    echo ""
+    read -p "Enter number of trials: " executions
+    read -p "Enter number of annealing reads: " reads
+
+    # --- 2. SOLVER EXECUTION ---
+    solver_out_base="dispatch_output/solver_outputs/${solver}"
+    solver_run_dir="${solver_out_base}/${solver}_Matrix_${dataset_name}_${executions}_${reads}_${timestamp}"
+    mkdir -p "$solver_run_dir"
+    matrix_file="${solver_run_dir}/adjacency_matrix.txt"
+
+    echo -e "\nRunning $solver solver $executions times..."
+    start_time=$(date +%s)
+    progress_bar 0 $executions $start_time
+
+    for i in $(seq 1 $executions); do
+        python -m bnslqa solve "$dataset_path" $solver --reads $reads >> "$matrix_file" 2>&1
+        progress_bar $i $executions $start_time
+    done
+    echo -e "\nOutputs saved to: $matrix_file"
+
+    # --- 3. EXTRACT UNIQUE MATRICES ---
+    unique_matrix_file="${solver_run_dir}/unique_adjacency_matrix.txt"
+    python -c "
 import re
 with open('$matrix_file', 'r') as f: data = f.read()
 
@@ -80,20 +92,64 @@ for match in matches:
 with open('$unique_matrix_file', 'w') as f:
     for m in unique_matrices: f.write(m + '\n')
 "
+
+else
+
+    echo ""
+    echo "Select a previous unique_adjacency_matrix.txt file:"
+
+    previous_unique_files=()
+    while IFS= read -r file; do
+        previous_unique_files+=("$file")
+    done < <(find dispatch_output/solver_outputs -type f -name "unique_adjacency_matrix.txt" 2>/dev/null | sort)
+
+    if [ ${#previous_unique_files[@]} -eq 0 ]; then
+        echo "No previous unique_adjacency_matrix.txt files found."
+        echo "You need to run the solver at least once first."
+        exit 1
+    fi
+
+    select unique_matrix_file in "${previous_unique_files[@]}"; do
+        if [ -n "$unique_matrix_file" ]; then
+            solver_run_dir=$(dirname "$unique_matrix_file")
+            solver=$(basename "$(dirname "$solver_run_dir")")
+            run_folder=$(basename "$solver_run_dir")
+            break
+        else
+            echo "Invalid option."
+        fi
+    done
+
+    echo ""
+    echo "Using previous unique matrices from:"
+    echo "$unique_matrix_file"
+
+    # Try to infer dataset name and reads from the old folder name.
+    # Example folder:
+    # SA_Matrix_movie_link_10_100_2026-05-17_12-30-00
+    if [[ "$run_folder" =~ ^${solver}_Matrix_(.*)_([0-9]+)_([0-9]+)_([0-9]{4}-[0-9]{2}-[0-9]{2}_[0-9]{2}-[0-9]{2}-[0-9]{2})$ ]]; then
+        dataset_name="${BASH_REMATCH[1]}"
+        executions="${BASH_REMATCH[2]}"
+        reads="${BASH_REMATCH[3]}"
+    else
+        dataset_name="$run_folder"
+        reads="previous"
+    fi
+
+fi
+
 num_matrices=$(wc -l < "$unique_matrix_file")
 echo "Found $num_matrices unique matrices."
 
 # --- 4. SELECT ESTIMATION SCRIPT ---
 echo -e "\nSelect the cardinality estimation script:"
-select py_script in cardinality_estimation/cardinality_estimation_*.py; do
+select py_script in cardinality_estimation_*.py; do
     if [ -n "$py_script" ]; then break; else echo "Invalid option."; fi
 done
 
 # --- 5. RUN CARDINALITY ESTIMATION ---
 card_out_dir="dispatch_output/cardinality_estimation_outputs/${solver}-results/${solver}-results_${dataset_name}_${reads}_${timestamp}"
 mkdir -p "$card_out_dir"
-
-echo "current_path $(pwd)"
 
 echo -e "\nProcessing cardinality estimation for $num_matrices matrices..."
 start_time=$(date +%s)
