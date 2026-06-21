@@ -21,8 +21,8 @@ while true; do
         read -p "Number of variables: " NUM_VARS
         read -p "Number of matrices: " NUM_MATRICES
 
-        echo "Generating matrices..."
-        python3 generate_RNG_matrices.py "$NUM_VARS" "$NUM_MATRICES" "$MATRIX_DIR"
+        echo "Generating DAG matrices..."
+        python3 generate_RNG_matrices_test.py "$NUM_VARS" "$NUM_MATRICES" "$MATRIX_DIR"
 
         echo "Done. Returning to menu..."
 
@@ -31,46 +31,35 @@ while true; do
     # ----------------------------
     elif [ "$choice" == "2" ]; then
 
+        # Select cardinality estimation script
         echo ""
         echo "Select a cardinality estimation script:"
-
-        files=(cardinality_estimation/cardinality_estimation_*.py)
-
-        if [ ${#files[@]} -eq 0 ]; then
+        scripts=(cardinality_estimation/cardinalityestimation*.py)
+        if [ ${#scripts[@]} -eq 0 ]; then
             echo "No cardinality_estimation_*.py files found."
             continue
         fi
-
-        for i in "${!files[@]}"; do
-            echo "$((i+1))) ${files[$i]}"
+        for i in "${!scripts[@]}"; do
+            echo "$((i+1))) ${scripts[$i]}"
         done
+        read -p "Option: " script_choice
+        CARD_SCRIPT=${scripts[$((script_choice-1))]}
 
-        read -p "Option: " file_choice
-        CARD_SCRIPT=${files[$((file_choice-1))]}
-
-        # ----------------------------
-        # SELECT MATRIX FILE
-        # ----------------------------
+        # Select matrix file
         echo ""
         echo "Select a matrix file:"
-
-        matrices_files=($MATRIX_DIR/*.txt)
-
-        if [ ${#matrices_files[@]} -eq 0 ]; then
+        matrices=($MATRIX_DIR/*.txt)
+        if [ ${#matrices[@]} -eq 0 ]; then
             echo "No matrix files found."
             continue
         fi
-
-        for i in "${!matrices_files[@]}"; do
-            echo "$((i+1))) $(basename "${matrices_files[$i]}")"
+        for i in "${!matrices[@]}"; do
+            echo "$((i+1))) $(basename "${matrices[$i]}")"
         done
-
         read -p "Option: " matrix_choice
-        MATRIX_FILE=${matrices_files[$((matrix_choice-1))]}
+        MATRIX_FILE=${matrices[$((matrix_choice-1))]}
 
-        # ----------------------------
-        # CREATE OUTPUT DIR
-        # ----------------------------
+        # Output directory for this run
         TIMESTAMP=$(date +"%Y-%m-%d_%H-%M-%S")
         OUTPUT_DIR="$RESULT_DIR/run_$TIMESTAMP"
         mkdir -p "$OUTPUT_DIR"
@@ -78,66 +67,45 @@ while true; do
         echo ""
         echo "Running cardinality estimation on all matrices..."
 
-        # ----------------------------
-        # READ MATRICES AND PROCESS
-        # ----------------------------
-        mapfile -t matrices < "$MATRIX_FILE"
-
         index=1
-
-        # Read the file line by line, ignoring empty lines
         while IFS= read -r matrix || [ -n "$matrix" ]; do
             if [ -z "$matrix" ]; then
                 continue
             fi
-
             echo "Processing matrix $index..."
-
-            # Pass ONE matrix string at a time
             python3 "$CARD_SCRIPT" "$matrix" "$OUTPUT_DIR" "$index"
-
             ((index++))
         done < "$MATRIX_FILE"
 
-        echo ""
-        echo "All matrices processed."
-
-        # ----------------------------
-        # COMBINE CSV FILES
-        # ----------------------------
-        echo "Combining all CSV results into one file..."
-
-        python3 <<EOF
+        # Combine all CSVs into a single final CSV
+        echo "Combining CSV results..."
+        python3 - <<EOF
+import os
 import glob
 import pandas as pd
-import os
 
 output_dir = "$OUTPUT_DIR"
-final_csv = os.path.join(output_dir, "final_cardinality.csv")
+csv_files = sorted(glob.glob(os.path.join(output_dir, "*_cardinality.csv")))
 
-csv_files = sorted(glob.glob(os.path.join(output_dir, "graph_*_cardinality.csv")))
-
-if not csv_files:
+if len(csv_files) == 0:
     print("No CSV files found to combine.")
-    exit()
+    exit(0)
 
-# Load first CSV
+# Read first CSV
 df_final = pd.read_csv(csv_files[0])
-first_name = os.path.basename(csv_files[0]).replace("_cardinality.csv", "")
-df_final = df_final.rename(columns={"estimated_cardinality": first_name})
+df_final.columns = ["query_sql", f"matrix_1"]
 
 # Merge remaining CSVs
-for csv in csv_files[1:]:
+for i, csv in enumerate(csv_files[1:], start=2):
     df = pd.read_csv(csv)
-    name = os.path.basename(csv).replace("_cardinality.csv", "")
-    df_final[name] = df["estimated_cardinality"]
+    df_final[f"matrix_{i}"] = df["estimated_cardinality"]
 
+final_csv = os.path.join(output_dir, "final_queries_cardinality.csv")
 df_final.to_csv(final_csv, index=False)
-
-print(f"Final CSV saved at: {final_csv}")
+print(f"Final CSV saved to: {final_csv}")
 EOF
 
-        echo "Results saved in: $OUTPUT_DIR"
+        echo "All done. Results in: $OUTPUT_DIR"
 
     # ----------------------------
     # EXIT
@@ -145,9 +113,7 @@ EOF
     elif [ "$choice" == "3" ]; then
         echo "Exiting..."
         break
-
     else
         echo "Invalid option."
     fi
-
 done
