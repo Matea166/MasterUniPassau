@@ -14,7 +14,7 @@ if 'id' in df.columns:
 print(f"Original Dataset: {len(df)} rows.")
 
 # ==========================================
-# 2. STABLE LONG-TAIL BINNING (The 6-State Fix)
+# 2. STABLE LONG-TAIL BINNING 
 # ==========================================
 # Capped at 15 to prevent BDeu log-gamma function overflow during QUBO reads.
 # This keeps the Top 15 most important hubs and merges the rest into "Other" (the 16th state).
@@ -29,7 +29,6 @@ def cap_states(series, max_states):
 
 for col in df.columns:
     df[col] = cap_states(df[col], MAX_STATES)
-    # Force the column to be categorized immediately
     df[col] = df[col].astype('category')
 
 print(f"Filtered Dataset: {len(df)} rows (100% of data preserved)")
@@ -53,7 +52,6 @@ for col in df.columns:
 # 4. PREPARE THE SA SOLVER FORMAT (.txt)
 # ==========================================
 num_vars = len(df.columns)
-# Because of MAX_STATES=5 + 'Other', this will output 6 for each column
 states_per_var = [str(df[col].nunique()) for col in df.columns]
 
 dummy_length = num_vars * (num_vars - 1)
@@ -63,7 +61,6 @@ os.makedirs("qa-datasets", exist_ok=True)
 output_file = "qa-datasets/MovieLink_Capped_3vars.txt"
 
 with open(output_file, 'w') as f:
-    # This writes "3 6 6 6"
     f.write(f"{num_vars} {' '.join(states_per_var)}\n")
     f.write("MovieLink_Capped_3Vars\n")
     f.write(f"{dummy_matrix}\n")
