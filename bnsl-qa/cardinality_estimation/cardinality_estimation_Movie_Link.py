@@ -113,20 +113,20 @@ def estimate_cardinality(query_dict):
 # --- RUN QUERIES ---
 queries = [
     ("Q1", {'link_type_id': 6}),
-    ("Q2", {'movie_id': 132249, 'link_type_id': 6}),
-    ("Q3", {'movie_id': 132249, 'linked_movie_id': 1715497, 'link_type_id': 13}),
-    ("Q4", {'movie_id': 132249, 'linked_movie_id': 1715497}),
-    ("Q5", {'movie_id': 132249, 'linked_movie_id': 5}),
-    ("Q6", {'movie_id': 50, 'linked_movie_id': 257907, 'link_type_id': 6})
+    ("Q2", {'movie_id': 132249}),
+    ("Q3", {'linked_movie_id': 1715497}),
+    ("Q4", {'movie_id': 132249, 'link_type_id': 6}),
+    ("Q5", {'linked_movie_id': 1715497, 'link_type_id': 5}),
+    ("Q6", {'movie_id': 132249, 'linked_movie_id': 1715497, 'link_type_id': 13})
 ]
 
 queries_sql = [
     "SELECT * FROM movie_link WHERE link_type_id = 6",
+    "SELECT * FROM movie_link WHERE movie_id = 132249",
+    "SELECT * FROM movie_link WHERE linked_movie_id = 1715497",
     "SELECT * FROM movie_link WHERE movie_id = 132249 AND link_type_id = 6",
-    "SELECT * FROM movie_link WHERE movie_id = 132249 AND linked_movie_id = 1715497 AND link_type_id = 13",
-    "SELECT * FROM movie_link WHERE movie_id = 132249 AND linked_movie_id = 1715497",
-    "SELECT * FROM movie_link WHERE movie_id = 132249 AND link_type_id = 5",
-    "SELECT * FROM movie_link WHERE movie_id = 50 AND linked_movie_id = 257907 AND link_type_id = 6"
+    "SELECT * FROM movie_link WHERE linked_movie_id = 1715497 AND link_type_id = 9",
+    "SELECT * FROM movie_link WHERE movie_id = 132249 AND linked_movie_id = 1715497 AND link_type_id = 13"
 ]
 
 results_data = []
