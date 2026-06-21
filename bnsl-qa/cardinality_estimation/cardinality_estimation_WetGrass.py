@@ -50,29 +50,22 @@ for i in range(num_vars):
 # ==========================================
 # 3. GENERATE DAG VISUALIZATION
 # ==========================================
-    try:
-        dot_source = "digraph G {\n  rankdir=TB;\n  node [shape=ellipse];\n"
+try:
+    qubo_dot = graphviz.Digraph(comment='Learned Bayesian Network')
+    qubo_dot.attr(rankdir='TB') 
 
-        for i in range(num_vars):
-            for j in range(num_vars):
-                if adj_matrix[i, j] == 1:
-                    # Clean the column names using your string replacement logic
-                    u_clean = str(columns[i]).replace(":", "_").replace(" ", "_").replace("<", "lt").replace(">", "gt")
-                    v_clean = str(columns[j]).replace(":", "_").replace(" ", "_").replace("<", "lt").replace(">", "gt")
-                    dot_source += f'  "{u_clean}" -> "{v_clean}";\n'
+    for var in columns:
+        qubo_dot.node(var, var, shape='ellipse', style='filled', fillcolor='lightblue')
 
-        dot_source += "}"
+    for i in range(num_vars):
+        for j in range(num_vars):
+            if adj_matrix[i, j] == 1:
+                qubo_dot.edge(columns[i], columns[j])
 
-        outfile = graphviz.Source(dot_source).render(
-            filename=f"Graph_{graph_index}",
-            directory=output_dir,
-            format="png",
-            cleanup=True
-        )
-        print(f"[Graph] Saved successfully to: {outfile}")
-
-    except Exception as e:
-        print(f"[Warning] Could not generate graph: {e}")
+    graph_filename = os.path.join(output_dir, f"Graph_{graph_index}")
+    qubo_dot.render(graph_filename, format='png', cleanup=True)
+except Exception as e:
+    print(f"[Warning] Could not generate graph: {e}")
 
 # ==========================================
 # 4. BUILD AND TRAIN THE BAYESIAN NETWORK
@@ -99,20 +92,20 @@ def estimate_cardinality(query_dict):
 # ==========================================
 queries = [
     ("Test A", {'wetgrass': 'f'}),
-    ("Test B", {'rain': 'f', 'wetgrass': 'f'}),
-    ("Test C", {'sprinkler': 'off', 'rain': 'f', 'wetgrass': 'f'}),
-    ("Test D", {'cloud': 'f', 'sprinkler': 'off', 'rain': 'f'}),
+    ("Test B", {'cloud': 't', 'wetgrass': 't'}),
+    ("Test C", {'rain': 't', 'wetgrass': 't'}),
+    ("Test D", {'sprinkler': 'on', 'rain': 'f'}),
     ("Test E", {'cloud': 't', 'sprinkler': 'on', 'rain': 'f'}),
-    ("Test F", {'cloud': 't', 'sprinkler': 'off', 'rain': 't', 'wetgrass': 'f'})
+    ("Test F", {'cloud': 't', 'sprinkler': 'off', 'rain': 'f', 'wetgrass': 'f'})
 ]
 
 queries_sql = [
     "SELECT * FROM wetgrass_data WHERE wetgrass = 'f'",
-    "SELECT * FROM wetgrass_data WHERE rain = 'f' AND wetgrass = 'f'",
-    "SELECT * FROM wetgrass_data WHERE sprinkler = 'off' AND rain = 'f' AND wetgrass = 'f'",
-    "SELECT * FROM wetgrass_data WHERE cloud = 'f' AND sprinkler = 'off' AND rain = 'f'",
+    "SELECT * FROM wetgrass_data WHERE cloud = 't' AND wetgrass = 't'",
+    "SELECT * FROM wetgrass_data WHERE rain = 't' AND wetgrass = 't'",
+    "SELECT * FROM wetgrass_data WHERE sprinkler = 'on' AND rain = 'f'",
     "SELECT * FROM wetgrass_data WHERE cloud = 't' AND sprinkler = 'on' AND rain = 'f'",
-    "SELECT * FROM wetgrass_data WHERE cloud = 't' AND sprinkler = 'off' AND rain = 't' AND wetgrass = 'f'"
+    "SELECT * FROM wetgrass_data WHERE cloud = 't' AND sprinkler = 'off' AND rain = 'f' AND wetgrass = 'f'"
 ]
 
 results_data = []
@@ -121,38 +114,5 @@ for (_, q_dict), sql in zip(queries, queries_sql):
     results_data.append({"query_sql": sql, "estimated_cardinality": f"{est_card:.5f}"})
 
 # Save intermediate CSV
-
-csv_filename = os.path.join(output_dir, f"graph_{graph_index}_cardinality.csv")
-pd.DataFrame(results_data).to_csv(csv_filename, index=False)
-
-
-# ==========================================
-# 6. BENCHMARK QUERIES & CSV EXPORT
-# ==========================================
-queries = [
-    ("Test A", {'wetgrass': 'f'}),
-    ("Test B", {'rain': 'f', 'wetgrass': 'f'}),
-    ("Test C", {'sprinkler': 'off', 'rain': 'f', 'wetgrass': 'f'}),
-    ("Test D", {'cloud': 'f', 'sprinkler': 'off', 'rain': 'f'}),
-    ("Test E", {'cloud': 't', 'sprinkler': 'on', 'rain': 'f'}),
-    ("Test F", {'cloud': 't', 'sprinkler': 'off', 'rain': 't', 'wetgrass': 'f'})
-]
-
-queries_sql = [
-    "SELECT * FROM wetgrass_data WHERE wetgrass = 'f'",
-    "SELECT * FROM wetgrass_data WHERE rain = 'f' AND wetgrass = 'f'",
-    "SELECT * FROM wetgrass_data WHERE sprinkler = 'off' AND rain = 'f' AND wetgrass = 'f'",
-    "SELECT * FROM wetgrass_data WHERE cloud = 'f' AND sprinkler = 'off' AND rain = 'f'",
-    "SELECT * FROM wetgrass_data WHERE cloud = 't' AND sprinkler = 'on' AND rain = 'f'",
-    "SELECT * FROM wetgrass_data WHERE cloud = 't' AND sprinkler = 'off' AND rain = 't' AND wetgrass = 'f'"
-]
-
-results_data = []
-for (_, q_dict), sql in zip(queries, queries_sql):
-    est_card = estimate_cardinality(q_dict)
-    results_data.append({"query_sql": sql, "estimated_cardinality": f"{est_card:.5f}"})
-
-# Save intermediate CSV
-
 csv_filename = os.path.join(output_dir, f"graph_{graph_index}_cardinality.csv")
 pd.DataFrame(results_data).to_csv(csv_filename, index=False)
