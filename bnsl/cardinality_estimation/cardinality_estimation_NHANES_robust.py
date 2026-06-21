@@ -5,7 +5,9 @@ from phd.bn import BayesianNetwork
 from phd.rel import Relation
 import graphviz
 
-# [Keep your CONFIGURATION, LOAD, and TRAIN sections exactly the same...]
+# ==========================================
+# 1. CONFIGURATION
+# ==========================================
 CSV_FILE = "NHANES_age_prediction"
 DATA_PATH = f"../datasets/data/{CSV_FILE}.csv"
 OUTPUT_DIR = "../graphs"
@@ -13,6 +15,9 @@ RESULTS_DIR = "card_results"
 os.makedirs(OUTPUT_DIR, exist_ok=True)
 os.makedirs(RESULTS_DIR, exist_ok=True)
 
+# ==========================================
+# 2. LOAD DATA
+# ==========================================
 print(f"--- Loading Data from {DATA_PATH} ---")
 df_raw = pd.read_csv(DATA_PATH)
 df = df_raw.copy()
@@ -22,6 +27,10 @@ bins = [0, 18.5, 25.0, 30.0, 150.0]
 labels = [0, 1, 2, 3]
 df['BMXBMI'] = pd.cut(df['BMXBMI'], bins=bins, labels=labels, right=False).astype(str)
 
+# ==========================================
+# 3. TRAIN BAYESIAN NETWORK
+# ==========================================
+
 print("\n--- Training Bayesian Network ---")
 discrete_cols = ['age_group', 'RIAGENDR', 'DIQ010', 'BMXBMI']
 relation_discrete = Relation(df[discrete_cols])
@@ -29,7 +38,21 @@ bn = BayesianNetwork(cl_max_rows=30000).fit(relation_discrete)
 bn.update(Relation(df))
 
 # ==========================================
-# 4. TRIPLE QUERY MAPPING
+# 4. GENERATE GRAPH
+# ==========================================
+print("\n--- Generating Graph ---")
+try:
+    dot_file = os.path.join(OUTPUT_DIR, f"{CSV_FILE}_bn.dot")
+    png_file = os.path.join(OUTPUT_DIR, f"{CSV_FILE}_bn.png")
+    with open(dot_file, "w") as f:
+        f.write(str(bn.to_dot()))
+    graphviz.render("dot", "png", dot_file, outfile=png_file)
+    print(f"[Graph] Saved to: {png_file}")
+except Exception as e:
+    print(f"[Graph] Warning: {e}")
+
+# ==========================================
+# 5. TRIPLE QUERY MAPPING
 # ==========================================
 # A. Exactly matches the SA/SQA file (Used for joining the final CSVs)
 sa_queries = [
@@ -63,7 +86,7 @@ bn_filters = [
 
 
 # ==========================================
-# 5. EXECUTION & LOGGING
+# 6. EXECUTION & LOGGING
 # ==========================================
 results_log = []
 
@@ -92,7 +115,7 @@ for i in range(len(sa_queries)):
         "est_selectivity": f"{est_prob:.10f}"
     })
 # ==========================================
-# 6. SAVE CSV FILE
+# 7. SAVE CSV FILE
 # ==========================================
 timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
 output_filename = f"result_{CSV_FILE}_{timestamp}.csv"
