@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/bin/env bash
 
 BASE_DIR="./dispatch_output/solver_outputs"
 OUTPUT_BASE="q-error_output"
@@ -46,7 +46,7 @@ while true; do
     done
 
     echo "Add another SA/SQA pair? (y/n)"
-    read add_more
+    read -r add_more
     if [[ "$add_more" != "y" ]]; then
         break
     fi
