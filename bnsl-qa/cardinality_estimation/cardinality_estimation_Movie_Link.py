@@ -116,7 +116,7 @@ queries = [
     ("Q2", {'movie_id': 132249}),
     ("Q3", {'linked_movie_id': 1715497}),
     ("Q4", {'movie_id': 132249, 'link_type_id': 6}),
-    ("Q5", {'linked_movie_id': 1715497, 'link_type_id': 5}),
+    ("Q5", {'linked_movie_id': 1715497, 'link_type_id': 9}),
     ("Q6", {'movie_id': 132249, 'linked_movie_id': 1715497, 'link_type_id': 13})
 ]
 
