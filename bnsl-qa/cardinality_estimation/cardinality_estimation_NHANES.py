@@ -173,17 +173,11 @@ queries_sql = [
 # ==========================================
 results_data = []
 
-for q_dict in queries:
-    # Build SQL String specifically for nhanes_data
-    where_clause = " AND ".join([f"{k} = {v}" for k, v in q_dict.items()])
-    sql_query = f"SELECT * FROM nhanes_data WHERE {where_clause}"
-
-    # Calculate Cardinality
+for q_dict, sql in zip(queries, queries_sql):
     est_card = estimate_cardinality(q_dict)
 
-    # Matching the requested format: query_sql, estimated_cardinality
     results_data.append({
-        "query_sql": sql_query,
+        "query_sql": sql,
         "estimated_cardinality": f"{est_card:.5f}"
     })
 
