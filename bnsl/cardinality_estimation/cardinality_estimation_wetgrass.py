@@ -31,6 +31,22 @@ bn = BayesianNetwork(cl_max_rows=30000).fit(relation)
 bn.update(relation)
 
 # ==========================================
+# 4. GENERATE GRAPH
+# ==========================================
+print("\n--- Generating Graph ---")
+try:
+    dot_file = os.path.join(OUTPUT_DIR, f"{CSV_FILE}_bn.dot")
+    png_file = os.path.join(OUTPUT_DIR, f"{CSV_FILE}_bn.png")
+
+    with open(dot_file, "w") as f:
+        f.write(str(bn.to_dot()))
+
+    graphviz.render("dot", "png", dot_file, outfile=png_file)
+    print(f"[Graph] Saved to: {png_file}")
+except Exception as e:
+    print(f"[Graph] Warning: {e}")
+
+# ==========================================
 # 4. CSV EXPORT LOGIC
 # ==========================================
 def parse_sql_to_filter(sql, df_columns):
@@ -87,7 +103,7 @@ for sql in queries_sql:
     results_log.append({
         "query_sql": sql,
         "true_cardinality": true_card,
-        "est_cardinality": round(est_card, 2),
+        "bn_est_cardinality": round(est_card, 2),
         "est_selectivity": f"{est_prob:.10f}"
     })
 
