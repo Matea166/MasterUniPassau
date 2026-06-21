@@ -7,7 +7,6 @@ import re
 from datetime import datetime
 from matplotlib.ticker import FixedLocator, FixedFormatter
 
-# Input handling
 pairs_file = sys.argv[1]
 card_file = sys.argv[2]
 
@@ -21,21 +20,20 @@ with open(pairs_file, "r") as file:
             sa_files.append(parts[0])
             sqa_files.append(parts[1])
 
-
 def parse_metadata(fname):
     base = os.path.basename(fname)
-    dataset_match = re.search(r'results_(.*?)_SA', base) or re.search(r'results_(.*?)_SQA', base)
-    dataset = dataset_match.group(1) if dataset_match else "WetGrass_variance_zero"
-    # Matches _Method_Trials_Reads_
+    dataset_match = re.search(r'results_(.*?)_VARIANCE', base)
+    dataset = dataset_match.group(1) if dataset_match else "Unknown"
+    # Matches _SA_Trials_Reads_
     numbers = re.findall(r'_(?:SA|SQA)_(\d+)_(\d+)_', base)
     if numbers:
         trials, reads = numbers[0]
-        return dataset.upper(), trials, reads
-    return dataset.upper(), "Unknown", "Unknown"
-
+        return dataset, trials, reads
+    return dataset, "Unknown", "Unknown"
 
 fig, ax = plt.subplots(figsize=(10, 6))
 
+# Updated Color Palette
 sa_blues = ["#084594", "#2171b5", "#6baed6"]
 sqa_purples = ["#4a148c", "#7b1fa2", "#ab47bc"]
 
@@ -50,44 +48,43 @@ for i, (sa_f, sqa_f) in enumerate(zip(sa_files, sqa_files)):
 
     sa_df = pd.read_csv(sa_f)
     sqa_df = pd.read_csv(sqa_f)
-
-    # Calculate sorted medians across 30 trials
+    
+    # Sort medians for the Q-Error distribution
     sa_q = np.sort(sa_df.groupby('query_sql')['q_error'].median().values)
     sqa_q = np.sort(sqa_df.groupby('query_sql')['q_error'].median().values)
-
-    # Standardize predictions (perfect = 1.0)
+    
+    # Standardize perfect predictions to 1.0
     sa_q = np.maximum(sa_q, 1.0)
     sqa_q = np.maximum(sqa_q, 1.0)
 
     x = np.arange(1, len(sa_q) + 1)
     max_queries = max(max_queries, len(sa_q))
+    
+    ax.plot(x, sa_q, marker='o', color=sa_blues[i % 3], label=f"SA - {sa_reads} Reads - Trials {trials}")
+    ax.plot(x, sqa_q, marker='s', linestyle='--', color=sqa_purples[i % 3], label=f"SQA - {sqa_reads} Reads - Trials {trials}")
 
-    ax.plot(x, sa_q, marker='o', color=sa_blues[i % 3], label=f"SA - {sa_reads} Reads - {trials} Trials")
-    ax.plot(x, sqa_q, marker='s', linestyle='--', color=sqa_purples[i % 3],
-            label=f"SQA - {sqa_reads} Reads - {trials} Trials")
-
-# BNSL / Postgres Reference
+# BNSL / Postgres
 card_df = pd.read_csv(card_file)
+# FIX: Dataset size is the total rows in the original data, not query count.
+# We extract it from the card_file if possible, or use your known 100 rows.
 
-
-def q_error_calc(est, true):
-    return np.sort(np.maximum(np.maximum(est, 1) / np.maximum(true, 1), np.maximum(true, 1) / np.maximum(est, 1)))
-
-
-bn_q = q_error_calc(card_df["bn_est_cardinality"], card_df["true_cardinality"])
-pg_q = q_error_calc(card_df["pg_est_cardinality"], card_df["true_cardinality"])
+bn_q = np.sort(np.maximum(card_df["bn_est_cardinality"]/np.maximum(card_df["true_cardinality"],1), 1))
+pg_q = np.sort(np.maximum(card_df["pg_est_cardinality"]/np.maximum(card_df["true_cardinality"],1), 1))
 
 x_bench = np.arange(1, len(bn_q) + 1)
 ax.plot(x_bench, bn_q, marker='^', color='orange', label="BNSL")
-ax.plot(x_bench, pg_q, marker='x', color='grey', label="Postgres")
+ax.plot(x_bench, pg_q, marker='x', color='gray', label="Postgres")
 
-# Professional Y-Axis (1*10^0, 2*10^0, etc.)
+# -------------------
+# Unified Vertical Axis Notation
+# -------------------
 ax.set_yscale('log')
-ticks = [1, 2, 5, 10, 20, 50, 100, 200, 500, 1000, 2000, 5000]
-tick_labels = [r"$1 \cdot 10^0$", r"$2 \cdot 10^0$", r"$5 \cdot 10^0$",
-               r"$1 \cdot 10^1$", r"$2 \cdot 10^1$", r"$5 \cdot 10^1$",
-               r"$1 \cdot 10^2$", r"$2 \cdot 10^2$", r"$5 \cdot 10^2$",
-               r"$1 \cdot 10^3$", r"$2 \cdot 10^3$", r"$5 \cdot 10^3$"]
+ticks = [1, 2, 3, 4, 5, 10, 20, 30, 40, 50, 100, 500, 1000]
+tick_labels = [
+    r"$1 \cdot 10^0$", r"$2 \cdot 10^0$", r"$3 \cdot 10^0$", r"$4 \cdot 10^0$", r"$5 \cdot 10^0$",
+    r"$1 \cdot 10^1$", r"$2 \cdot 10^1$", r"$3 \cdot 10^1$", r"$4 \cdot 10^1$", r"$5 \cdot 10^1$",
+    r"$1 \cdot 10^2$", r"$5 \cdot 10^2$", r"$1 \cdot 10^3$"
+]
 
 ax.yaxis.set_major_locator(FixedLocator(ticks))
 ax.yaxis.set_major_formatter(FixedFormatter(tick_labels))
@@ -97,8 +94,8 @@ ax.set_xlabel("Query Index")
 ax.set_ylabel("Q-Error")
 ax.set_title(f"Sorted Q-Errors for {final_dataset_name}")
 ax.grid(True, which="both", linestyle="--", alpha=0.3)
-ax.legend(fontsize='small', loc='upper left')
+ax.legend(fontsize='small')
 
 plt.tight_layout()
-plt.savefig(f"qerror_sorted_qerror.png", dpi=300)
+plt.savefig(f"sorted_qerror_{datetime.now().strftime('%Y%m%d_%H%M%S')}.svg", format="svg")
 plt.show()
