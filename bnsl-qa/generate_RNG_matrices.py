@@ -3,6 +3,8 @@ import random
 import sys
 import os
 
+random.seed(42)
+
 def generate_random_dag(n_nodes, max_parents=2):
     matrix = np.zeros((n_nodes, n_nodes), dtype=int)
 
