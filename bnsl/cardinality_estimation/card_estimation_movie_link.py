@@ -87,11 +87,11 @@ def parse_sql_to_filter(sql, df_columns):
 # SQL-style queries for movie_link
 queries_sql = [
     "SELECT * FROM movie_link WHERE link_type_id = 6",
+    "SELECT * FROM movie_link WHERE movie_id = 132249",
+    "SELECT * FROM movie_link WHERE linked_movie_id = 1715497",
     "SELECT * FROM movie_link WHERE movie_id = 132249 AND link_type_id = 6",
-    "SELECT * FROM movie_link WHERE movie_id = 132249 AND linked_movie_id = 1715497 AND link_type_id = 13",
-    "SELECT * FROM movie_link WHERE movie_id = 132249 AND linked_movie_id = 1715497",
-    "SELECT * FROM movie_link WHERE movie_id = 132249 AND linked_movie_id = 5",
-    "SELECT * FROM movie_link WHERE movie_id = 50 AND linked_movie_id = 257907 AND link_type_id = 6"
+    "SELECT * FROM movie_link WHERE linked_movie_id = 1715497 AND link_type_id = 9",
+    "SELECT * FROM movie_link WHERE movie_id = 132249 AND linked_movie_id = 1715497 AND link_type_id = 13"
 ]
 
 results_log = []
