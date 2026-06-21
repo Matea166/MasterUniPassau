@@ -1,5 +1,8 @@
 #!/usr/bin/env bash
 
+# The selected dataset is used for result naming.
+# The cardinality script itself must be consistent with the selected dataset.
+
 BASE_DIR="./dispatch_output/solver_outputs"
 OUTPUT_BASE="q-error_output"
 TMP_DIR="tmp_cardinality_runs"
