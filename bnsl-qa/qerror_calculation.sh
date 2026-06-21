@@ -117,13 +117,13 @@ process_folder () {
         print "[" matrix "]"
     }' "$FILE_PATH" |
 
-    while read matrix; do
+    while read -r matrix; do
 
         matrix_index=$((matrix_index+1))
         OUT_DIR="$TMP_DIR/${METHOD}_graph_$matrix_index"
         mkdir -p "$OUT_DIR"
 
-        python "$CARD_SCRIPT" "$matrix" "$OUT_DIR" "$matrix_index"
+        python3 "$CARD_SCRIPT" "$matrix" "$OUT_DIR" "$matrix_index"
 
         CSV="$OUT_DIR/graph_${matrix_index}_cardinality.csv"
 
