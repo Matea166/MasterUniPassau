@@ -1,4 +1,4 @@
-#!/opt/homebrew/bin/bash
+#!/usr/bin/env bash
 
 BASE_DIR="RNG_Matrix"
 MATRIX_DIR="$BASE_DIR/matrices"
@@ -12,17 +12,17 @@ while true; do
     echo "1) Generate matrices"
     echo "2) Run cardinality estimation"
     echo "3) Exit"
-    read -p "Choose an option: " choice
+    read -r -p "Choose an option: " choice
 
     # ----------------------------
     # OPTION 1: GENERATE MATRICES
     # ----------------------------
     if [ "$choice" == "1" ]; then
-        read -p "Number of variables: " NUM_VARS
-        read -p "Number of matrices: " NUM_MATRICES
+        read -r -p "Number of variables: " NUM_VARS
+        read -r -p "Number of variables: " NUM_VARS
 
         echo "Generating DAG matrices..."
-        python3 generate_RNG_matrices_test.py "$NUM_VARS" "$NUM_MATRICES" "$MATRIX_DIR"
+        python3 generate_RNG_matrices.py "$NUM_VARS" "$NUM_MATRICES" "$MATRIX_DIR"
 
         echo "Done. Returning to menu..."
 
@@ -34,7 +34,8 @@ while true; do
         # Select cardinality estimation script
         echo ""
         echo "Select a cardinality estimation script:"
-        scripts=(cardinality_estimation/cardinalityestimation*.py)
+        scripts=(cardinality_estimation/cardinality_estimation_*.py)
+
         if [ ${#scripts[@]} -eq 0 ]; then
             echo "No cardinality_estimation_*.py files found."
             continue
@@ -42,7 +43,7 @@ while true; do
         for i in "${!scripts[@]}"; do
             echo "$((i+1))) ${scripts[$i]}"
         done
-        read -p "Option: " script_choice
+        read -r -p "Option: " script_choice
         CARD_SCRIPT=${scripts[$((script_choice-1))]}
 
         # Select matrix file
@@ -56,7 +57,7 @@ while true; do
         for i in "${!matrices[@]}"; do
             echo "$((i+1))) $(basename "${matrices[$i]}")"
         done
-        read -p "Option: " matrix_choice
+        read -r -p "Option: " matrix_choice
         MATRIX_FILE=${matrices[$((matrix_choice-1))]}
 
         # Output directory for this run
