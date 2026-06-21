@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/bin/env bash
 
 # --- PROGRESS BAR FUNCTION ---
 progress_bar() {
@@ -68,7 +68,7 @@ if [ "$mode" = "Run solver now" ]; then
     progress_bar 0 $executions $start_time
 
     for i in $(seq 1 $executions); do
-        python -m bnslqa solve "$dataset_path" $solver --reads $reads >> "$matrix_file" 2>&1
+        python3 -m bnslqa solve "$dataset_path" $solver --reads $reads >> "$matrix_file" 2>&1
         progress_bar $i $executions $start_time
     done
     echo -e "\nOutputs saved to: $matrix_file"
@@ -143,7 +143,7 @@ echo "Found $num_matrices unique matrices."
 
 # --- 4. SELECT ESTIMATION SCRIPT ---
 echo -e "\nSelect the cardinality estimation script:"
-select py_script in cardinality_estimation_*.py; do
+select py_script in cardinality_estimation/cardinality_estimation_*.py; do
     if [ -n "$py_script" ]; then break; else echo "Invalid option."; fi
 done
 
@@ -158,7 +158,7 @@ progress_bar 0 $num_matrices $start_time
 counter=1
 while IFS= read -r matrix; do
     # Passing matrix string, output directory, and graph ID
-    python "$py_script" "$matrix" "$card_out_dir" "$counter" > /dev/null 2>&1
+    python3 "$py_script" "$matrix" "$card_out_dir" "$counter" > /dev/null 2>&1
     progress_bar $counter $num_matrices $start_time
     counter=$((counter + 1))
 done < "$unique_matrix_file"
@@ -170,7 +170,7 @@ mkdir -p "$results_dir"
 final_csv="${results_dir}/final_queriescardinality_${solver}_${dataset_name}_${reads}_${timestamp}.csv"
 
 echo "Merging all results into final CSV..."
-python -c "
+python3 -c "
 import pandas as pd, glob, os, re
 csv_files = glob.glob(os.path.join('$card_out_dir', 'graph_*_cardinality.csv'))
 if not csv_files:
