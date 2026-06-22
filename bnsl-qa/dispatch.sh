@@ -1,4 +1,4 @@
-#!/usr/bin/env bash
+#!/bin/bash
 
 # --- PROGRESS BAR FUNCTION ---
 progress_bar() {
@@ -38,7 +38,7 @@ timestamp=$(date +"%Y-%m-%d_%H-%M-%S")
 if [ "$mode" = "Run solver now" ]; then
 
     echo "Select a dataset from /datasets:"
-    select dataset_path in datasets/*.txt; do
+    select dataset_path in qa-datasets/*.txt; do
         if [ -n "$dataset_path" ]; then
             dataset_name=$(basename "$dataset_path" | cut -d. -f1)
             break
