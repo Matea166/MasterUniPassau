@@ -1,0 +1,27 @@
+.git
+.gitignore
+
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+
+.venv/
+venv/
+env/
+bnslqa-env/
+
+.ipynb_checkpoints/
+.pytest_cache/
+.mypy_cache/
+
+.DS_Store
+
+# Old unrelated repository material
+job/
+
+# Local/generated outputs
+results/
+plots/
+images/
+*.log
