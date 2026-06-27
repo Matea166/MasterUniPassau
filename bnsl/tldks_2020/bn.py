@@ -1,3 +1,10 @@
+# This file is based on code from tldks-2020 by Max Halford.
+# Original project licensed under the Apache License, Version 2.0.
+# Modified by Matea Qazolli, 2026.
+# Modifications include Chow--Liu fitting workflow updates, CPD-learning
+# execution fixes, NetworkX node-access compatibility updates, missing-value
+# handling changes, and code-organisation updates.
+
 import decimal
 import itertools
 
