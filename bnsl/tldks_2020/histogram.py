@@ -1,3 +1,10 @@
+# This file is based on code from tldks-2020 by Max Halford.
+# Original project licensed under the Apache License, Version 2.0.
+# Modified by Matea Qazolli, 2026.
+# Modifications include Decimal-safe histogram multiplication, null-fraction
+# handling, safer bucket lookup, empty-intersection handling, probability-return
+# adjustments, and histogram implementation clean-up.
+
 import bisect
 import collections
 import copy
