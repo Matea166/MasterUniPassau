@@ -14,11 +14,11 @@ TABLE_NAME = "wetgrass_data"
 
 # Connect to PostgreSQL
 conn = psycopg2.connect(
-    dbname=DB_NAME,
-    user=DB_USER,
-    password=DB_PASSWORD,
-    host=DB_HOST,
-    port=DB_PORT
+    host=os.getenv("POSTGRES_HOST", "localhost"),
+    port=os.getenv("POSTGRES_PORT", "5432"),
+    database=os.getenv("POSTGRES_DB", "imdb"),
+    user=os.getenv("POSTGRES_USER", "postgres"),
+    password=os.getenv("POSTGRES_PASSWORD", "postgres"),
 )
 
 cur = conn.cursor()
