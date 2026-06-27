@@ -208,7 +208,7 @@ def add_bar_labels(rects, extra_info=None):
             ax.annotate(
                 label,
                 xy=(x_center, height),
-                xytext=(0, 4),
+                xytext=(0, 8),
                 textcoords="offset points",
                 ha="center",
                 va="bottom",
