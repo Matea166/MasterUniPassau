@@ -1493,4 +1493,225 @@ Before running the random-structure robustness check, verify the following:
 
 The random-structure robustness check produces validation outputs only. The generated random matrices should not be treated as learned AnnealBN-CE structures.
 
+I checked the merge and q-error scripts. `merge_results.sh` selects one SA result, one SQA result, one Chow--Liu/PostgreSQL `_final.csv`, and optionally one random-control CSV before calling `merge_csv_logic.py`; the Python merger writes both `combined_results_<dataset>_<timestamp>.csv` and `combined_results_<dataset>_<timestamp>.png`. ([GitHub][1]) The q-error script is run from `bnsl-qa`, asks for a cardinality script, CSV dataset, adjacency-matrix folder, and PostgreSQL database, then writes a CSV under `q-error_output/`. ([GitHub][2])
+
+Use this as the final README section after the robustness-check section.
+
+## 4. Visualisation and q-error Calculation
+
+This section describes two final evaluation utilities:
+
+1. result visualisation with grouped bar charts;
+2. q-error calculation for AnnealBN-CE solver outputs.
+
+These steps assume that the dataset-preparation and cardinality-estimation steps have already been completed.
+
+---
+
+## 4.1. Cardinality-Estimate Visualisation
+
+The visualisation step creates grouped bar charts that compare:
+
+* true cardinalities;
+* AnnealBN-CE estimates from `SA`;
+* AnnealBN-CE estimates from `SQA`;
+* Chow--Liu baseline estimates;
+* PostgreSQL planner estimates;
+* optionally, random-control estimates from the robustness-check step.
+
+The visualisation is useful for query-level comparison because each query appears as one group of bars. This makes it possible to inspect where AnnealBN-CE, Chow--Liu, PostgreSQL, and optionally random structures overestimate or underestimate the true cardinality.
+
+### 4.1.1. Prerequisites
+
+Before running the visualisation script, make sure that the following files have already been generated for the same dataset:
+
+| Required file                  | Produced by                      | Location                                      |
+| ------------------------------ | -------------------------------- | --------------------------------------------- |
+| SA final cardinality CSV       | `bnsl-qa/dispatch.sh`            | `bnsl-qa/dispatch_output/results/`            |
+| SQA final cardinality CSV      | `bnsl-qa/dispatch.sh`            | `bnsl-qa/dispatch_output/results/`            |
+| Chow--Liu/PostgreSQL final CSV | `bnsl/cardinality_benchmarks.sh` | `bnsl/card_results/`                          |
+| Random-control CSV, optional   | `bnsl-qa/RNG_matrix.sh`          | `bnsl-qa/RNG_Matrix/results/run_<timestamp>/` |
+
+The SA, SQA, Chow--Liu, PostgreSQL, and optional random-control results should all refer to the same dataset and the same query workload. For example, WetGrass SA and SQA files should be merged only with the WetGrass Chow--Liu/PostgreSQL result file.
+
+### 4.1.2. Run the Visualisation Script
+
+Enter the `bnsl` directory:
+
+```bash
+cd /workspace/bnsl
+```
+
+Run the merge and visualisation script:
+
+```bash
+bash merge_results.sh
+```
+
+The script asks for:
+
+1. the SA result file from `../bnsl-qa/dispatch_output/results/`;
+2. the SQA result file from `../bnsl-qa/dispatch_output/results/`;
+3. the Chow--Liu/PostgreSQL `_final.csv` file from `bnsl/card_results/`;
+4. whether to include random-control results from `../bnsl-qa/RNG_Matrix/results/`.
+
+If the random-structure robustness check was not run, choose `n` when the script asks whether to add random matrix results.
+
+### 4.1.3. Visualisation Outputs
+
+The script creates two files in the current `bnsl` directory:
+
+```text
+combined_results_<DATASET>_<TIMESTAMP>.csv
+combined_results_<DATASET>_<TIMESTAMP>.png
+```
+
+For example:
+
+```text
+combined_results_WetGrass_variance_zero_20260627_174723.csv
+combined_results_WetGrass_variance_zero_20260627_174723.png
+```
+
+The CSV file contains the merged numerical results. It includes the query, the AnnealBN-CE SA estimates, the AnnealBN-CE SQA estimates, the Chow--Liu estimate, the true cardinality, the PostgreSQL estimate, and optionally the random-control estimates.
+
+The PNG file is the grouped bar chart. It compares the estimates per query. If there are many SA, SQA, or random-control graph columns, the script groups them by average and shows the standard error of the mean. This keeps the chart readable when many learned or random structures are compared.
+
+The generated CSV currently labels the Chow--Liu baseline column as `BNSL`. In the interpretation of this repository, this column corresponds to the Chow--Liu Bayesian-network baseline from the `bnsl` pipeline.
+
+---
+
+## 4.2. q-error Calculation
+
+The q-error calculation evaluates the accuracy of AnnealBN-CE estimates. For a query with true cardinality (C) and estimated cardinality (\widehat{C}), the q-error is:
+
+```text
+max(estimated / true, true / estimated)
+```
+
+A q-error of `1` is perfect. Larger values indicate larger estimation error.
+
+The q-error script is:
+
+```text
+bnsl-qa/qerror_calculation.sh
+```
+
+It recomputes cardinality estimates from stored solver matrices, obtains true cardinalities from PostgreSQL, and writes query-level q-errors.
+
+### 4.2.1. Prerequisites
+
+Before running q-error calculation, make sure that:
+
+1. the relevant CSV relation exists in `bnsl/datasets/data/`;
+2. the corresponding PostgreSQL database and table have been created and populated;
+3. at least one AnnealBN-CE solver run has already produced `adjacency_matrix.txt`;
+4. the selected cardinality-estimation script matches the dataset;
+5. the SQL queries inside the selected script use the correct table name.
+
+The q-error script reads adjacency matrix folders from:
+
+```text
+bnsl-qa/dispatch_output/solver_outputs/
+```
+
+For example:
+
+```text
+bnsl-qa/dispatch_output/solver_outputs/SA/SA_Matrix_WetGrass_2_2_2026-06-27_15-37-18/
+bnsl-qa/dispatch_output/solver_outputs/SQA/SQA_Matrix_WetGrass_2_1_2026-06-27_15-42-10/
+```
+
+### 4.2.2. Run q-error Calculation
+
+Enter the `bnsl-qa` directory:
+
+```bash
+cd /workspace/bnsl-qa
+```
+
+Run:
+
+```bash
+bash qerror_calculation.sh
+```
+
+The script asks for:
+
+1. the cardinality-estimation script from `bnsl-qa/cardinality_estimation/`;
+2. the CSV dataset from `bnsl/datasets/data/`;
+3. the adjacency-matrix folder from `dispatch_output/solver_outputs/`;
+4. the PostgreSQL database to use for true-cardinality calculation.
+
+Choose the cardinality-estimation script and database that match the dataset. For example:
+
+| Dataset       | Cardinality script                                               | PostgreSQL database |
+| ------------- | ---------------------------------------------------------------- | ------------------- |
+| WetGrass      | `cardinality_estimation/cardinality_estimation_WetGrass.py`      | `wetgrass`          |
+| NHANES        | `cardinality_estimation/cardinality_estimation_NHANES.py`        | `nhanes`            |
+| Market Basket | `cardinality_estimation/cardinality_estimation_Market_Basket.py` | `market_basket`     |
+| Movie Link    | `cardinality_estimation/cardinality_estimation_Movie_Link.py`    | `imdb`              |
+
+To calculate q-errors for both SA and SQA, run the script twice: once selecting the SA solver-output folder and once selecting the SQA solver-output folder.
+
+### 4.2.3. q-error Output Files
+
+The q-error results are written to:
+
+```text
+bnsl-qa/q-error_output/
+```
+
+The output file has the form:
+
+```text
+results_<DATASET>_<METHOD>_<TRIALS>_<READS>_<TIMESTAMP>.csv
+```
+
+For example:
+
+```text
+results_WetGrass_variance_zero_SA_2_2_2026-06-27_17-49-46.csv
+```
+
+The output CSV contains:
+
+```text
+method,graph_index,query_sql,estimated_cardinality,true_cardinality,q_error,avg_q_error,median_q_error
+```
+
+The columns mean:
+
+| Column                  | Meaning                                               |
+| ----------------------- | ----------------------------------------------------- |
+| `method`                | Solver method, usually `SA` or `SQA`                  |
+| `graph_index`           | Index of the evaluated adjacency matrix               |
+| `query_sql`             | Query workload entry                                  |
+| `estimated_cardinality` | AnnealBN-CE estimate for that graph and query         |
+| `true_cardinality`      | True cardinality obtained from PostgreSQL             |
+| `q_error`               | q-error for that graph and query                      |
+| `avg_q_error`           | Average q-error for the query across evaluated graphs |
+| `median_q_error`        | Median q-error for the query across evaluated graphs  |
+
+The q-error CSV is the main file used for accuracy summaries and for comparing solver configurations across reads, trials, SA, and SQA.
+
+---
+
+## 4.3. Final Evaluation Checklist
+
+Before using the visualisation or q-error outputs in an evaluation, check that:
+
+1. all selected result files belong to the same dataset;
+2. the SA and SQA files correspond to the intended read--trial configuration;
+3. the Chow--Liu/PostgreSQL file is the `_final.csv` file, not the raw CSV;
+4. optional random-control results come from the same dataset and query workload;
+5. the selected PostgreSQL database matches the selected cardinality-estimation script;
+6. the query workload is consistent across AnnealBN-CE, Chow--Liu, PostgreSQL, and random-control results.
+
+The bar-chart visualisation is mainly for query-level inspection. The q-error CSV files are the main source for numerical accuracy analysis.
+
+[1]: https://github.com/Matea166/MasterUniPassau/blob/master/bnsl/merge_results.sh "MasterUniPassau/bnsl/merge_results.sh at master · Matea166/MasterUniPassau · GitHub"
+[2]: https://github.com/Matea166/MasterUniPassau/blob/master/bnsl-qa/qerror_calculation.sh "MasterUniPassau/bnsl-qa/qerror_calculation.sh at master · Matea166/MasterUniPassau · GitHub"
+
+
 
