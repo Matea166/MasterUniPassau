@@ -19,10 +19,10 @@ echo "==========================================="
 # 1. FETCH DATABASES FROM POSTGRES
 
 echo "--- Fetching available databases from PostgreSQL at $DB_HOST:$DB_PORT ---"
-db_list=($(psql -h "$DB_HOST" -p "$DB_PORT" -U "$DB_USER" -d postgres -t -A -c "SELECT datname FROM pg_database WHERE datistemplate = false;"))
+db_list=($(psql -h "$DB_HOST" -p "$DB_PORT" -U "$DB_USER" -d postgres -t -A -c "SELECT datname FROM pg_database WHERE datistemplate = false AND datname <> 'postgres' ORDER BY datname;"))
 
 if [ ${#db_list[@]} -eq 0 ]; then
-echo "Error: Could not find any databases in PostgreSQL at $DB_HOST:$DB_PORT."
+echo "Error: Could not find any non-default databases in PostgreSQL at $DB_HOST:$DB_PORT."
 exit 1
 fi
 
