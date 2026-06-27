@@ -27,11 +27,24 @@ select sqa_file in "${SQA_FILES[@]}"; do
 done
 
 # 3. Choose BN/Postgres file
+
 echo -e "\n--- Step 3: Select bnsl Result File ---"
-BN_FILES=($(ls $BN_DIR/*.csv 2>/dev/null))
+
+mapfile -t BN_FILES < <(find "$BN_DIR" -maxdepth 1 -type f -name "*_final.csv" | sort)
+
+if [ ${#BN_FILES[@]} -eq 0 ]; then
+echo "No *_final.csv files found in $BN_DIR"
+exit 1
+fi
+
 select bn_file in "${BN_FILES[@]}"; do
-    [ -n "$bn_file" ] && break
+if [ -n "$bn_file" ]; then
+break
+else
+echo "Invalid selection."
+fi
 done
+
 
 # 4. Choose RNG Matrix file
 echo -e "\n--- Step 4: Add RNG Matrix results? (y/n) ---"
