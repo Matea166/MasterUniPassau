@@ -113,6 +113,15 @@ For GitHub README display, it is recommended to export the PDF as a PNG and save
 ```text
 bnsl-qa/images/WetGrass.png
 ```
+
+The figure can then be included in the README with:
+
+```html
+<p align="center">
+  <img src="bnsl-qa/images/WetGrass.png" width="850" alt="WetGrass Bayesian network and conditional probability tables">
+</p>
+```
+
 ### 1.3.1. Generate the WetGrass Solver TXT File
 
 Enter the `bnsl-qa` directory:
@@ -133,6 +142,13 @@ This creates:
 bnsl-qa/qa-datasets/WetGrass.txt
 ```
 
+> Important: the default WetGrass converter expects the solver file to be named
+> `bnsl-qa/qa-datasets/WetGrass.txt`. Therefore, the safest command is to keep
+> `--name WetGrass`. If another name is used, for example `WetGrass_10000` or
+> `WetGrass_sampled_100`, the `input_txt_file` variable in
+> `bnsl/datasets/txt_to_csv.py` must be updated before converting the TXT file
+> to CSV.
+
 The `--size` parameter controls the intended dataset size. For example, to generate a larger dataset:
 
 ```bash
@@ -145,7 +161,7 @@ The `--name` parameter controls the output file name. If `--name WetGrass` is us
 qa-datasets/WetGrass.txt
 ```
 
-If another name is used, the corresponding converter scripts must be updated to read that file.
+If another name is used, the corresponding converter scripts must be updated to read that file. In particular, `bnsl/datasets/txt_to_csv.py` must point to the actual generated TXT file through its `input_txt_file` variable.
 
 ### 1.3.2. Expected versus Non-Expected Generation
 
@@ -268,6 +284,11 @@ DB_PORT = "5432"
 CSV_FILE = "data/WetGrass_variance_zero.csv"
 TABLE_NAME = "wetgrass_data"
 ```
+
+> Important: the CSV file configured here must be the same file produced by
+> `txt_to_csv.py`. For the expected WetGrass dataset used in the thesis, this is
+> normally `data/WetGrass_variance_zero.csv`. If `csv_to_db.py` still points to
+> `data/WetGrass_variance_non_zero.csv`, update it before running the import.
 
 Also ensure that the `INSERT` statement matches the table columns:
 
