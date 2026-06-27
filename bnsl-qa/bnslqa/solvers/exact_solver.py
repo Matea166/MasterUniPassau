@@ -1,3 +1,6 @@
+# This file is based on code from BNSL-QA-PYTHON.
+# Original project licensed under the GNU General Public License, Version 2.
+
 from time import time_ns
 import torch
 from bnslqa.solvers.qubo_matrix import calcQUBOMatrix
