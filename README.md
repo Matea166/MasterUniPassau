@@ -1247,3 +1247,250 @@ For Chow--Liu, check that the selected PostgreSQL database corresponds to the se
 [1]: https://raw.githubusercontent.com/Matea166/MasterUniPassau/master/bnsl/cardinality_estimation/cardinality_estimation_wetgrass.py "raw.githubusercontent.com"
 [2]: https://raw.githubusercontent.com/Matea166/MasterUniPassau/master/bnsl-qa/dispatch.sh "raw.githubusercontent.com"
 
+## 3. Optional Random-Structure Robustness Check
+
+This section is optional and is mainly intended for validation. It is not part of the standard dataset-preparation or cardinality-estimation routine. The purpose is to compare the AnnealBN-CE estimates against a random-structure control.
+
+The q-error evaluation shows how accurate the cardinality estimates of the annealing-learned structures are, but it does not show by itself whether this accuracy is specific to the structure-learning step. The random-structure robustness check is therefore used as a negative control. It tests whether randomly generated admissible Bayesian-network structures can produce similar cardinality estimates.
+
+In this repository, the random-structure check is implemented in:
+
+```text
+bnsl-qa/RNG_matrix.sh
+```
+
+The script generates random acyclic adjacency matrices and evaluates them with the same cardinality-estimation scripts used by AnnealBN-CE. The only intended difference is the origin of the structure:
+
+| Structure type           | Origin                                                |
+| ------------------------ | ----------------------------------------------------- |
+| AnnealBN-CE structure    | Learned from the QUBO formulation using `SA` or `SQA` |
+| Random-control structure | Randomly generated acyclic adjacency matrix           |
+
+The random matrices are generated with the same maximum-parent restriction used in the thesis experiments. Each generated matrix represents a candidate Bayesian-network structure. The cardinality-estimation script then fits the parameters on the same tabular relation and evaluates the same query workload.
+
+---
+
+### 3.1. Run the Random-Structure Pipeline
+
+Enter the `bnsl-qa` directory:
+
+```bash
+cd /workspace/bnsl-qa
+```
+
+Run the random-structure pipeline:
+
+```bash
+bash RNG_matrix.sh
+```
+
+The script displays the following menu:
+
+```text
+==== RNG MATRIX PIPELINE ====
+1) Generate matrices
+2) Run cardinality estimation
+3) Exit
+```
+
+On a first run, choose:
+
+```text
+1) Generate matrices
+```
+
+The script then asks for:
+
+```text
+Number of variables:
+Number of matrices:
+```
+
+The number of variables must match the number of variables in the dataset being checked. This is the number of columns used by the corresponding solver TXT representation and the corresponding cardinality-estimation script.
+
+For example:
+
+| Dataset                          | Number of variables |
+| -------------------------------- | ------------------: |
+| WetGrass                         |                   4 |
+| Market Basket                    |                   6 |
+| Movie Link capped representation |                   3 |
+
+For any new or modified dataset, check the first number in the solver TXT file header or the number of attributes used in the corresponding cardinality-estimation script. Do not use the number of rows as the number of variables.
+
+The number of matrices controls how many random DAG candidates should be generated. For example, choosing `4` variables and `10` matrices creates a file named:
+
+```text
+bnsl-qa/RNG_Matrix/matrices/RNG_matrix_10_4.txt
+```
+
+The file name has the form:
+
+```text
+RNG_matrix_<number_of_requested_matrices>_<number_of_variables>.txt
+```
+
+The generator deduplicates the matrices, so the number of unique matrices written to the file may be smaller than the number requested.
+
+---
+
+### 3.2. Run Cardinality Estimation on the Random Matrices
+
+After generating the random matrices, run the same script again if needed:
+
+```bash
+bash RNG_matrix.sh
+```
+
+Then choose:
+
+```text
+2) Run cardinality estimation
+```
+
+The script first asks you to select a cardinality-estimation script from:
+
+```text
+bnsl-qa/cardinality_estimation/
+```
+
+Choose the script that matches the dataset you want to evaluate:
+
+| Dataset       | Cardinality-estimation script                                    |
+| ------------- | ---------------------------------------------------------------- |
+| WetGrass      | `cardinality_estimation/cardinality_estimation_WetGrass.py`      |
+| NHANES        | `cardinality_estimation/cardinality_estimation_NHANES.py`        |
+| Market Basket | `cardinality_estimation/cardinality_estimation_Market_Basket.py` |
+| Movie Link    | `cardinality_estimation/cardinality_estimation_Movie_Link.py`    |
+
+Then select the random matrix file from:
+
+```text
+bnsl-qa/RNG_Matrix/matrices/
+```
+
+For example:
+
+```text
+RNG_matrix_10_4.txt
+```
+
+The script then evaluates every matrix in the selected file with the selected cardinality-estimation script.
+
+Before running this step, check that the selected cardinality-estimation script loads the correct CSV relation and uses the correct database table names in its query workload. This is the same consistency requirement as in the AnnealBN-CE pipeline.
+
+For example, a WetGrass random-structure check should use:
+
+```text
+Dataset: WetGrass
+Number of variables: 4
+Cardinality script: cardinality_estimation/cardinality_estimation_WetGrass.py
+CSV relation: ../bnsl/datasets/data/WetGrass_variance_zero.csv
+Database table in queries: wetgrass_data
+```
+
+A random matrix generated for one dataset must not be evaluated with another dataset's cardinality-estimation script. For example, a 4-variable WetGrass matrix should not be used with the 6-variable Market Basket script.
+
+---
+
+### 3.3. Random-Structure Output Files
+
+The random-structure robustness check writes its outputs to:
+
+```text
+bnsl-qa/RNG_Matrix/
+```
+
+The generated random matrices are stored in:
+
+```text
+bnsl-qa/RNG_Matrix/matrices/
+```
+
+For example:
+
+```text
+bnsl-qa/RNG_Matrix/matrices/RNG_matrix_10_4.txt
+```
+
+The cardinality-estimation outputs are stored in timestamped run folders under:
+
+```text
+bnsl-qa/RNG_Matrix/results/
+```
+
+For example:
+
+```text
+bnsl-qa/RNG_Matrix/results/run_2026-06-27_17-00-03/
+```
+
+A run folder may contain files such as:
+
+```text
+graph_1_cardinality.csv
+Graph_1.png
+graph_2_cardinality.csv
+Graph_2.png
+...
+final_queries_cardinality.csv
+```
+
+Each `graph_<id>_cardinality.csv` file contains the cardinality estimates produced by one random adjacency matrix.
+
+Each `Graph_<id>.png` file visualises the corresponding random Bayesian-network structure, if graph generation is enabled by the selected cardinality-estimation script.
+
+The file:
+
+```text
+final_queries_cardinality.csv
+```
+
+combines the per-matrix cardinality estimates into one CSV file. Its structure is:
+
+```text
+query_sql,matrix_1,matrix_2,...
+```
+
+The first column contains the query workload entry. Each following column contains the estimated cardinalities produced by one random matrix.
+
+---
+
+### 3.4. How to Interpret the Random-Structure Check
+
+The random-structure robustness check should be interpreted as a negative control.
+
+If the random structures produce cardinality estimates and q-errors similar to the AnnealBN-CE structures, then the observed estimation quality cannot be attributed confidently to the annealing-based structure-learning step.
+
+If the AnnealBN-CE structures produce lower median and maximum q-errors than the random structures, this supports the interpretation that the annealing solver finds structures that are useful for the cardinality-estimation task.
+
+The comparison should be made under the same conditions:
+
+1. same tabular relation;
+2. same query workload;
+3. same cardinality-estimation script;
+4. same true cardinalities;
+5. same q-error calculation procedure;
+6. same number of variables;
+7. same maximum-parent restriction.
+
+This ensures that the structure source is the main difference between the AnnealBN-CE result and the random-control result.
+
+---
+
+### 3.5. Checklist for the Robustness Check
+
+Before running the random-structure robustness check, verify the following:
+
+1. The dataset has already been prepared as described in the dataset-preparation section.
+2. The CSV relation exists in `bnsl/datasets/data/`.
+3. The selected cardinality-estimation script reads the correct CSV file.
+4. The SQL queries inside the selected script use the correct table name.
+5. The number of variables entered into `RNG_matrix.sh` matches the dataset.
+6. The selected random matrix file matches the dataset's number of variables.
+7. The selected cardinality-estimation script corresponds to the same dataset.
+8. The output file `final_queries_cardinality.csv` is created under `bnsl-qa/RNG_Matrix/results/run_<timestamp>/`.
+
+The random-structure robustness check produces validation outputs only. The generated random matrices should not be treated as learned AnnealBN-CE structures.
+
+
