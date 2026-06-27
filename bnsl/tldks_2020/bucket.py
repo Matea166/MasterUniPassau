@@ -1,3 +1,6 @@
+# This file is based on code from tldks-2020 by Max Halford.
+# Original project licensed under the Apache License, Version 2.0.
+
 import decimal
 
 
