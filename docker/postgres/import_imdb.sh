@@ -8,12 +8,15 @@ APP_ARCHIVE="$APP_IMDB_DIR/imdb.tgz"
 APP_EXTRACT_DIR="$APP_IMDB_DIR/extracted"
 
 DB_IMDB_DIR="/imdb_data"
+DB_EXTRACT_DIR="$DB_IMDB_DIR/extracted"
 
 DB_HOST="${POSTGRES_HOST:-postgres}"
 DB_PORT="${POSTGRES_PORT:-5432}"
 DB_USER="${POSTGRES_USER:-postgres}"
 DB_PASSWORD="${POSTGRES_PASSWORD:-postgres}"
 DB_NAME="imdb"
+
+SCHEMA_FILE="/workspace/docker/postgres/imdb/schema.sql"
 
 export PGPASSWORD="$DB_PASSWORD"
 
@@ -43,76 +46,10 @@ else
 echo "--- Extracted files already exist, skipping extraction ---"
 fi
 
-SCHEMA_FILE="/workspace/docker/postgres/imdb/schema.sql"
-LOAD_FILE=$(find "$APP_EXTRACT_DIR" -type f -name "load.sql" | head -1)
-
 if [ ! -f "$SCHEMA_FILE" ]; then
-    echo "Error: schema.sql not found at $SCHEMA_FILE"
-    exit 1
-fi
-
-if [ -z "$LOAD_FILE" ]; then
-echo "Error: load.sql not found after extraction."
+echo "Error: schema.sql not found at $SCHEMA_FILE"
 exit 1
 fi
-
-PATCHED_LOAD_FILE="$APP_IMDB_DIR/load_docker.sql"
-
-echo "--- Found import files ---"
-echo "Schema file: $SCHEMA_FILE"
-echo "Load file:   $LOAD_FILE"
-echo ""
-
-echo "--- Preparing Docker-compatible load file ---"
-python - <<PY
-from pathlib import Path
-import re
-
-app_imdb_dir = Path("$APP_IMDB_DIR").resolve()
-db_imdb_dir = "$DB_IMDB_DIR"
-
-load_file = Path("$LOAD_FILE")
-patched_file = Path("$PATCHED_LOAD_FILE")
-
-text = load_file.read_text()
-
-# Build a mapping from every extracted data filename to the path visible
-
-# inside the PostgreSQL container.
-
-data_files = {}
-for path in app_imdb_dir.rglob("*"):
-if path.is_file():
-rel = path.relative_to(app_imdb_dir)
-data_files[path.name] = f"{db_imdb_dir}/{rel.as_posix()}"
-
-def replace_copy_path(match):
-prefix = match.group(1)
-old_path = match.group(2)
-suffix = match.group(3)
-
-```
-filename = Path(old_path).name
-
-if filename in data_files:
-    return f"{prefix}{data_files[filename]}{suffix}"
-
-return match.group(0)
-```
-
-# Replace COPY ... FROM 'some/path/file.csv' with the equivalent
-
-# PostgreSQL-container path under /imdb_data.
-
-text = re.sub(
-r"(FROM\s+['\"])([^'\"]+)(['\"])",
-replace_copy_path,
-text,
-flags=re.IGNORECASE,
-)
-
-patched_file.write_text(text)
-PY
 
 echo "--- Checking PostgreSQL connection ---"
 psql -h "$DB_HOST" -p "$DB_PORT" -U "$DB_USER" -d postgres -c "SELECT 1;" > /dev/null
@@ -130,11 +67,84 @@ psql -h "$DB_HOST" -p "$DB_PORT" -U "$DB_USER" -d postgres
 echo "--- Importing schema ---"
 psql -h "$DB_HOST" -p "$DB_PORT" -U "$DB_USER" -d "$DB_NAME" -f "$SCHEMA_FILE"
 
-echo "--- Importing data ---"
-psql -h "$DB_HOST" -p "$DB_PORT" -U "$DB_USER" -d "$DB_NAME" -f "$PATCHED_LOAD_FILE"
+copy_table() {
+local table_name="$1"
+local csv_file="$APP_EXTRACT_DIR/${table_name}.csv"
+local db_csv_file="$DB_EXTRACT_DIR/${table_name}.csv"
+
+```
+if [ ! -f "$csv_file" ]; then
+    echo "Warning: CSV file not found for table '$table_name': $csv_file"
+    return
+fi
+
+echo "--- Importing table: $table_name ---"
+
+local first_line
+first_line=$(head -n 1 "$csv_file")
+
+if [[ "$first_line" == id,* ]]; then
+    psql -h "$DB_HOST" -p "$DB_PORT" -U "$DB_USER" -d "$DB_NAME" \
+        -c "\\copy ${table_name} FROM '${db_csv_file}' WITH (FORMAT csv, HEADER true, QUOTE '\"', ESCAPE '\"');"
+else
+    psql -h "$DB_HOST" -p "$DB_PORT" -U "$DB_USER" -d "$DB_NAME" \
+        -c "\\copy ${table_name} FROM '${db_csv_file}' WITH (FORMAT csv, HEADER false, QUOTE '\"', ESCAPE '\"');"
+fi
+```
+
+}
+
+echo "--- Importing CSV data ---"
+
+copy_table "aka_name"
+copy_table "aka_title"
+copy_table "cast_info"
+copy_table "char_name"
+copy_table "comp_cast_type"
+copy_table "company_name"
+copy_table "company_type"
+copy_table "complete_cast"
+copy_table "info_type"
+copy_table "keyword"
+copy_table "kind_type"
+copy_table "link_type"
+copy_table "movie_companies"
+copy_table "movie_info"
+copy_table "movie_info_idx"
+copy_table "movie_keyword"
+copy_table "movie_link"
+copy_table "name"
+copy_table "person_info"
+copy_table "role_type"
+copy_table "title"
 
 echo "--- Running ANALYZE ---"
 psql -h "$DB_HOST" -p "$DB_PORT" -U "$DB_USER" -d "$DB_NAME" -c "ANALYZE;"
 
 echo "--- Import complete. Available tables: ---"
 psql -h "$DB_HOST" -p "$DB_PORT" -U "$DB_USER" -d "$DB_NAME" -c "\dt"
+
+echo "--- Row counts ---"
+psql -h "$DB_HOST" -p "$DB_PORT" -U "$DB_USER" -d "$DB_NAME" -c "
+SELECT 'aka_name' AS table_name, COUNT(*) FROM aka_name
+UNION ALL SELECT 'aka_title', COUNT(*) FROM aka_title
+UNION ALL SELECT 'cast_info', COUNT(*) FROM cast_info
+UNION ALL SELECT 'char_name', COUNT(*) FROM char_name
+UNION ALL SELECT 'comp_cast_type', COUNT(*) FROM comp_cast_type
+UNION ALL SELECT 'company_name', COUNT(*) FROM company_name
+UNION ALL SELECT 'company_type', COUNT(*) FROM company_type
+UNION ALL SELECT 'complete_cast', COUNT(*) FROM complete_cast
+UNION ALL SELECT 'info_type', COUNT(*) FROM info_type
+UNION ALL SELECT 'keyword', COUNT(*) FROM keyword
+UNION ALL SELECT 'kind_type', COUNT(*) FROM kind_type
+UNION ALL SELECT 'link_type', COUNT(*) FROM link_type
+UNION ALL SELECT 'movie_companies', COUNT(*) FROM movie_companies
+UNION ALL SELECT 'movie_info', COUNT(*) FROM movie_info
+UNION ALL SELECT 'movie_info_idx', COUNT(*) FROM movie_info_idx
+UNION ALL SELECT 'movie_keyword', COUNT(*) FROM movie_keyword
+UNION ALL SELECT 'movie_link', COUNT(*) FROM movie_link
+UNION ALL SELECT 'name', COUNT(*) FROM name
+UNION ALL SELECT 'person_info', COUNT(*) FROM person_info
+UNION ALL SELECT 'role_type', COUNT(*) FROM role_type
+UNION ALL SELECT 'title', COUNT(*) FROM title;
+"
