@@ -9,7 +9,7 @@ import graphviz
 # 1. CONFIGURATION
 # ==========================================
 CSV_FILE = "movie_link"
-DATA_PATH = f"../datasets/data/{CSV_FILE}.csv"
+DATA_PATH = f"datasets/data/{CSV_FILE}.csv"
 OUTPUT_DIR = "../output_bn"
 RESULTS_DIR = "card_results"
 
