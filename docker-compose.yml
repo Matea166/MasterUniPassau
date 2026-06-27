@@ -10,7 +10,7 @@ services:
     environment:
       PYTHONPATH: /workspace:/workspace/bnsl-qa:/workspace/bnsl
       POSTGRES_HOST: postgres
-      POSTGRES_PORT: 5432
+      POSTGRES_PORT: "5432"
       POSTGRES_USER: postgres
       POSTGRES_PASSWORD: postgres
       POSTGRES_DB: nhanes
@@ -37,6 +37,7 @@ services:
       - annealbn_postgres_data:/var/lib/postgresql/data
       - ./docker/postgres/init:/docker-entrypoint-initdb.d:ro
       - ./bnsl/datasets/data:/datasets:ro
+      - ./imdb_data:/imdb_data:ro
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U postgres -d nhanes"]
       interval: 5s
