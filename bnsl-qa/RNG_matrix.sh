@@ -19,6 +19,7 @@ while true; do
     # ----------------------------
     if [ "$choice" == "1" ]; then
         read -r -p "Number of variables: " NUM_VARS
+        read -r -p "Number of variables: " NUM_MATRICES
 
         echo "Generating DAG matrices..."
         python3 generate_RNG_matrices.py "$NUM_VARS" "$NUM_MATRICES" "$MATRIX_DIR"
