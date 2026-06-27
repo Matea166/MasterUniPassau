@@ -87,27 +87,32 @@ fi
 
 echo "--- Importing CSV data ---"
 
+# Independent / lookup tables first
+copy_table "comp_cast_type"
+copy_table "company_type"
+copy_table "info_type"
+copy_table "kind_type"
+copy_table "keyword"
+copy_table "link_type"
+copy_table "role_type"
+
+# Entity tables
+copy_table "char_name"
+copy_table "company_name"
+copy_table "name"
+copy_table "title"
+
+# Dependent tables
 copy_table "aka_name"
 copy_table "aka_title"
 copy_table "cast_info"
-copy_table "char_name"
-copy_table "comp_cast_type"
-copy_table "company_name"
-copy_table "company_type"
 copy_table "complete_cast"
-copy_table "info_type"
-copy_table "keyword"
-copy_table "kind_type"
-copy_table "link_type"
 copy_table "movie_companies"
 copy_table "movie_info"
 copy_table "movie_info_idx"
 copy_table "movie_keyword"
 copy_table "movie_link"
-copy_table "name"
 copy_table "person_info"
-copy_table "role_type"
-copy_table "title"
 
 echo "--- Running ANALYZE ---"
 psql -v ON_ERROR_STOP=1 -h "$DB_HOST" -p "$DB_PORT" -U "$DB_USER" -d "$DB_NAME" -c "ANALYZE;"
