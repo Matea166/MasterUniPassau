@@ -27,7 +27,7 @@ select sqa_file in "${SQA_FILES[@]}"; do
 done
 
 # 3. Choose BN/Postgres file
-echo -e "\n--- Step 3: Select bnsl  Result File ---"
+echo -e "\n--- Step 3: Select bnsl Result File ---"
 BN_FILES=($(ls $BN_DIR/*.csv 2>/dev/null))
 select bn_file in "${BN_FILES[@]}"; do
     [ -n "$bn_file" ] && break
