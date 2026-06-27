@@ -9,7 +9,7 @@ DB_PASSWORD = "postgres"
 DB_HOST = "postgres"
 DB_PORT = "5432"
 
-CSV_FILE = "data/WetGrass_variance_zero.csv"
+CSV_FILE = "data/WetGrass_variance_non_zero.csv"
 TABLE_NAME = "wetgrass_data"
 # ----------------------------
 
