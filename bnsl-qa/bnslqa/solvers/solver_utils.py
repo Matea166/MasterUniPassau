@@ -1,3 +1,6 @@
+# This file is based on code from BNSL-QA-PYTHON.
+# Original project licensed under the GNU General Public License, Version 2.
+
 import torch
 
 def getExpectedSolution(solution, Q, indexQUBO, posOfIndex, n):
