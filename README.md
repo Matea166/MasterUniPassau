@@ -776,3 +776,474 @@ PostgreSQL table: movie_link
 ```
 
 The file names used here should match the names expected by the solver dispatch scripts and the cardinality-estimation scripts. If a dataset name, CSV file name, TXT file name, database name, or table name is changed, update the corresponding configuration variables in the relevant Python scripts before running the next stage.
+
+One correction before the copy-paste text: in the raw Chow--Liu CSV, `est_selectivity` is **not** the PostgreSQL estimate. In the code, it is the Bayesian-network selectivity/probability. PostgreSQL estimates are added later by `cardinality_benchmarks.sh` in the `_final.csv` file as `pg_est_cardinality`. ([GitHub][1])
+
+I also checked that the correct script name is `cardinality_benchmarks.sh` with **plural** `benchmarks`, and that `dispatch.sh` creates the three output areas described below. ([GitHub][2])
+
+## 2. Running Cardinality Estimates
+
+After the datasets have been prepared, the repository supports two cardinality-estimation pipelines:
+
+1. **AnnealBN-CE**, which uses adjacency matrices learned by simulated annealing or simulated quantum annealing.
+2. **Chow--Liu baseline**, implemented in the `bnsl` directory and used as the classical Bayesian-network benchmark.
+
+Both pipelines assume that the relevant CSV relation has already been created in `bnsl/datasets/data/` and that the corresponding PostgreSQL table has already been imported.
+
+---
+
+## 2.1. AnnealBN-CE Cardinality Estimates
+
+The AnnealBN-CE pipeline is executed from the `bnsl-qa` directory. It starts from a solver TXT file, learns one or more Bayesian-network structures through annealing, fits each learned structure on the corresponding CSV relation, and writes query-level cardinality estimates.
+
+Enter the `bnsl-qa` directory:
+
+```bash
+cd /workspace/bnsl-qa
+```
+
+Run the interactive dispatch script:
+
+```bash
+bash dispatch.sh
+```
+
+The script guides the execution interactively. On a first run, select:
+
+```text
+Run solver now
+```
+
+Then select:
+
+1. the solver TXT dataset from `bnsl-qa/qa-datasets/`;
+2. the annealing solver, either `SA` or `SQA`;
+3. the number of trials;
+4. the number of annealing reads;
+5. the cardinality-estimation script matching the selected dataset.
+
+The available cardinality-estimation scripts are stored in:
+
+```text
+bnsl-qa/cardinality_estimation/
+```
+
+Use the script that corresponds to the selected dataset:
+
+| Dataset       | Cardinality-estimation script                                    |
+| ------------- | ---------------------------------------------------------------- |
+| WetGrass      | `cardinality_estimation/cardinality_estimation_WetGrass.py`      |
+| NHANES        | `cardinality_estimation/cardinality_estimation_NHANES.py`        |
+| Market Basket | `cardinality_estimation/cardinality_estimation_Market_Basket.py` |
+| Movie Link    | `cardinality_estimation/cardinality_estimation_Movie_Link.py`    |
+
+Before running a dataset, check that the selected cardinality-estimation script reads the correct CSV file. The solver TXT file is used for structure learning, but the cardinality-estimation script separately loads the CSV relation with `pd.read_csv(...)` or `pd.read_csv(dataset_path)`. Therefore, the CSV path in the selected script must match the dataset prepared in `bnsl/datasets/data/`.
+
+For example, the WetGrass script should load:
+
+```python
+df = pd.read_csv("../bnsl/datasets/data/WetGrass_variance_zero.csv")
+```
+
+The Market Basket script should load the intended Market Basket CSV file, for example:
+
+```python
+df = pd.read_csv("../bnsl/datasets/data/DataMining_MarketBasket_100.csv")
+```
+
+If the dataset size or file name was changed during dataset preparation, update this path before running the dispatch pipeline.
+
+### 2.1.1. Trials and Reads
+
+The dispatch script asks for two solver parameters:
+
+| Parameter | Meaning                                                                                                                                                                                        |
+| --------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Trials    | Number of independent solver executions for the selected dataset, solver, and read setting. Trials are used to observe whether repeated runs produce the same or different learned structures. |
+| Reads     | Number of annealing reads passed to the solver in each trial. A read is one solver attempt to sample a candidate binary assignment for the QUBO problem.                                       |
+
+For example, if `trials = 5` and `reads = 100`, the script runs the selected solver five independent times, and each solver execution uses 100 annealing reads.
+
+The selected solver returns binary assignments for the QUBO formulation. These assignments are decoded into adjacency matrices. Each unique adjacency matrix represents one learned Bayesian-network structure.
+
+If both `SA` and `SQA` should be evaluated, run `dispatch.sh` once for `SA` and then run it again for `SQA`.
+
+---
+
+## 2.2. Reusing Previous Unique Matrices
+
+After at least one solver run has been completed, `dispatch.sh` can also reuse previously generated unique matrices. In that case, select:
+
+```text
+Use previous unique matrices
+```
+
+This mode is useful when the solver has already been run and only the cardinality-estimation step should be repeated. The script asks for a previous `unique_adjacency_matrix.txt` file and then applies the selected cardinality-estimation script to the stored matrices.
+
+This avoids rerunning the annealing solver and makes it possible to regenerate graph visualisations or cardinality CSV files from existing learned structures.
+
+---
+
+## 2.3. AnnealBN-CE Output Structure
+
+The dispatch pipeline writes all AnnealBN-CE outputs to:
+
+```text
+bnsl-qa/dispatch_output/
+```
+
+This directory contains three main output areas:
+
+```text
+dispatch_output/
+├── cardinality_estimation_outputs/
+├── results/
+└── solver_outputs/
+```
+
+### 2.3.1. Per-Graph Cardinality Outputs
+
+Per-graph cardinality outputs are stored in:
+
+```text
+dispatch_output/cardinality_estimation_outputs/
+```
+
+The outputs are separated by solver:
+
+```text
+dispatch_output/cardinality_estimation_outputs/
+├── SA-results/
+└── SQA-results/
+```
+
+Each run creates a timestamped folder. For example:
+
+```text
+dispatch_output/cardinality_estimation_outputs/SA-results/
+└── SA-results_WetGrass_2_2026-06-27_15-37-18/
+    ├── Graph_1.png
+    └── graph_1_cardinality.csv
+```
+
+For SQA, if two unique adjacency matrices are found, the output may look like:
+
+```text
+dispatch_output/cardinality_estimation_outputs/SQA-results/
+└── SQA-results_WetGrass_1_2026-06-27_15-42-10/
+    ├── Graph_1.png
+    ├── graph_1_cardinality.csv
+    ├── Graph_2.png
+    └── graph_2_cardinality.csv
+```
+
+The folder name has the following form:
+
+```text
+<SOLVER>-results_<DATASET>_<READS>_<TIMESTAMP>
+```
+
+For example:
+
+```text
+SA-results_WetGrass_2_2026-06-27_15-37-18
+```
+
+means:
+
+| Part                  | Meaning                                          |
+| --------------------- | ------------------------------------------------ |
+| `SA-results`          | Simulated annealing cardinality outputs          |
+| `WetGrass`            | Dataset name inferred from the selected TXT file |
+| `2`                   | Number of annealing reads                        |
+| `2026-06-27_15-37-18` | Timestamp in `YYYY-MM-DD_HH-MM-SS` format        |
+
+Each `Graph_<id>.png` file visualises one learned Bayesian-network structure. Each `graph_<id>_cardinality.csv` file contains the cardinality estimates produced by that specific graph.
+
+The per-graph CSV files have the format:
+
+```text
+query_sql,estimated_cardinality
+```
+
+For example:
+
+```text
+query_sql,estimated_cardinality
+SELECT * FROM wetgrass_data WHERE wetgrass = 'f',17.46000
+SELECT * FROM wetgrass_data WHERE cloud = 't' AND wetgrass = 't',21.36000
+```
+
+These files are useful for inspecting the estimates of each learned Bayesian network separately.
+
+### 2.3.2. Final Combined AnnealBN-CE Results
+
+The combined AnnealBN-CE result files are stored in:
+
+```text
+dispatch_output/results/
+```
+
+For example:
+
+```text
+dispatch_output/results/
+├── final_queriescardinality_SA_WetGrass_2_2026-06-27_15-37-18.csv
+└── final_queriescardinality_SQA_WetGrass_1_2026-06-27_15-42-10.csv
+```
+
+Each final CSV merges the per-graph cardinality estimates into one file. The first column contains the query, and each following column contains the estimates of one learned graph:
+
+```text
+query_sql,Graph_1.png,Graph_2.png
+```
+
+For example:
+
+```text
+SELECT * FROM wetgrass_data WHERE wetgrass = 'f',18.0,20.862
+SELECT * FROM wetgrass_data WHERE cloud = 't' AND wetgrass = 't',21.0,16.824
+```
+
+The graph columns correspond to the graph visualisations in `cardinality_estimation_outputs/`. For example, `Graph_1.png` in the final CSV corresponds to the file `Graph_1.png` in the matching run folder.
+
+This final file is the main AnnealBN-CE output used for comparing the cardinality estimates produced by the unique learned Bayesian-network structures.
+
+### 2.3.3. Solver Outputs and Diagnostics
+
+Solver outputs are stored in:
+
+```text
+dispatch_output/solver_outputs/
+```
+
+The outputs are separated by solver:
+
+```text
+dispatch_output/solver_outputs/
+├── SA/
+└── SQA/
+```
+
+Each solver run creates a timestamped folder. For example:
+
+```text
+dispatch_output/solver_outputs/SA/
+└── SA_Matrix_WetGrass_2_2_2026-06-27_15-37-18/
+    ├── adjacency_matrix.txt
+    └── unique_adjacency_matrix.txt
+```
+
+The folder name has the following form:
+
+```text
+<SOLVER>_Matrix_<DATASET>_<TRIALS>_<READS>_<TIMESTAMP>
+```
+
+For example:
+
+```text
+SA_Matrix_WetGrass_2_2_2026-06-27_15-37-18
+```
+
+means:
+
+| Part                  | Meaning                                   |
+| --------------------- | ----------------------------------------- |
+| `SA_Matrix`           | Solver output from simulated annealing    |
+| `WetGrass`            | Dataset name                              |
+| `2`                   | Number of trials                          |
+| `2`                   | Number of reads                           |
+| `2026-06-27_15-37-18` | Timestamp in `YYYY-MM-DD_HH-MM-SS` format |
+
+The file:
+
+```text
+adjacency_matrix.txt
+```
+
+stores the complete solver-side output for all trials. This file is intended for transparency and debugging. It may include duplicate solution matrices if the solver returns the same structure more than once.
+
+Depending on the dataset and solver run, `adjacency_matrix.txt` may contain:
+
+```text
+QUBO Matrix
+Expected adjacency matrix
+Solution adjacency matrix
+Expected solution
+expY
+expX
+Minimum found
+minY
+minX
+minY/expY
+Method
+Number of reads
+Occurrences of minX
+Found minX at read
+QUBO formulation time
+Annealing/Execution time
+```
+
+The file:
+
+```text
+unique_adjacency_matrix.txt
+```
+
+contains only the deduplicated adjacency matrices extracted from `adjacency_matrix.txt`. Each line represents one unique learned Bayesian-network structure. This is the file used by the cardinality-estimation step, so identical structures are not evaluated repeatedly.
+
+---
+
+## 2.4. Chow--Liu Baseline Cardinality Estimates
+
+The Chow--Liu baseline is executed from the `bnsl` directory. This pipeline learns a tree-structured Bayesian network from the selected CSV relation and compares its cardinality estimates with the true cardinalities and PostgreSQL planner estimates.
+
+Enter the `bnsl` directory:
+
+```bash
+cd /workspace/bnsl
+```
+
+Run the benchmark script:
+
+```bash
+bash cardinality_benchmarks.sh
+```
+
+The script is interactive. It first lists the available PostgreSQL databases and asks which database should be used for the comparison. Then it asks which Python cardinality-estimation script should be executed.
+
+The Chow--Liu cardinality-estimation scripts are stored in:
+
+```text
+bnsl/cardinality_estimation/
+```
+
+The relevant scripts are:
+
+| Dataset       | Chow--Liu script                                                 |
+| ------------- | ---------------------------------------------------------------- |
+| WetGrass      | `cardinality_estimation/cardinality_estimation_wetgrass.py`      |
+| NHANES        | `cardinality_estimation/cardinality_estimation_NHANES_robust.py` |
+| Market Basket | `cardinality_estimation/cardinality_estimation_market_basket.py` |
+| Movie Link    | `cardinality_estimation/cardinality_estimation_movie_link.py`    |
+
+Before running a script, check that its CSV configuration matches the prepared dataset. In most scripts, the CSV file is selected through variables such as:
+
+```python
+CSV_FILE = "WetGrass_variance_zero"
+DATA_PATH = f"datasets/data/{CSV_FILE}.csv"
+```
+
+The file name must match a CSV file in:
+
+```text
+bnsl/datasets/data/
+```
+
+For example, if the prepared CSV file is:
+
+```text
+bnsl/datasets/data/WetGrass_variance_zero.csv
+```
+
+then the script should use:
+
+```python
+CSV_FILE = "WetGrass_variance_zero"
+```
+
+If a different dataset size or file name is used, update `CSV_FILE` before running the benchmark.
+
+The selected PostgreSQL database must also match the SQL queries inside the selected cardinality-estimation script. For example:
+
+| Dataset       | Expected PostgreSQL database | Expected table  |
+| ------------- | ---------------------------- | --------------- |
+| WetGrass      | `wetgrass`                   | `wetgrass_data` |
+| NHANES        | `nhanes`                     | `nhanes_data`   |
+| Market Basket | `market_basket`              | `transactions`  |
+| Movie Link    | `imdb`                       | `movie_link`    |
+
+For the Movie Link experiment, select the `imdb` database. In this repository, the Movie Link workload uses only the `movie_link` table from the imported IMDB/JOB data.
+
+---
+
+## 2.5. Chow--Liu Output Files
+
+The Chow--Liu benchmark writes its results to:
+
+```text
+bnsl/card_results/
+```
+
+For each run, two CSV files are produced:
+
+```text
+result_<DATASET>_<TIMESTAMP>.csv
+result_<DATASET>_<TIMESTAMP>_final.csv
+```
+
+For example:
+
+```text
+card_results/
+├── result_WetGrass_variance_zero_20260627_163617.csv
+└── result_WetGrass_variance_zero_20260627_163617_final.csv
+```
+
+The non-final CSV is the raw output of the selected Chow--Liu cardinality-estimation script. It contains the query, the true cardinality, the Chow--Liu estimate, and the Bayesian-network selectivity.
+
+For the standard scripts, the raw file has the structure:
+
+```text
+query_sql,true_cardinality,bn_est_cardinality,est_selectivity
+```
+
+The meaning of the columns is:
+
+| Column               | Meaning                                                             |
+| -------------------- | ------------------------------------------------------------------- |
+| `query_sql`          | Query workload entry                                                |
+| `true_cardinality`   | Cardinality obtained directly from the CSV relation                 |
+| `bn_est_cardinality` | Chow--Liu Bayesian-network cardinality estimate                     |
+| `est_selectivity`    | Selectivity/probability estimated by the Chow--Liu Bayesian network |
+
+The `_final.csv` file is created by `cardinality_benchmarks.sh`. It adds the PostgreSQL planner estimate by running `EXPLAIN (FORMAT JSON)` for each query against the selected PostgreSQL database.
+
+The final file has the structure:
+
+```text
+query_sql,true_cardinality,bn_est_cardinality,pg_est_cardinality
+```
+
+The meaning of the columns is:
+
+| Column               | Meaning                                 |
+| -------------------- | --------------------------------------- |
+| `query_sql`          | Query workload entry                    |
+| `true_cardinality`   | True cardinality                        |
+| `bn_est_cardinality` | Chow--Liu cardinality estimate          |
+| `pg_est_cardinality` | PostgreSQL planner cardinality estimate |
+
+The `_final.csv` file is the main Chow--Liu baseline output used for comparison with PostgreSQL and AnnealBN-CE.
+
+---
+
+## 2.6. Checklist Before Running Cardinality Estimation
+
+Before running either pipeline, check the following:
+
+1. The required CSV file exists in `bnsl/datasets/data/`.
+2. The required solver TXT file exists in `bnsl-qa/qa-datasets/` if AnnealBN-CE is being run.
+3. The PostgreSQL database and table have been created and populated.
+4. The selected cardinality-estimation script loads the correct CSV file.
+5. The SQL queries inside the selected script use the correct PostgreSQL table name.
+6. The selected dataset, solver output, and cardinality-estimation script refer to the same variable order and state mapping.
+
+For AnnealBN-CE, also check that the selected adjacency matrix has the same number of variables as the selected cardinality-estimation script expects. For example, a WetGrass matrix has four variables and must be used with the WetGrass cardinality-estimation script, not with the Market Basket or NHANES scripts.
+
+For Chow--Liu, check that the selected PostgreSQL database corresponds to the selected script. For example, if `cardinality_estimation_wetgrass.py` is selected, the PostgreSQL database should be `wetgrass`, and the table referenced in the script should be `wetgrass_data`.
+
+[1]: https://raw.githubusercontent.com/Matea166/MasterUniPassau/master/bnsl/cardinality_estimation/cardinality_estimation_wetgrass.py "raw.githubusercontent.com"
+[2]: https://raw.githubusercontent.com/Matea166/MasterUniPassau/master/bnsl-qa/dispatch.sh "raw.githubusercontent.com"
+
