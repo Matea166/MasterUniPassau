@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 
 # Configuration
-DB_CONTAINER="job_db_fixed"
+DB_CONTAINER="annealbn-ce-postgres"
 DB_USER="postgres"
 RESULTS_DIR="card_results"
 
