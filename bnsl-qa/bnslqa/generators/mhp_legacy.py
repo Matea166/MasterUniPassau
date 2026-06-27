@@ -1,3 +1,9 @@
+# This file is based on code from BNSL-QA-PYTHON.
+# Original project licensed under the GNU General Public License, Version 2.
+# Modified by Matea Qazolli, 2026.
+# Modifications include dataset output-path adaptation and generated-dataset
+# message updates for the experiment workflow.
+
 import random
 import json
 from bnslqa.generators.generator_utils import printResults, getSolutionVector
