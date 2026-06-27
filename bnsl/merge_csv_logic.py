@@ -199,18 +199,22 @@ fig, ax = plt.subplots(figsize=(22, 10))
 def add_bar_labels(rects, extra_info=None):
     for i, rect in enumerate(rects):
         height = rect.get_height()
+
         if height >= 0 and not np.isnan(height):
             label = f"{height:.1f}" if extra_info is None else extra_info[i]
+
+            x_center = rect.get_x() + rect.get_width() / 2
+
             ax.annotate(
                 label,
-                xy=(rect.get_x() + rect.get_width() / 2, height),
-                xytext=(0, 6),
+                xy=(x_center, height),
+                xytext=(0, 4),
                 textcoords="offset points",
                 ha="center",
                 va="bottom",
                 fontsize=8,
                 rotation=90,
-                rotation_mode="anchor"
+                clip_on=False
             )
 
 
