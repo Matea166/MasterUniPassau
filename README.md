@@ -134,15 +134,6 @@ For GitHub README display, it is recommended to export the PDF as a PNG and save
 ```text
 bnsl-qa/images/WetGrass.png
 ```
-
-The figure can then be included in the README with:
-
-```html
-<p align="center">
-  <img src="bnsl-qa/images/WetGrass.png" width="850" alt="WetGrass Bayesian network and conditional probability tables">
-</p>
-```
-
 ### 1.3.1. Generate the WetGrass Solver TXT File
 
 Enter the `bnsl-qa` directory:
