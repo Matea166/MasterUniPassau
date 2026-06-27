@@ -6,7 +6,7 @@ DB_NAME = "nhanes"
 DB_USER = "postgres"
 DB_PASSWORD = "postgres"
 DB_HOST = "localhost"
-DB_PORT = "5433"
+DB_PORT = "5432"
 
 CSV_FILE = "data/NHANES_age_prediction.csv"
 TABLE_NAME = "nhanes_data"
