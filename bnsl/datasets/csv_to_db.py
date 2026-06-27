@@ -2,23 +2,23 @@ import psycopg2
 import pandas as pd
 
 # ---------- CONFIG ----------
-DB_NAME = "wetgrass_variance_nonzero"
+DB_NAME = "nhanes"
 DB_USER = "postgres"
 DB_PASSWORD = "postgres"
-DB_HOST = "localhost"
+
+DB_HOST = "postgres"
 DB_PORT = "5432"
 
-CSV_FILE = "data/WetGrass_variance_non_zero.csv"
-TABLE_NAME = "wetgrass_data"
+CSV_FILE = "data/NHANES_age_prediction.csv"
+TABLE_NAME = "nhanes_data"
 # ----------------------------
 
-# Connect to PostgreSQL
 conn = psycopg2.connect(
-    host=os.getenv("POSTGRES_HOST", "localhost"),
-    port=os.getenv("POSTGRES_PORT", "5432"),
-    database=os.getenv("POSTGRES_DB", "imdb"),
-    user=os.getenv("POSTGRES_USER", "postgres"),
-    password=os.getenv("POSTGRES_PASSWORD", "postgres"),
+    dbname=DB_NAME,
+    user=DB_USER,
+    password=DB_PASSWORD,
+    host=DB_HOST,
+    port=DB_PORT
 )
 
 cur = conn.cursor()
