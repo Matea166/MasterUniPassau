@@ -3,6 +3,9 @@ __pycache__/
 
 bnslqa/problems/test
 
+# Large local IMDB/JOB dataset files
+imdb_data/
+
 gen5tests.sh
 fix
 fix_dataset.py
