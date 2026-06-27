@@ -3,7 +3,7 @@ import csv
 # =========================
 # CONFIG
 # =========================
-input_txt_file = "../../bnslqa/qa-datasets/WetGrass.txt"
+input_txt_file = "../../bnsl-qa/bnslqa/datasets/WetGrass.txt"
 output_csv_file = "data/WetGrass_variance_zero.csv"
 
 
