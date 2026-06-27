@@ -1,3 +1,0 @@
-python -m bnslqa generate problems/WetGrass.json --size 1000 --expected --name WetGrass
-python -m bnslqa generate problems/WetGrass.json --size 1000 --name WetGrass
-python -m bnslqa solve qa-datasets/WetGrass.txt SA --reads 50
