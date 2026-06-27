@@ -38,6 +38,8 @@ done
 
 # 2. FIND PYTHON FILES
 
+# 2. FIND PYTHON FILES
+
 files=(cardinality_estimation/cardinality_estimation_*.py)
 if [ ${#files[@]} -eq 0 ]; then
 echo "No cardinality_estimation_*.py files found."
@@ -45,11 +47,18 @@ exit 1
 fi
 
 echo -e "\nSelect a Python script to run:"
-select file in "${files[@]}" "Run All" "Exit"; do
-case $file in
-"Exit") exit 0 ;;
-"Run All") target_files=("${files[@]}") ; break ;;
-*) target_files=("$file") ; break ;;
+select file in "${files[@]}" "Exit"; do
+case "$file" in
+"Exit")
+    exit 0
+    ;;
+"")
+    echo "Invalid selection."
+    ;;
+*)
+    target_files=("$file")
+    break
+    ;;
 esac
 done
 
