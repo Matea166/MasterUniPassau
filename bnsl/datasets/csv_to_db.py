@@ -2,15 +2,15 @@ import psycopg2
 import pandas as pd
 
 # ---------- CONFIG ----------
-DB_NAME = "nhanes"
+DB_NAME = "wetgrass"
 DB_USER = "postgres"
 DB_PASSWORD = "postgres"
 
 DB_HOST = "postgres"
 DB_PORT = "5432"
 
-CSV_FILE = "data/NHANES_age_prediction.csv"
-TABLE_NAME = "nhanes_data"
+CSV_FILE = "data/WetGrass_variance_zero.csv"
+TABLE_NAME = "wetgrass_data"
 # ----------------------------
 
 conn = psycopg2.connect(
