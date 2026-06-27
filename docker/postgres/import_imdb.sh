@@ -63,21 +63,21 @@ echo "--- Importing schema ---"
 psql -v ON_ERROR_STOP=1 -h "$DB_HOST" -p "$DB_PORT" -U "$DB_USER" -d "$DB_NAME" -f "$SCHEMA_FILE"
 
 echo "--- Disabling foreign-key triggers during bulk import ---"
-psql -v ON_ERROR_STOP=1 -h "$DB_HOST" -p "$DB_PORT" -U "$DB_USER" -d "$DB_NAME" -c "
+psql -v ON_ERROR_STOP=1 -h "$DB_HOST" -p "$DB_PORT" -U "$DB_USER" -d "$DB_NAME" <<'SQL'
 DO $$
 DECLARE
-r RECORD;
+    r RECORD;
 BEGIN
-FOR r IN
-SELECT schemaname, tablename
-FROM pg_tables
-WHERE schemaname = 'public'
-LOOP
-EXECUTE format('ALTER TABLE %I.%I DISABLE TRIGGER ALL', r.schemaname, r.tablename);
-END LOOP;
+    FOR r IN
+        SELECT schemaname, tablename
+        FROM pg_tables
+        WHERE schemaname = 'public'
+    LOOP
+        EXECUTE format('ALTER TABLE %I.%I DISABLE TRIGGER ALL', r.schemaname, r.tablename);
+    END LOOP;
 END
 $$;
-"
+SQL
 
 copy_table() {
 local table_name="$1"
@@ -135,21 +135,21 @@ copy_table "movie_link"
 copy_table "person_info"
 
 echo "--- Re-enabling triggers after bulk import ---"
-psql -v ON_ERROR_STOP=1 -h "$DB_HOST" -p "$DB_PORT" -U "$DB_USER" -d "$DB_NAME" -c "
+psql -v ON_ERROR_STOP=1 -h "$DB_HOST" -p "$DB_PORT" -U "$DB_USER" -d "$DB_NAME" <<'SQL'
 DO $$
 DECLARE
-r RECORD;
+    r RECORD;
 BEGIN
-FOR r IN
-SELECT schemaname, tablename
-FROM pg_tables
-WHERE schemaname = 'public'
-LOOP
-EXECUTE format('ALTER TABLE %I.%I ENABLE TRIGGER ALL', r.schemaname, r.tablename);
-END LOOP;
+    FOR r IN
+        SELECT schemaname, tablename
+        FROM pg_tables
+        WHERE schemaname = 'public'
+    LOOP
+        EXECUTE format('ALTER TABLE %I.%I ENABLE TRIGGER ALL', r.schemaname, r.tablename);
+    END LOOP;
 END
 $$;
-"
+SQL
 
 echo "--- Running ANALYZE ---"
 psql -v ON_ERROR_STOP=1 -h "$DB_HOST" -p "$DB_PORT" -U "$DB_USER" -d "$DB_NAME" -c "ANALYZE;"
