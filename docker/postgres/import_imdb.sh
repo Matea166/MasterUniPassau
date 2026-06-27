@@ -52,43 +52,36 @@ exit 1
 fi
 
 echo "--- Checking PostgreSQL connection ---"
-psql -h "$DB_HOST" -p "$DB_PORT" -U "$DB_USER" -d postgres -c "SELECT 1;" > /dev/null
+psql -v ON_ERROR_STOP=1 -h "$DB_HOST" -p "$DB_PORT" -U "$DB_USER" -d postgres -c "SELECT 1;" > /dev/null
 
 echo "--- Recreating database '$DB_NAME' ---"
-psql -h "$DB_HOST" -p "$DB_PORT" -U "$DB_USER" -d postgres 
--c "SELECT pg_terminate_backend(pid) FROM pg_stat_activity WHERE datname = '$DB_NAME';"
-
-psql -h "$DB_HOST" -p "$DB_PORT" -U "$DB_USER" -d postgres 
--c "DROP DATABASE IF EXISTS $DB_NAME;"
-
-psql -h "$DB_HOST" -p "$DB_PORT" -U "$DB_USER" -d postgres 
--c "CREATE DATABASE $DB_NAME;"
+psql -v ON_ERROR_STOP=1 -h "$DB_HOST" -p "$DB_PORT" -U "$DB_USER" -d postgres -c "SELECT pg_terminate_backend(pid) FROM pg_stat_activity WHERE datname = '$DB_NAME';"
+psql -v ON_ERROR_STOP=1 -h "$DB_HOST" -p "$DB_PORT" -U "$DB_USER" -d postgres -c "DROP DATABASE IF EXISTS $DB_NAME;"
+psql -v ON_ERROR_STOP=1 -h "$DB_HOST" -p "$DB_PORT" -U "$DB_USER" -d postgres -c "CREATE DATABASE $DB_NAME;"
 
 echo "--- Importing schema ---"
-psql -h "$DB_HOST" -p "$DB_PORT" -U "$DB_USER" -d "$DB_NAME" -f "$SCHEMA_FILE"
+psql -v ON_ERROR_STOP=1 -h "$DB_HOST" -p "$DB_PORT" -U "$DB_USER" -d "$DB_NAME" -f "$SCHEMA_FILE"
 
 copy_table() {
 local table_name="$1"
-local csv_file="$APP_EXTRACT_DIR/${table_name}.csv"
+local app_csv_file="$APP_EXTRACT_DIR/${table_name}.csv"
 local db_csv_file="$DB_EXTRACT_DIR/${table_name}.csv"
 
 ```
-if [ ! -f "$csv_file" ]; then
-    echo "Warning: CSV file not found for table '$table_name': $csv_file"
+if [ ! -f "$app_csv_file" ]; then
+    echo "Warning: CSV file not found for table '$table_name': $app_csv_file"
     return
 fi
 
 echo "--- Importing table: $table_name ---"
 
 local first_line
-first_line=$(head -n 1 "$csv_file")
+first_line=$(head -n 1 "$app_csv_file")
 
 if [[ "$first_line" == id,* ]]; then
-    psql -h "$DB_HOST" -p "$DB_PORT" -U "$DB_USER" -d "$DB_NAME" \
-        -c "\\copy ${table_name} FROM '${db_csv_file}' WITH (FORMAT csv, HEADER true, QUOTE '\"', ESCAPE '\"');"
+    psql -v ON_ERROR_STOP=1 -h "$DB_HOST" -p "$DB_PORT" -U "$DB_USER" -d "$DB_NAME" -c "COPY ${table_name} FROM '${db_csv_file}' WITH (FORMAT csv, HEADER true, NULL '', QUOTE '\"', ESCAPE '\"');"
 else
-    psql -h "$DB_HOST" -p "$DB_PORT" -U "$DB_USER" -d "$DB_NAME" \
-        -c "\\copy ${table_name} FROM '${db_csv_file}' WITH (FORMAT csv, HEADER false, QUOTE '\"', ESCAPE '\"');"
+    psql -v ON_ERROR_STOP=1 -h "$DB_HOST" -p "$DB_PORT" -U "$DB_USER" -d "$DB_NAME" -c "COPY ${table_name} FROM '${db_csv_file}' WITH (FORMAT csv, HEADER false, NULL '', QUOTE '\"', ESCAPE '\"');"
 fi
 ```
 
@@ -119,13 +112,13 @@ copy_table "role_type"
 copy_table "title"
 
 echo "--- Running ANALYZE ---"
-psql -h "$DB_HOST" -p "$DB_PORT" -U "$DB_USER" -d "$DB_NAME" -c "ANALYZE;"
+psql -v ON_ERROR_STOP=1 -h "$DB_HOST" -p "$DB_PORT" -U "$DB_USER" -d "$DB_NAME" -c "ANALYZE;"
 
 echo "--- Import complete. Available tables: ---"
-psql -h "$DB_HOST" -p "$DB_PORT" -U "$DB_USER" -d "$DB_NAME" -c "\dt"
+psql -v ON_ERROR_STOP=1 -h "$DB_HOST" -p "$DB_PORT" -U "$DB_USER" -d "$DB_NAME" -c "\dt"
 
 echo "--- Row counts ---"
-psql -h "$DB_HOST" -p "$DB_PORT" -U "$DB_USER" -d "$DB_NAME" -c "
+psql -v ON_ERROR_STOP=1 -h "$DB_HOST" -p "$DB_PORT" -U "$DB_USER" -d "$DB_NAME" -c "
 SELECT 'aka_name' AS table_name, COUNT(*) FROM aka_name
 UNION ALL SELECT 'aka_title', COUNT(*) FROM aka_title
 UNION ALL SELECT 'cast_info', COUNT(*) FROM cast_info
