@@ -1,5 +1,3 @@
-I verified the key scripts again and corrected the README accordingly: `dispatch.sh`, `RNG_matrix.sh`, `merge_results.sh`, `merge_csv_logic.py`, `qerror_calculation.sh`, and the dataset conversion scripts. The version below removes assistant notes, adds a proper title/introduction, corrects the q-error columns, and updates the NHANES TXT output note to match the current script. ([GitHub][1])
-
 # AnnealBN-CE: Cardinality Estimation with Annealing-Learned Bayesian Networks
 
 This repository contains the implementation used for the master thesis on cardinality estimation with annealing-learned Bayesian networks. It provides scripts for preparing datasets, learning Bayesian-network structures with simulated annealing and simulated quantum annealing, estimating query cardinalities, comparing against PostgreSQL and a Chow--Liu baseline, running optional random-structure robustness checks, and producing q-error and visualisation outputs.
