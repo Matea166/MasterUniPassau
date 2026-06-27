@@ -62,6 +62,23 @@ psql -v ON_ERROR_STOP=1 -h "$DB_HOST" -p "$DB_PORT" -U "$DB_USER" -d postgres -c
 echo "--- Importing schema ---"
 psql -v ON_ERROR_STOP=1 -h "$DB_HOST" -p "$DB_PORT" -U "$DB_USER" -d "$DB_NAME" -f "$SCHEMA_FILE"
 
+echo "--- Disabling foreign-key triggers during bulk import ---"
+psql -v ON_ERROR_STOP=1 -h "$DB_HOST" -p "$DB_PORT" -U "$DB_USER" -d "$DB_NAME" -c "
+DO $$
+DECLARE
+r RECORD;
+BEGIN
+FOR r IN
+SELECT schemaname, tablename
+FROM pg_tables
+WHERE schemaname = 'public'
+LOOP
+EXECUTE format('ALTER TABLE %I.%I DISABLE TRIGGER ALL', r.schemaname, r.tablename);
+END LOOP;
+END
+$$;
+"
+
 copy_table() {
 local table_name="$1"
 local app_csv_file="$APP_EXTRACT_DIR/${table_name}.csv"
@@ -88,6 +105,7 @@ fi
 echo "--- Importing CSV data ---"
 
 # Independent / lookup tables first
+
 copy_table "comp_cast_type"
 copy_table "company_type"
 copy_table "info_type"
@@ -97,12 +115,14 @@ copy_table "link_type"
 copy_table "role_type"
 
 # Entity tables
+
 copy_table "char_name"
 copy_table "company_name"
 copy_table "name"
 copy_table "title"
 
 # Dependent tables
+
 copy_table "aka_name"
 copy_table "aka_title"
 copy_table "cast_info"
@@ -113,6 +133,23 @@ copy_table "movie_info_idx"
 copy_table "movie_keyword"
 copy_table "movie_link"
 copy_table "person_info"
+
+echo "--- Re-enabling triggers after bulk import ---"
+psql -v ON_ERROR_STOP=1 -h "$DB_HOST" -p "$DB_PORT" -U "$DB_USER" -d "$DB_NAME" -c "
+DO $$
+DECLARE
+r RECORD;
+BEGIN
+FOR r IN
+SELECT schemaname, tablename
+FROM pg_tables
+WHERE schemaname = 'public'
+LOOP
+EXECUTE format('ALTER TABLE %I.%I ENABLE TRIGGER ALL', r.schemaname, r.tablename);
+END LOOP;
+END
+$$;
+"
 
 echo "--- Running ANALYZE ---"
 psql -v ON_ERROR_STOP=1 -h "$DB_HOST" -p "$DB_PORT" -U "$DB_USER" -d "$DB_NAME" -c "ANALYZE;"
