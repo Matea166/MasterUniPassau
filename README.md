@@ -1,3 +1,26 @@
+I verified the key scripts again and corrected the README accordingly: `dispatch.sh`, `RNG_matrix.sh`, `merge_results.sh`, `merge_csv_logic.py`, `qerror_calculation.sh`, and the dataset conversion scripts. The version below removes assistant notes, adds a proper title/introduction, corrects the q-error columns, and updates the NHANES TXT output note to match the current script. ([GitHub][1])
+
+# AnnealBN-CE: Cardinality Estimation with Annealing-Learned Bayesian Networks
+
+This repository contains the implementation used for the master thesis on cardinality estimation with annealing-learned Bayesian networks. It provides scripts for preparing datasets, learning Bayesian-network structures with simulated annealing and simulated quantum annealing, estimating query cardinalities, comparing against PostgreSQL and a Chow--Liu baseline, running optional random-structure robustness checks, and producing q-error and visualisation outputs.
+
+The repository is organised around two main codebases:
+
+| Directory  | Purpose                                                                                                        |
+| ---------- | -------------------------------------------------------------------------------------------------------------- |
+| `bnsl-qa/` | AnnealBN-CE pipeline for QUBO-based Bayesian-network structure learning and downstream cardinality estimation. |
+| `bnsl/`    | Chow--Liu baseline, CSV/database preparation utilities, result merging, and visualisation scripts.             |
+| `docker/`  | Docker and PostgreSQL setup, including database schemas and import scripts.                                    |
+
+The workflow is divided into four stages:
+
+1. preparing datasets;
+2. running cardinality estimates;
+3. optionally running random-structure robustness checks;
+4. calculating q-errors and creating visualisations.
+
+---
+
 ## 1. Preparing the Datasets
 
 This repository uses two aligned representations for each dataset:
@@ -114,6 +137,14 @@ For GitHub README display, it is recommended to export the PDF as a PNG and save
 bnsl-qa/images/WetGrass.png
 ```
 
+The figure can then be included in the README with:
+
+```html
+<p align="center">
+  <img src="bnsl-qa/images/WetGrass.png" width="850" alt="WetGrass Bayesian network and conditional probability tables">
+</p>
+```
+
 ### 1.3.1. Generate the WetGrass Solver TXT File
 
 Enter the `bnsl-qa` directory:
@@ -134,12 +165,7 @@ This creates:
 bnsl-qa/qa-datasets/WetGrass.txt
 ```
 
-> Important: the default WetGrass converter expects the solver file to be named
-> `bnsl-qa/qa-datasets/WetGrass.txt`. Therefore, the safest command is to keep
-> `--name WetGrass`. If another name is used, for example `WetGrass_10000` or
-> `WetGrass_sampled_100`, the `input_txt_file` variable in
-> `bnsl/datasets/txt_to_csv.py` must be updated before converting the TXT file
-> to CSV.
+> Important: the default WetGrass converter expects the solver file to be named `bnsl-qa/qa-datasets/WetGrass.txt`. Therefore, the safest command is to keep `--name WetGrass`. If another name is used, for example `WetGrass_10000` or `WetGrass_sampled_100`, the `input_txt_file` variable in `bnsl/datasets/txt_to_csv.py` must be updated before converting the TXT file to CSV.
 
 The `--size` parameter controls the intended dataset size. For example, to generate a larger dataset:
 
@@ -277,10 +303,7 @@ CSV_FILE = "data/WetGrass_variance_zero.csv"
 TABLE_NAME = "wetgrass_data"
 ```
 
-> Important: the CSV file configured here must be the same file produced by
-> `txt_to_csv.py`. For the expected WetGrass dataset used in the thesis, this is
-> normally `data/WetGrass_variance_zero.csv`. If `csv_to_db.py` still points to
-> `data/WetGrass_variance_non_zero.csv`, update it before running the import.
+> Important: the CSV file configured here must be the same file produced by `txt_to_csv.py`. For the expected WetGrass dataset used in the thesis, this is normally `data/WetGrass_variance_zero.csv`. If `csv_to_db.py` still points to `data/WetGrass_variance_non_zero.csv`, update it before running the import.
 
 Also ensure that the `INSERT` statement matches the table columns:
 
@@ -400,7 +423,7 @@ NHANES is a real health-survey dataset. The full CSV file is already available i
 bnsl/datasets/data/NHANES_age_prediction.csv
 ```
 
-The Docker initialisation file also creates a PostgreSQL database named `nhanes`, a table named `nhanes_data`, imports the CSV, and runs `ANALYZE`.
+The Docker initialisation file creates a PostgreSQL database named `nhanes`, a table named `nhanes_data`, imports the CSV, and runs `ANALYZE`.
 
 The relevant SQL file is:
 
@@ -436,7 +459,11 @@ The script reads:
 ../bnsl/datasets/data/NHANES_age_prediction.csv
 ```
 
-It keeps a selected subset of columns, bins `BMXBMI` into four medical categories, encodes categorical variables as integer states, and writes a solver TXT file to `bnsl-qa/qa-datasets/`.
+It keeps a selected subset of columns, bins `BMXBMI` into four medical categories, encodes categorical variables as integer states, and writes a solver TXT file to:
+
+```text
+bnsl-qa/qa-datasets/NHANES_Medical_4vars.txt
+```
 
 The script also writes mapping files to:
 
@@ -446,13 +473,13 @@ bnsl-qa/qa-datasets/mappings/
 
 These mapping files are important because they document how original categorical values were translated into solver-side integer states.
 
-If reproducing the exact thesis run, use the existing thesis TXT file:
+If reproducing an earlier thesis run, the repository may also contain:
 
 ```text
 bnsl-qa/qa-datasets/NHANES_age_prediction_subset.txt
 ```
 
-If regenerating the TXT file, make sure that the output file name in `Nhanes_csv_to_txt.py` matches the file expected by the solver dispatch and cardinality-estimation scripts.
+Use the TXT file that matches the selected dispatch run and the corresponding cardinality-estimation script. If regenerating the TXT file, make sure that the output file name in `Nhanes_csv_to_txt.py` matches the file expected by the solver dispatch and cardinality-estimation scripts.
 
 ### 1.5.2. Import or Re-Import NHANES into PostgreSQL
 
@@ -650,7 +677,7 @@ cd /workspace
 bash docker/postgres/import_imdb.sh
 ```
 
-The script downloads the IMDB archive, extracts it into:
+The script downloads the IMDB archive if it is not already present, extracts it into:
 
 ```text
 imdb_data/extracted/
@@ -751,7 +778,7 @@ PostgreSQL table: wetgrass_data
 
 ```text
 bnsl/datasets/data/NHANES_age_prediction.csv
-bnsl-qa/qa-datasets/NHANES_age_prediction_subset.txt
+bnsl-qa/qa-datasets/NHANES_Medical_4vars.txt
 PostgreSQL database: nhanes
 PostgreSQL table: nhanes_data
 ```
@@ -777,9 +804,7 @@ PostgreSQL table: movie_link
 
 The file names used here should match the names expected by the solver dispatch scripts and the cardinality-estimation scripts. If a dataset name, CSV file name, TXT file name, database name, or table name is changed, update the corresponding configuration variables in the relevant Python scripts before running the next stage.
 
-One correction before the copy-paste text: in the raw Chow--Liu CSV, `est_selectivity` is **not** the PostgreSQL estimate. In the code, it is the Bayesian-network selectivity/probability. PostgreSQL estimates are added later by `cardinality_benchmarks.sh` in the `_final.csv` file as `pg_est_cardinality`. ([GitHub][1])
-
-I also checked that the correct script name is `cardinality_benchmarks.sh` with **plural** `benchmarks`, and that `dispatch.sh` creates the three output areas described below. ([GitHub][2])
+---
 
 ## 2. Running Cardinality Estimates
 
@@ -1244,8 +1269,7 @@ For AnnealBN-CE, also check that the selected adjacency matrix has the same numb
 
 For Chow--Liu, check that the selected PostgreSQL database corresponds to the selected script. For example, if `cardinality_estimation_wetgrass.py` is selected, the PostgreSQL database should be `wetgrass`, and the table referenced in the script should be `wetgrass_data`.
 
-[1]: https://raw.githubusercontent.com/Matea166/MasterUniPassau/master/bnsl/cardinality_estimation/cardinality_estimation_wetgrass.py "raw.githubusercontent.com"
-[2]: https://raw.githubusercontent.com/Matea166/MasterUniPassau/master/bnsl-qa/dispatch.sh "raw.githubusercontent.com"
+---
 
 ## 3. Optional Random-Structure Robustness Check
 
@@ -1313,6 +1337,7 @@ For example:
 | Dataset                          | Number of variables |
 | -------------------------------- | ------------------: |
 | WetGrass                         |                   4 |
+| NHANES medical representation    |                   4 |
 | Market Basket                    |                   6 |
 | Movie Link capped representation |                   3 |
 
@@ -1493,9 +1518,7 @@ Before running the random-structure robustness check, verify the following:
 
 The random-structure robustness check produces validation outputs only. The generated random matrices should not be treated as learned AnnealBN-CE structures.
 
-I checked the merge and q-error scripts. `merge_results.sh` selects one SA result, one SQA result, one Chow--Liu/PostgreSQL `_final.csv`, and optionally one random-control CSV before calling `merge_csv_logic.py`; the Python merger writes both `combined_results_<dataset>_<timestamp>.csv` and `combined_results_<dataset>_<timestamp>.png`. ([GitHub][1]) The q-error script is run from `bnsl-qa`, asks for a cardinality script, CSV dataset, adjacency-matrix folder, and PostgreSQL database, then writes a CSV under `q-error_output/`. ([GitHub][2])
-
-Use this as the final README section after the robustness-check section.
+---
 
 ## 4. Visualisation and q-error Calculation
 
@@ -1583,10 +1606,10 @@ The generated CSV currently labels the Chow--Liu baseline column as `BNSL`. In t
 
 ## 4.2. q-error Calculation
 
-The q-error calculation evaluates the accuracy of AnnealBN-CE estimates. For a query with true cardinality (C) and estimated cardinality (\widehat{C}), the q-error is:
+The q-error calculation evaluates the accuracy of AnnealBN-CE estimates. For a query with true cardinality `C` and estimated cardinality `C_hat`, the q-error is:
 
 ```text
-max(estimated / true, true / estimated)
+max(C_hat / C, C / C_hat)
 ```
 
 A q-error of `1` is perfect. Larger values indicate larger estimation error.
@@ -1662,38 +1685,30 @@ The q-error results are written to:
 bnsl-qa/q-error_output/
 ```
 
-The output file has the form:
-
-```text
-results_<DATASET>_<METHOD>_<TRIALS>_<READS>_<TIMESTAMP>.csv
-```
-
-For example:
+The script names the output file using the selected CSV dataset, solver method, values parsed from the selected solver-output folder, and a timestamp. For example:
 
 ```text
 results_WetGrass_variance_zero_SA_2_2_2026-06-27_17-49-46.csv
 ```
 
-The output CSV contains:
+The output CSV contains the following columns:
 
 ```text
-method,graph_index,query_sql,estimated_cardinality,true_cardinality,q_error,avg_q_error,median_q_error
+method,graph_index,query_sql,estimated_cardinality,true_cardinality,q_error
 ```
 
 The columns mean:
 
-| Column                  | Meaning                                               |
-| ----------------------- | ----------------------------------------------------- |
-| `method`                | Solver method, usually `SA` or `SQA`                  |
-| `graph_index`           | Index of the evaluated adjacency matrix               |
-| `query_sql`             | Query workload entry                                  |
-| `estimated_cardinality` | AnnealBN-CE estimate for that graph and query         |
-| `true_cardinality`      | True cardinality obtained from PostgreSQL             |
-| `q_error`               | q-error for that graph and query                      |
-| `avg_q_error`           | Average q-error for the query across evaluated graphs |
-| `median_q_error`        | Median q-error for the query across evaluated graphs  |
+| Column                  | Meaning                                       |
+| ----------------------- | --------------------------------------------- |
+| `method`                | Solver method, usually `SA` or `SQA`          |
+| `graph_index`           | Index of the evaluated adjacency matrix       |
+| `query_sql`             | Query workload entry                          |
+| `estimated_cardinality` | AnnealBN-CE estimate for that graph and query |
+| `true_cardinality`      | True cardinality obtained from PostgreSQL     |
+| `q_error`               | q-error for that graph and query              |
 
-The q-error CSV is the main file used for accuracy summaries and for comparing solver configurations across reads, trials, SA, and SQA.
+The q-error CSV is the main file used for numerical accuracy analysis and for comparing solver configurations across reads, trials, SA, and SQA.
 
 ---
 
@@ -1710,8 +1725,4 @@ Before using the visualisation or q-error outputs in an evaluation, check that:
 
 The bar-chart visualisation is mainly for query-level inspection. The q-error CSV files are the main source for numerical accuracy analysis.
 
-[1]: https://github.com/Matea166/MasterUniPassau/blob/master/bnsl/merge_results.sh "MasterUniPassau/bnsl/merge_results.sh at master · Matea166/MasterUniPassau · GitHub"
-[2]: https://github.com/Matea166/MasterUniPassau/blob/master/bnsl-qa/qerror_calculation.sh "MasterUniPassau/bnsl-qa/qerror_calculation.sh at master · Matea166/MasterUniPassau · GitHub"
-
-
-
+[1]: https://raw.githubusercontent.com/Matea166/MasterUniPassau/master/bnsl-qa/dispatch.sh "raw.githubusercontent.com"
