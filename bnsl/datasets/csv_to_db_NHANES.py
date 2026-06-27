@@ -1,18 +1,17 @@
 import psycopg2
 import pandas as pd
 
-# ---------- CONFIG ----------
 DB_NAME = "nhanes"
 DB_USER = "postgres"
 DB_PASSWORD = "postgres"
-DB_HOST = "localhost"
+
+DB_HOST = "postgres"
 DB_PORT = "5432"
 
 CSV_FILE = "data/NHANES_age_prediction.csv"
 TABLE_NAME = "nhanes_data"
 # ----------------------------
 
-# Connect to PostgreSQL
 conn = psycopg2.connect(
     dbname=DB_NAME,
     user=DB_USER,
