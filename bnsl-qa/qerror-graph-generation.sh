@@ -77,7 +77,7 @@ echo "Selected pairs saved to: $pairs_file"
 
 echo "Running graph generator..."
 
-python3 graph_gen.py "$pairs_file" "$card_file"
+python3 qerror-graph-generation.py "$pairs_file" "$card_file"
 
 echo "================================"
 echo "Finished"
