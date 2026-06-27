@@ -67,7 +67,6 @@ local table_name="$1"
 local app_csv_file="$APP_EXTRACT_DIR/${table_name}.csv"
 local db_csv_file="$DB_EXTRACT_DIR/${table_name}.csv"
 
-```
 if [ ! -f "$app_csv_file" ]; then
     echo "Warning: CSV file not found for table '$table_name': $app_csv_file"
     return
@@ -79,11 +78,10 @@ local first_line
 first_line=$(head -n 1 "$app_csv_file")
 
 if [[ "$first_line" == id,* ]]; then
-    psql -v ON_ERROR_STOP=1 -h "$DB_HOST" -p "$DB_PORT" -U "$DB_USER" -d "$DB_NAME" -c "COPY ${table_name} FROM '${db_csv_file}' WITH (FORMAT csv, HEADER true, NULL '', QUOTE '\"', ESCAPE '\"');"
+    psql -v ON_ERROR_STOP=1 -h "$DB_HOST" -p "$DB_PORT" -U "$DB_USER" -d "$DB_NAME" -c "COPY ${table_name} FROM '${db_csv_file}' WITH (FORMAT csv, HEADER true, NULL '', QUOTE '\"', ESCAPE E'\\\\');"
 else
-    psql -v ON_ERROR_STOP=1 -h "$DB_HOST" -p "$DB_PORT" -U "$DB_USER" -d "$DB_NAME" -c "COPY ${table_name} FROM '${db_csv_file}' WITH (FORMAT csv, HEADER false, NULL '', QUOTE '\"', ESCAPE '\"');"
+    psql -v ON_ERROR_STOP=1 -h "$DB_HOST" -p "$DB_PORT" -U "$DB_USER" -d "$DB_NAME" -c "COPY ${table_name} FROM '${db_csv_file}' WITH (FORMAT csv, HEADER false, NULL '', QUOTE '\"', ESCAPE E'\\\\');"
 fi
-```
 
 }
 
