@@ -366,4 +366,4 @@ ax.margins(y=0.45)
 
 plt.tight_layout()
 plt.savefig(f"{output_base}.png", dpi=300)
-print(f"Final polished histogram saved: {output_base}.png")
+print(f"Final histogram saved: {output_base}.png")
