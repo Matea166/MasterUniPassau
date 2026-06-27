@@ -204,12 +204,13 @@ def add_bar_labels(rects, extra_info=None):
             ax.annotate(
                 label,
                 xy=(rect.get_x() + rect.get_width() / 2, height),
-                xytext=(0, 5),
+                xytext=(0, 6),
                 textcoords="offset points",
                 ha="center",
                 va="bottom",
                 fontsize=8,
-                rotation=45
+                rotation=90,
+                rotation_mode="anchor"
             )
 
 
@@ -360,7 +361,7 @@ ax.set_xticks(x)
 ax.set_xticklabels(labels)
 
 ax.legend(loc="upper left", bbox_to_anchor=(1.01, 1), fontsize="small")
-ax.margins(y=0.2)
+ax.margins(y=0.35)
 
 plt.tight_layout()
 plt.savefig(f"{output_base}.png", dpi=300)
