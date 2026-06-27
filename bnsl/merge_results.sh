@@ -47,35 +47,44 @@ done
 
 
 # 4. Choose RNG Matrix file
+
 echo -e "\n--- Step 4: Add RNG Matrix results? (y/n) ---"
 read -r add_rng
 rng_file="NONE"
 
 if [[ "$add_rng" == "y" ]]; then
-    echo "Searching for RNG run folders in $RNG_MATRIX_DIR..."
+echo "Searching for RNG result files in $RNG_MATRIX_DIR..."
 
-    # Try the specific path first, then try a broader search in the parent dir if it fails
-    mapfile -t rng_files < <(find "$RNG_MATRIX_DIR" -type f -name "final_cardinality.csv" 2>/dev/null)
+mapfile -t rng_files < <(
+    find "$RNG_MATRIX_DIR" -type f \( -name "final_queries_cardinality.csv" -o -name "final_cardinality.csv" \) 2>/dev/null | sort
+)
 
-    if [ ${#rng_files[@]} -eq 0 ]; then
-        echo "Direct path failed. Trying broader search in ../bnsl-qa/ ..."
-        mapfile -t rng_files < <(find "../bnsl-qa" -path "*/RNG_Matrix/*" -name "final_cardinality.csv" 2>/dev/null)
-    fi
-
-    if [ ${#rng_files[@]} -eq 0 ]; then
-        echo "Still no RNG files found. Please check if the folder exists in ../bnsl-qa/"
-    else
-        echo "Select which RNG run to use:"
-        select selected_rng in "${rng_files[@]}"; do
-            if [[ -n "$selected_rng" ]]; then
-                rng_file="$selected_rng"
-                break
-            else
-                echo "Invalid selection"
-            fi
-        done
-    fi
+if [ ${#rng_files[@]} -eq 0 ]; then
+    echo "Direct path failed. Trying broader search in ../bnsl-qa/ ..."
+    mapfile -t rng_files < <(
+        find "../bnsl-qa" -path "*/RNG_Matrix/*" -type f \( -name "final_queries_cardinality.csv" -o -name "final_cardinality.csv" \) 2>/dev/null | sort
+    )
 fi
+
+if [ ${#rng_files[@]} -eq 0 ]; then
+    echo "Still no RNG result files found."
+    echo "Expected file name: final_queries_cardinality.csv"
+    echo "Check with:"
+    echo "find ../bnsl-qa/RNG_Matrix -type f -name '*.csv'"
+else
+    echo "Select which RNG run to use:"
+    select selected_rng in "${rng_files[@]}"; do
+        if [[ -n "$selected_rng" ]]; then
+            rng_file="$selected_rng"
+            break
+        else
+            echo "Invalid selection."
+        fi
+    done
+fi
+
+fi
+
 
 # 5. Run the Python Merger
 python3 merge_csv_logic.py "$sa_file" "$sqa_file" "$bn_file" "$rng_file"
