@@ -1,3 +1,10 @@
+# This file is based on code from BNSL-QA-PYTHON.
+# Original project licensed under the GNU General Public License, Version 2.
+# Modified by Matea Qazolli, 2026.
+# Modifications include exact joint-probability logging, dataset output-path
+# adaptation, generated-dataset message updates, and experiment workflow
+# adaptations.
+
 import json
 import os
 import random
