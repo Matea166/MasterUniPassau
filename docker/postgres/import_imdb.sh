@@ -43,12 +43,12 @@ else
 echo "--- Extracted files already exist, skipping extraction ---"
 fi
 
-SCHEMA_FILE=$(find "$APP_EXTRACT_DIR" -type f -name "schema.sql" | head -1)
+SCHEMA_FILE="/workspace/docker/postgres/imdb/schema.sql"
 LOAD_FILE=$(find "$APP_EXTRACT_DIR" -type f -name "load.sql" | head -1)
 
-if [ -z "$SCHEMA_FILE" ]; then
-echo "Error: schema.sql not found after extraction."
-exit 1
+if [ ! -f "$SCHEMA_FILE" ]; then
+    echo "Error: schema.sql not found at $SCHEMA_FILE"
+    exit 1
 fi
 
 if [ -z "$LOAD_FILE" ]; then
