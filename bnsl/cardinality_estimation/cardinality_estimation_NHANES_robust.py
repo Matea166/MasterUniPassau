@@ -9,7 +9,7 @@ import graphviz
 # 1. CONFIGURATION
 # ==========================================
 CSV_FILE = "NHANES_age_prediction"
-DATA_PATH = f"../datasets/data/{CSV_FILE}.csv"
+DATA_PATH = f"datasets/data/{CSV_FILE}.csv"
 OUTPUT_DIR = "../graphs"
 RESULTS_DIR = "card_results"
 os.makedirs(OUTPUT_DIR, exist_ok=True)
