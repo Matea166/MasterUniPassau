@@ -20,6 +20,11 @@ import re
 import sys
 from collections import Counter
 
+import matplotlib
+matplotlib.use("Agg")
+import matplotlib.pyplot as plt
+from matplotlib.ticker import FixedLocator, NullFormatter, ScalarFormatter
+
 import pandas as pd
 
 REPO_ROOT = os.environ.get("REPO_ROOT", "/workspace")
@@ -142,6 +147,47 @@ def stable_estimates(truth, est_df):
     ]
 
 
+def make_sorted_qerror_figure(exp_dir, truth, sa_vals, sqa_vals):
+    """Reproduces thesis Figure 6.1 (sorted q-error profiles, Market Basket
+    N = 100) from this run's data: per-query q-errors of the stable SA/SQA
+    estimates and of the deterministic baselines, each sorted ascending and
+    plotted by query rank. SA and SQA typically overlap because both produce
+    the same stable cardinality pattern; SQA is drawn dashed so the overlap
+    stays visible."""
+    series = [
+        ("SA", sa_vals, "#2a78d6", "o", "-"),
+        ("SQA", sqa_vals, "#eb6834", "s", "--"),
+        ("Classical baseline", truth["bn_est_cardinality"].tolist(), "#1baf7a", "^", "-"),
+        ("PostgreSQL", truth["pg_est_cardinality"].tolist(), "#eda100", "D", "-"),
+    ]
+    fig, ax = plt.subplots(figsize=(7.2, 4.2))
+    n = len(truth)
+    for label, estimates, color, marker, linestyle in series:
+        qerrs = sorted(
+            qerror(est, t)
+            for est, t in zip(estimates, truth["true_cardinality"])
+            if est is not None
+        )
+        ax.plot(range(1, len(qerrs) + 1), qerrs, color=color, marker=marker,
+                linestyle=linestyle, linewidth=2, markersize=6, label=label)
+    ax.set_yscale("log")
+    ax.yaxis.set_major_locator(FixedLocator([1, 2, 5, 10]))
+    ax.yaxis.set_major_formatter(ScalarFormatter())
+    ax.yaxis.set_minor_formatter(NullFormatter())
+    ax.set_xticks(range(1, n + 1))
+    ax.set_xlabel("Sorted query rank")
+    ax.set_ylabel("q-error")
+    ax.set_title("Sorted q-error")
+    ax.legend(loc="upper left", frameon=False)
+    ax.grid(True, which="major", linewidth=0.4, alpha=0.35)
+    ax.spines[["top", "right"]].set_visible(False)
+    fig.tight_layout()
+    out = os.path.join(exp_dir, "figure_6_1_sorted_qerror.png")
+    fig.savefig(out, dpi=200)
+    plt.close(fig)
+    print(f"  wrote {os.path.relpath(out, RESULTS_ROOT)}")
+
+
 def summarize_experiment(exp, cfg):
     exp_dir = os.path.join(RESULTS_ROOT, exp)
     truth = load_truth(exp_dir)
@@ -194,6 +240,10 @@ def summarize_experiment(exp, cfg):
                 "exact_queries": fmt_pct(100.0 * (s <= 1 + EXACT_TOL).mean()),
             })
         write_table(exp_dir, numbers["qerror"], "qerror_summary", pd.DataFrame(summary))
+
+        # Thesis Figure 6.1 belongs to the Market Basket N=100 experiment
+        if exp == "market_basket_100":
+            make_sorted_qerror_figure(exp_dir, truth, sa_vals, sqa_vals)
 
     # --- read / trial variation (Tables 6.12 / 6.13 / 6.17 / 6.18) ---
     if "read_variation" in numbers:
