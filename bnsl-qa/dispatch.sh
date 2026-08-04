@@ -161,7 +161,7 @@ else
 
     # Try to infer dataset name and reads from the old folder name.
     # Example folder:
-    # SA_Matrix_movie_link_10_100_2026-05-17_12-30-00
+    # SA_Matrix_WetGrass_10_100_2026-05-17_12-30-00
     if [[ "$run_folder" =~ ^${solver}_Matrix_(.*)_([0-9]+)_([0-9]+)_([0-9]{4}-[0-9]{2}-[0-9]{2}_[0-9]{2}-[0-9]{2}-[0-9]{2})$ ]]; then
         dataset_name="${BASH_REMATCH[1]}"
         executions="${BASH_REMATCH[2]}"

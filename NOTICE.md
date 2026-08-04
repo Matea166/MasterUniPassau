@@ -38,7 +38,7 @@ the Apache License, Version 2.0, including the requirement to preserve applicabl
 copyright, attribution, and licence notices.
 
 Some files derived from `tldks-2020` were modified for dataset loading,
-Docker/PostgreSQL integration, JOB/IMDB setup, cardinality-estimation execution,
+Docker/PostgreSQL integration, cardinality-estimation execution,
 q-error analysis, and visualisation.
 
 The full Apache License 2.0 text is provided in:

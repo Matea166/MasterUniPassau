@@ -144,11 +144,6 @@ The interactive menus (`bnsl-qa/dispatch.sh`, `bnsl/cardinality_benchmarks.sh`,
 …) remain available for exploratory use inside the container; they are not
 part of the reproduction path. See [docs/USAGE.md](docs/USAGE.md).
 
-**Note on Movie Link:** the repository also contains an IMDB/Movie Link
-pipeline. It is exploratory extra material — no thesis result is based on
-it — and it is deliberately not part of the reproduction workflow (it
-requires a ~1.2 GB IMDB download). See docs/USAGE.md §1.7.
-
 ## Licence
 
 This repository is a mixed-licence academic reproducibility repository. It

@@ -29,7 +29,6 @@ The workflow is divided into four stages:
 - [2. Running Cardinality Estimates](#2-running-cardinality-estimates)
 - [3. Optional Random-Structure Robustness Check](#3-optional-random-structure-robustness-check)
 - [4. Visualisation and q-error Calculation](#4-visualisation-and-q-error-calculation)
-- [Movie Link (extra material, not part of the thesis evaluation)](#17-movie-link-dataset)
 
 ---
 
@@ -115,8 +114,7 @@ bnsl-qa/
 │   └── WetGrass.json
 ├── qa-datasets/              # Solver TXT files used by bnslqa
 ├── Market_Basket_synthetic_data_gen.py
-├── Nhanes_csv_to_txt.py
-└── movie_link_csv_to_txt.py
+└── Nhanes_csv_to_txt.py
 
 bnsl/
 └── datasets/
@@ -124,18 +122,16 @@ bnsl/
     ├── txt_to_csv.py          # Converts WetGrass TXT solver data to CSV
     ├── csv_to_db.py           # Imports CSV data into PostgreSQL
     ├── csv_to_db_NHANES.py    # Imports NHANES CSV data into PostgreSQL
-    ├── db_table_to_csv.py     # Exports a PostgreSQL table to CSV
     └── gen_synthetic_csv_market_basket.py
 
 docker/
 └── postgres/
     ├── init/
-    │   └── 01-init-nhanes-and-imdb.sql
+    │   └── 01-init-nhanes.sql
     ├── wetgrass/
     │   └── WetGrass.sql
-    ├── MarketBasket/
-    │   └── MarketBasket.sql
-    └── import_imdb.sh
+    └── MarketBasket/
+        └── MarketBasket.sql
 ```
 
 The general rule is:
@@ -458,7 +454,7 @@ The Docker initialisation file creates a PostgreSQL database named `nhanes`, a t
 The relevant SQL file is:
 
 ```text
-docker/postgres/init/01-init-nhanes-and-imdb.sql
+docker/postgres/init/01-init-nhanes.sql
 ```
 
 The table contains the following columns:
@@ -694,108 +690,7 @@ output_file = "qa-datasets/MarketBasket10000.txt"
 
 ---
 
-## 1.7. Movie Link Dataset
-
-> **Extra material — not part of the thesis evaluation.** The Movie Link
-> pipeline is kept in the repository for exploration, but no thesis table or
-> figure is based on it, it is not covered by `reproduce_all.sh`, and there
-> is no frozen reference for it in `original_results/`.
-
-The Movie Link dataset is derived from the IMDB/JOB data. It is optional because it requires downloading and importing the IMDB data archive (multiple GB).
-
-### 1.7.1. Import the IMDB Data into PostgreSQL
-
-Run the IMDB import script from the repository root:
-
-```bash
-cd /workspace
-bash docker/postgres/import_imdb.sh
-```
-
-The script downloads the IMDB archive **at most once**: `imdb_data/` is a
-host mount, so the archive survives `docker compose down` and rebuilds, and
-every run checks for the existing file before downloading. An interrupted
-download is kept as `imdb.tgz.part` and resumed on the next run.
-
-Because the Movie Link workload uses exactly one IMDB table, the script
-extracts and imports **only** `movie_link`:
-
-```text
-imdb_data/extracted/movie_link.csv   →   database "imdb", table "movie_link"
-```
-
-Only this fast import step repeats after a database wipe (for example
-`reproduce_all.sh`, which runs `docker compose down -v`); the 1.2 GB
-download does not. The full JOB schema is kept for reference at
-`docker/postgres/imdb/schema.sql`.
-
-### 1.7.2. Export the `movie_link` Table to CSV
-
-The script for exporting a PostgreSQL table to CSV is:
-
-```text
-bnsl/datasets/db_table_to_csv.py
-```
-
-Before running it, set:
-
-```python
-TABLE = "movie_link"
-```
-
-Then run:
-
-```bash
-cd /workspace/bnsl/datasets
-python db_table_to_csv.py
-```
-
-This writes:
-
-```text
-bnsl/datasets/data/movie_link.csv
-```
-
-### 1.7.3. Generate the Movie Link Solver TXT File
-
-The solver TXT conversion script is:
-
-```text
-bnsl-qa/movie_link_csv_to_txt.py
-```
-
-Run:
-
-```bash
-cd /workspace/bnsl-qa
-python movie_link_csv_to_txt.py
-```
-
-The script reads:
-
-```text
-../bnsl/datasets/data/movie_link.csv
-```
-
-It drops the primary key column `id`, caps high-cardinality categorical values using `MAX_STATES`, encodes the remaining values as integer states, and writes:
-
-```text
-qa-datasets/MovieLink_Capped_3vars.txt
-```
-
-The parameter:
-
-```python
-MAX_STATES = 15
-```
-
-controls how many frequent values are preserved per column before the remaining values are grouped into an `Other` state. This is important because high-cardinality attributes can make the solver representation too large and may cause numerical problems during QUBO construction.
-
-If you change `MAX_STATES`, rerun the script and keep the printed translation dictionaries. They define how solver-side integer states map back to the original categorical values.
-
----
-
-## 1.8. Checklist Before Running Cardinality Estimation
+## 1.7. Checklist Before Running Cardinality Estimation
 
 Before moving to the cardinality-estimation step, check that the following files and database objects exist.
 
@@ -824,16 +719,6 @@ bnsl/datasets/data/DataMining_MarketBasket_100.csv
 bnsl-qa/qa-datasets/MarketBasket100.txt
 PostgreSQL database: market_basket
 PostgreSQL table: transactions
-```
-
-### Movie Link
-
-```text
-imdb_data/extracted/movie_link.csv
-bnsl/datasets/data/movie_link.csv
-bnsl-qa/qa-datasets/MovieLink_Capped_3vars.txt
-PostgreSQL database: imdb
-PostgreSQL table: movie_link
 ```
 
 The file names used here should match the names expected by the solver dispatch scripts and the cardinality-estimation scripts. If a dataset name, CSV file name, TXT file name, database name, or table name is changed, update the corresponding configuration variables in the relevant Python scripts before running the next stage.
@@ -894,7 +779,6 @@ Use the script that corresponds to the selected dataset:
 | WetGrass      | `cardinality_estimation/cardinality_estimation_WetGrass.py`      |
 | NHANES        | `cardinality_estimation/cardinality_estimation_NHANES.py`        |
 | Market Basket | `cardinality_estimation/cardinality_estimation_Market_Basket.py` |
-| Movie Link    | `cardinality_estimation/cardinality_estimation_Movie_Link.py`    |
 
 Before running a dataset, check that the selected cardinality-estimation script reads the correct CSV file. The solver TXT file is used for structure learning, but the cardinality-estimation script separately loads the CSV relation with `pd.read_csv(...)` or `pd.read_csv(dataset_path)`. Therefore, the CSV path in the selected script must match the dataset prepared in `bnsl/datasets/data/`.
 
@@ -1185,7 +1069,6 @@ The relevant scripts are:
 | WetGrass      | `cardinality_estimation/cardinality_estimation_wetgrass.py`      |
 | NHANES        | `cardinality_estimation/cardinality_estimation_NHANES_robust.py` |
 | Market Basket | `cardinality_estimation/cardinality_estimation_market_basket.py` |
-| Movie Link    | `cardinality_estimation/cardinality_estimation_movie_link.py`    |
 
 Before running a script, check that its CSV configuration matches the prepared dataset. In most scripts, the CSV file is selected through variables such as:
 
@@ -1221,9 +1104,6 @@ The selected PostgreSQL database must also match the SQL queries inside the sele
 | WetGrass      | `wetgrass`                   | `wetgrass_data` |
 | NHANES        | `nhanes`                     | `nhanes_data`   |
 | Market Basket | `market_basket`              | `transactions`  |
-| Movie Link    | `imdb`                       | `movie_link`    |
-
-For the Movie Link experiment, select the `imdb` database. In this repository, the Movie Link workload uses only the `movie_link` table from the imported IMDB/JOB data.
 
 ---
 
@@ -1373,7 +1253,6 @@ For example:
 | WetGrass                         |                   4 |
 | NHANES medical representation    |                   4 |
 | Market Basket                    |                   6 |
-| Movie Link capped representation |                   3 |
 
 For any new or modified dataset, check the first number in the solver TXT file header or the number of attributes used in the corresponding cardinality-estimation script. Do not use the number of rows as the number of variables.
 
@@ -1420,7 +1299,6 @@ Choose the script that matches the dataset you want to evaluate:
 | WetGrass      | `cardinality_estimation/cardinality_estimation_WetGrass.py`      |
 | NHANES        | `cardinality_estimation/cardinality_estimation_NHANES.py`        |
 | Market Basket | `cardinality_estimation/cardinality_estimation_Market_Basket.py` |
-| Movie Link    | `cardinality_estimation/cardinality_estimation_Movie_Link.py`    |
 
 Then select the random matrix file from:
 
@@ -1707,7 +1585,6 @@ Choose the cardinality-estimation script and database that match the dataset. Fo
 | WetGrass      | `cardinality_estimation/cardinality_estimation_WetGrass.py`      | `wetgrass`          |
 | NHANES        | `cardinality_estimation/cardinality_estimation_NHANES.py`        | `nhanes`            |
 | Market Basket | `cardinality_estimation/cardinality_estimation_Market_Basket.py` | `market_basket`     |
-| Movie Link    | `cardinality_estimation/cardinality_estimation_Movie_Link.py`    | `imdb`              |
 
 To calculate q-errors for both SA and SQA, run the script twice: once selecting the SA solver-output folder and once selecting the SQA solver-output folder.
 

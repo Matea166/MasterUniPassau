@@ -1,5 +1,4 @@
 CREATE DATABASE nhanes;
-CREATE DATABASE imdb;
 
 \connect nhanes;
 

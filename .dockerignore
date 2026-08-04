@@ -20,9 +20,6 @@ bnslqa-env/
 # Old unrelated repository material
 job/
 
-# Large runtime downloads (optional Movie Link extra)
-imdb_data/
-
 # Documentation not needed inside the image
 docs/
 Notes.md

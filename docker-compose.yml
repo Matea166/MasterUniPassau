@@ -6,12 +6,10 @@ services:
     container_name: annealbn-ce-app
     working_dir: /workspace
     # Sources are baked into the image at build time (self-contained image).
-    # Only runtime data is shared with the host: experiment outputs appear
-    # in ./results/, and the optional IMDB download lives in ./imdb_data so
-    # it survives container rebuilds and is downloaded at most once.
+    # Only the results directory is shared with the host, so experiment
+    # outputs appear in ./results/ while the running code stays sealed.
     volumes:
       - ./results:/workspace/results
-      - ./imdb_data:/workspace/imdb_data
     environment:
       PYTHONPATH: /workspace:/workspace/bnsl-qa:/workspace/bnsl
       POSTGRES_HOST: postgres
@@ -42,9 +40,6 @@ services:
     # pgweb (port 8081) provides database inspection from the host.
     volumes:
       - annealbn_postgres_data:/var/lib/postgresql/data
-      # Runtime data for the optional Movie Link extra (multi-GB IMDB
-      # download, not part of the thesis evaluation; see docs/USAGE.md).
-      - ./imdb_data:/imdb_data:ro
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U postgres -d nhanes"]
       interval: 5s
