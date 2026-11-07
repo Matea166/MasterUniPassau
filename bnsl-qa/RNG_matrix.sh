@@ -52,7 +52,10 @@ run_estimation() {
             continue
         fi
         echo "Processing matrix $index..."
-        python3 "$card_script" "$matrix" "$OUTPUT_DIR" "$index"
+        if ! python3 "$card_script" "$matrix" "$OUTPUT_DIR" "$index"; then
+            echo "Error: cardinality estimation failed for matrix $index; results were not combined." >&2
+            return 1
+        fi
         ((index++))
     done < "$matrix_file"
 

@@ -201,7 +201,12 @@ progress_bar 0 $num_matrices $start_time
 counter=1
 while IFS= read -r matrix; do
     # Passing matrix string, output directory, and graph ID
-    python3 "$py_script" "$matrix" "$card_out_dir" "$counter" > /dev/null 2>&1
+    graph_log="$card_out_dir/graph_${counter}_inference.log"
+    if ! python3 "$py_script" "$matrix" "$card_out_dir" "$counter" > "$graph_log" 2>&1; then
+        echo -e "\nError: cardinality estimation failed for graph $counter. See $graph_log" >&2
+        cat "$graph_log" >&2
+        exit 1
+    fi
     progress_bar $counter $num_matrices $start_time
     counter=$((counter + 1))
 done < "$unique_matrix_file"

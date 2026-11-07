@@ -116,8 +116,10 @@ def estimate_cardinality(query_dict):
             show_progress=False
         )
         est_prob = result.get_value(**query_dict)
-    except Exception:
-        est_prob = 0.0
+    except Exception as exc:
+        raise RuntimeError(
+            f"Inference failed for graph {graph_index}, query {query_dict!r}"
+        ) from exc
 
     return est_prob * total_rows
 
