@@ -130,21 +130,26 @@ def write_table(exp_dir, number, kind, df):
     print(f"  wrote {os.path.relpath(out, RESULTS_ROOT)}")
 
 
+def merge_estimates(truth, est_df):
+    """Require the same SQL workload; never infer query identity from row order."""
+    for label, frame in [("Baseline", truth), ("Estimates", est_df)]:
+        keys = frame["join_key"]
+        if frame.empty or keys.isna().any() or keys.eq("").any():
+            raise ValueError(f"{label}: missing queries in the result CSV.")
+        if keys.duplicated().any():
+            raise ValueError(f"{label}: duplicate query keys in the result CSV.")
+    if set(truth["join_key"]) != set(est_df["join_key"]):
+        raise ValueError("Query mismatch: generate baseline and estimate CSVs using the same original SQL workload.")
+    cols = graph_columns(est_df)
+    if not cols or est_df[cols].isna().any().any():
+        raise ValueError("Missing graph estimates in the result CSV.")
+    return truth.merge(est_df, on="join_key", how="left", suffixes=("", "_est"), validate="one_to_one")
+
+
 def stable_estimates(truth, est_df):
     cols = graph_columns(est_df)
-    merged = truth.merge(est_df, on="join_key", how="left", suffixes=("", "_est"))
-    matched = int(merged[cols[0]].notna().sum()) if cols else 0
-    if matched < len(truth) and len(est_df) == len(truth):
-        # Some datasets phrase the same workload differently per pipeline
-        # (e.g. NHANES: raw values in the solver queries vs encoded bins in
-        # the Chow-Liu queries), so the text join fails. The workload order
-        # is fixed and identical across pipelines, so align by position.
-        est_pos = est_df.reset_index(drop=True)
-        return [modal_estimate(row, cols) for _, row in est_pos.iterrows()]
-    return [
-        modal_estimate(row, cols) if pd.notna(row[cols[0]]) else None
-        for _, row in merged.iterrows()
-    ]
+    merged = merge_estimates(truth, est_df)
+    return [modal_estimate(row, cols) for _, row in merged.iterrows()]
 
 
 def make_sorted_qerror_figure(exp_dir, truth, sa_vals, sqa_vals):
@@ -261,7 +266,7 @@ def summarize_experiment(exp, cfg):
                     if est is None:
                         continue
                     cols = graph_columns(est)
-                    merged = truth.merge(est, on="join_key", how="left")
+                    merged = merge_estimates(truth, est)
                     cell_qerrs, distinct_per_query = [], []
                     for _, row in merged.iterrows():
                         values = [round(float(row[c]), 2) for c in cols]
@@ -319,7 +324,7 @@ def summarize_random_control():
 
 def structure_row(label, truth, est_df):
     cols = graph_columns(est_df)
-    merged = truth.merge(est_df, on="join_key", how="left")
+    merged = merge_estimates(truth, est_df)
     vectors = set()
     cell_qerrs = []
     for c in cols:

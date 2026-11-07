@@ -59,12 +59,32 @@ def normalize_query(q):
     return key
 
 
-df_sa["join_key"] = df_sa["query_sql"].apply(normalize_query)
-df_sqa["join_key"] = df_sqa["query_sql"].apply(normalize_query)
-df_bn["join_key"] = df_bn["query_sql"].apply(normalize_query)
+def prepare_queries(df, label):
+    df["join_key"] = df["query_sql"].apply(normalize_query)
+    if df.empty or df["join_key"].isna().any() or df["join_key"].eq("").any():
+        raise ValueError(f"{label}: missing queries in the result CSV.")
+    if df["join_key"].duplicated().any():
+        raise ValueError(f"{label}: duplicate query keys in the result CSV.")
+    return df
 
-if not df_rng.empty:
-    df_rng["join_key"] = df_rng["query_sql"].apply(normalize_query)
+
+def align_queries(reference, estimates, label):
+    missing = reference.loc[~reference["join_key"].isin(estimates["join_key"]), "query_sql"].tolist()
+    unexpected = estimates.loc[~estimates["join_key"].isin(reference["join_key"]), "query_sql"].tolist()
+    if missing or unexpected:
+        raise ValueError(
+            f"{label}: query mismatch; missing={missing}, unexpected={unexpected}. "
+            "Generate all result CSVs using the same original SQL workload."
+        )
+    return estimates.set_index("join_key").loc[reference["join_key"]].reset_index()
+
+
+df_sa = prepare_queries(df_sa, "SA")
+df_sqa = align_queries(df_sa, prepare_queries(df_sqa, "SQA"), "SQA")
+df_bn = align_queries(df_sa, prepare_queries(df_bn, "Tree/PostgreSQL"), "Tree/PostgreSQL")
+
+if rng_path != "NONE":
+    df_rng = align_queries(df_sa, prepare_queries(df_rng, "Random control"), "Random control")
 
 print("\n--- Join Key Debug ---")
 if not df_sa.empty:
@@ -102,7 +122,7 @@ df_bn_subset = df_bn[[
     "pg_est_cardinality"
 ]]
 
-merged = pd.merge(final_output, df_bn_subset, on="join_key", how="left")
+merged = pd.merge(final_output, df_bn_subset, on="join_key", how="left", validate="one_to_one")
 
 rng_cols = []
 if not df_rng.empty:
@@ -113,8 +133,7 @@ if not df_rng.empty:
 
     if rng_cols:
         df_rng_subset = df_rng[["join_key"] + rng_cols]
-        df_rng_subset = df_rng_subset.drop_duplicates(subset=["join_key"])
-        merged = pd.merge(merged, df_rng_subset, on="join_key", how="left")
+        merged = pd.merge(merged, df_rng_subset, on="join_key", how="left", validate="one_to_one")
 
 
 def get_graph_data(df, prefix):
@@ -128,6 +147,11 @@ sa_graphs = get_graph_data(df_sa, "SA")
 sqa_graphs = get_graph_data(df_sqa, "SQA")
 
 plot_df = pd.concat([merged, sa_graphs, sqa_graphs], axis=1)
+
+value_cols = ["bn_est_cardinality", "true_cardinality", "pg_est_cardinality"]
+value_cols += list(sa_graphs.columns) + list(sqa_graphs.columns) + rng_cols
+if plot_df[value_cols].isna().any().any():
+    raise ValueError("Missing cardinality values; comparison CSV and plot were not generated.")
 
 csv_dict = {
     "query": merged["query"],
@@ -220,7 +244,7 @@ current_pos = x - (total_group_width / 2) + (bar_width / 2)
 
 r_true = ax.bar(
     current_pos,
-    plot_df[true_col].fillna(0),
+    plot_df[true_col],
     bar_width,
     label="True",
     color="#27ae60"
@@ -257,7 +281,7 @@ if len(sa_cols) > 0:
         for col in sa_cols:
             r_sa = ax.bar(
                 current_pos,
-                plot_df[col].fillna(0),
+                plot_df[col],
                 bar_width,
                 label=col,
                 color="#2980b9"
@@ -294,7 +318,7 @@ if len(sqa_cols) > 0:
         for col in sqa_cols:
             r_sqa = ax.bar(
                 current_pos,
-                plot_df[col].fillna(0),
+                plot_df[col],
                 bar_width,
                 label=col,
                 color="#8e44ad"
@@ -332,7 +356,7 @@ if len(rng_cols) > 0:
         for idx, col in enumerate(rng_cols):
             r_rng = ax.bar(
                 current_pos,
-                plot_df[col].fillna(0),
+                plot_df[col],
                 bar_width,
                 label=f"RNG {col}",
                 color=rng_palette[idx % len(rng_palette)]
@@ -342,7 +366,7 @@ if len(rng_cols) > 0:
 
 r_bn = ax.bar(
     current_pos,
-    plot_df[bn_col].fillna(0),
+    plot_df[bn_col],
     bar_width,
     label="BNSL",
     color="#e67e22"
@@ -352,7 +376,7 @@ current_pos += (bar_width + bar_gap)
 
 r_pg = ax.bar(
     current_pos,
-    plot_df[pg_col].fillna(0),
+    plot_df[pg_col],
     bar_width,
     label="Postgres",
     color="#7f8c8d"

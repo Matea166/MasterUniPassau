@@ -140,12 +140,12 @@ if [ -f "$output_csv" ]; then
             echo "Warning: Could not get PG estimate."
         fi
 
-        # Export
-        echo "\"$clean_sa_query\",$true_card,$bn_est,$pg_rows" >> "$final_csv"
+        # Match SA/SQA results using the original SQL, not encoded model states.
+        echo "\"$clean_pg_query\",$true_card,$bn_est,$pg_rows" >> "$final_csv"
 
         echo "--- Query Processed ---"
-        echo "  [SA/Join] : $clean_sa_query"
-        echo "  [PG/Exec] : $clean_pg_query"
+        echo "  [Source]  : $clean_sa_query"
+        echo "  [SQL/Join]: $clean_pg_query"
         echo "  -> BN: $bn_est | PG: $pg_rows | True: $true_card"
     done || exit 1
 

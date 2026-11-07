@@ -54,7 +54,7 @@ except Exception as e:
 # ==========================================
 # 5. TRIPLE QUERY MAPPING
 # ==========================================
-# A. Exactly matches the SA/SQA file (Used for joining the final CSVs)
+# A. Encoded model conditions, retained for reference in the intermediate CSV.
 sa_queries = [
     "SELECT * FROM nhanes_data WHERE DIQ010 = 1",
     "SELECT * FROM nhanes_data WHERE BMXBMI = 3 AND DIQ010 = 0",
@@ -64,7 +64,7 @@ sa_queries = [
     "SELECT * FROM nhanes_data WHERE age_group = 1 AND RIAGENDR = 0 AND BMXBMI = 2 AND DIQ010 = 1"
 ]
 
-# B. Translates the bins to raw values for Postgres execution in the .sh script
+# B. Original SQL used for Postgres execution and matching the SA/SQA results.
 pg_queries = [
     "SELECT * FROM nhanes_data WHERE DIQ010 = 2",
     "SELECT * FROM nhanes_data WHERE BMXBMI >= 30.0 AND DIQ010 = 1",
