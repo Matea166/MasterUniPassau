@@ -1149,7 +1149,9 @@ The meaning of the columns is:
 | `bn_est_cardinality` | Chow--Liu Bayesian-network cardinality estimate                     |
 | `est_selectivity`    | Selectivity/probability estimated by the Chow--Liu Bayesian network |
 
-The `_final.csv` file is created by `cardinality_benchmarks.sh`. It adds the PostgreSQL planner estimate by running `EXPLAIN (FORMAT JSON)` for each query against the selected PostgreSQL database.
+The `_final.csv` file is created by `cardinality_benchmarks.sh`. For each query, it runs `EXPLAIN (ANALYZE, FORMAT JSON, TIMING OFF)` against the selected PostgreSQL database. It reads `Plan Rows` and `Actual Rows` from the top-level `Plan` object for the PostgreSQL estimate and true cardinality. The intermediate CSV's count is replaced by the measured PostgreSQL count in this final file.
+
+The existing data-loading workflow runs `ANALYZE` after importing the table. This refreshes ordinary table statistics; no multicolumn extended statistics are added. There is no need to repeat `ANALYZE` before each query while the data remains unchanged. `EXPLAIN ANALYZE` executes each query, and `TIMING OFF` disables per-node timing while retaining row counts. The q-error script uses the same command and reads the top-level `Actual Rows`. A failed query or unreadable row count stops the calculation instead of becoming a zero estimate.
 
 The final file has the structure:
 
@@ -1162,7 +1164,7 @@ The meaning of the columns is:
 | Column               | Meaning                                 |
 | -------------------- | --------------------------------------- |
 | `query_sql`          | Query workload entry                    |
-| `true_cardinality`   | True cardinality                        |
+| `true_cardinality`   | Actual rows measured by PostgreSQL      |
 | `bn_est_cardinality` | Chow--Liu cardinality estimate          |
 | `pg_est_cardinality` | PostgreSQL planner cardinality estimate |
 

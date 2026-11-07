@@ -107,13 +107,11 @@ if [ -f "$output_csv" ]; then
             # Binned mode (5 columns)
             sa_query="$c1"
             pg_query="$c2"
-            true_card="$c3"
             bn_est="$c4"
         else
             # Standard mode (4 columns)
             sa_query="$c1"
             pg_query="$c1"
-            true_card="$c2"
             bn_est="$c3"
         fi
 
@@ -123,7 +121,7 @@ if [ -f "$output_csv" ]; then
 
         # Execute PG query, surfacing PostgreSQL's exact error if it fails
         pg_err=$(mktemp)
-        if ! pg_raw_json=$(psql -h "$DB_HOST" -p "$DB_PORT" -U "$DB_USER" -d "$selected_db" -t -c "EXPLAIN (FORMAT JSON) $clean_pg_query" 2>"$pg_err"); then
+        if ! pg_raw_json=$(psql -X -v ON_ERROR_STOP=1 -h "$DB_HOST" -p "$DB_PORT" -U "$DB_USER" -d "$selected_db" -t -A -c "EXPLAIN (ANALYZE, FORMAT JSON, TIMING OFF) $clean_pg_query" 2>"$pg_err"); then
             echo "ERROR: PostgreSQL rejected the query:"
             echo "  Query: $clean_pg_query"
             sed 's/^/  /' "$pg_err"
@@ -132,13 +130,21 @@ if [ -f "$output_csv" ]; then
         fi
         rm -f "$pg_err"
 
-        # Bulletproof PG row extraction
-        pg_rows=$(echo "$pg_raw_json" | grep -Eo '"Plan Rows": [0-9]+' | grep -Eo '[0-9]+' | head -1)
+        if ! pg_counts=$(python3 -c '
+import json
+import math
+import sys
 
-        if [ -z "$pg_rows" ]; then
-            pg_rows="0"
-            echo "Warning: Could not get PG estimate."
+plan = json.load(sys.stdin)[0]["Plan"]
+counts = (plan["Plan Rows"], plan["Actual Rows"])
+if not all(type(v) in (int, float) and math.isfinite(v) and v >= 0 for v in counts):
+    raise ValueError("PostgreSQL row counts must be finite and non-negative.")
+print(*counts)
+' <<< "$pg_raw_json"); then
+            echo "ERROR: could not read PostgreSQL row counts for query: $clean_pg_query" >&2
+            exit 1
         fi
+        read -r pg_rows true_card <<< "$pg_counts"
 
         echo "\"$clean_pg_query\",$true_card,$bn_est,$pg_rows" >> "$final_csv"
 

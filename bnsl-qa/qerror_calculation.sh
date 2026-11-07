@@ -216,8 +216,8 @@ EOF
                 # Execute the query, surfacing PostgreSQL's exact error if
                 # it fails — never record 0 as a real cardinality.
                 pg_err=$(mktemp)
-                if ! explain_out=$(psql -h "$DB_HOST" -p "$DB_PORT" -U "$DB_USER" -d "$selected_db" \
-                        -t -A -c "EXPLAIN ANALYZE $sql" 2>"$pg_err"); then
+                if ! explain_out=$(psql -X -v ON_ERROR_STOP=1 -h "$DB_HOST" -p "$DB_PORT" -U "$DB_USER" -d "$selected_db" \
+                        -t -A -c "EXPLAIN (ANALYZE, FORMAT JSON, TIMING OFF) $sql" 2>"$pg_err"); then
                     echo "ERROR: PostgreSQL rejected the query:"
                     echo "  Query: $sql"
                     sed 's/^/  /' "$pg_err"
@@ -226,13 +226,17 @@ EOF
                 fi
                 rm -f "$pg_err"
 
-                true_card=$(echo "$explain_out" |
-                    grep "actual time" |
-                    head -1 |
-                    sed -E 's/.*rows=([0-9]+).*/\1/' || true)
+                if ! true_card=$(python3 -c '
+import json
+import math
+import sys
 
-                if [[ -z "$true_card" ]]; then
-                    echo "ERROR: could not parse the true cardinality from EXPLAIN ANALYZE output for query: $sql"
+actual = json.load(sys.stdin)[0]["Plan"]["Actual Rows"]
+if type(actual) not in (int, float) or not math.isfinite(actual) or actual < 0:
+    raise ValueError("PostgreSQL actual rows must be finite and non-negative.")
+print(actual)
+' <<< "$explain_out"); then
+                    echo "ERROR: could not read PostgreSQL actual rows for query: $sql" >&2
                     exit 1
                 fi
 
