@@ -809,6 +809,8 @@ For example, if `trials = 5` and `reads = 100`, the script runs the selected sol
 
 The selected solver returns binary assignments for the QUBO formulation. These assignments are decoded into adjacency matrices. Each unique adjacency matrix represents one learned Bayesian-network structure.
 
+On `btw2027`, cyclic solver results are discarded before saving or evaluation, without repairing edges or retrying the solver. Accuracy results therefore cover valid graphs only. If no valid graphs remain, the pipeline stops without producing estimates.
+
 If both `SA` and `SQA` should be evaluated, run `dispatch.sh` once for `SA` and then run it again for `SQA`.
 
 ---

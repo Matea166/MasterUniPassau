@@ -173,6 +173,29 @@ else
 
 fi
 
+python3 - "$unique_matrix_file" <<'PY' || exit 1
+import ast
+import sys
+import networkx as nx
+
+with open(sys.argv[1]) as f:
+    matrices = f.readlines()
+valid_matrices = []
+for line in matrices:
+    matrix = ast.literal_eval(line)
+    graph = nx.DiGraph((i, j) for i, row in enumerate(matrix)
+                      for j, value in enumerate(row) if value == 1)
+    if nx.is_directed_acyclic_graph(graph):
+        valid_matrices.append(line)
+with open(sys.argv[1], 'w') as f:
+    f.writelines(valid_matrices)
+PY
+
+if [ ! -s "$unique_matrix_file" ]; then
+    echo "Error: no valid graphs to evaluate." >&2
+    exit 1
+fi
+
 num_matrices=$(wc -l < "$unique_matrix_file")
 echo "Found $num_matrices unique matrices."
 

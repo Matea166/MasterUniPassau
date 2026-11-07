@@ -8,6 +8,7 @@
 from time import time_ns
 import os
 import torch
+import networkx as nx
 from .qubo_matrix import calcQUBOMatrix, printMatrix
 from .solver_utils import getExpectedSolution, printInfoResults, getNumExamples, getData
 
@@ -220,6 +221,14 @@ def main(args):
             method=method, nReads=nReads, annealTime=annealTime
         )
     # ---------------------
+
+    graph = nx.DiGraph(
+        (index[1], index[2])
+        for index, value in zip(indexQUBO, minXt)
+        if index[0] == 'd' and value == 1
+    )
+    if not nx.is_directed_acyclic_graph(graph):
+        return
 
     printInfoResults(expXt, expY, minXt, minY, n)
     print(

@@ -53,9 +53,6 @@ df_bn['DIQ010'] = df_bn['DIQ010'].astype('category').cat.codes
 total_rows = len(df_bn)
 num_vars = len(columns)
 
-# ==========================================
-# 2. STRUCTURE DEFINITION & CYCLE BREAKER
-# ==========================================
 adj_matrix = np.array(sa_matrix)
 
 edges = []
@@ -66,9 +63,8 @@ for i in range(num_vars):
 
 G = nx.DiGraph(edges)
 
-while not nx.is_directed_acyclic_graph(G):
-    cycle = nx.find_cycle(G, orientation="original")
-    G.remove_edge(*cycle[-1][:2])
+if not nx.is_directed_acyclic_graph(G):
+    raise ValueError("Cannot estimate a cyclic graph.")
 
 final_edges = list(G.edges())
 

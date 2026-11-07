@@ -165,24 +165,21 @@ process_folder () {
         exit 1
     fi
 
-    awk '
-    /Solution adjacency matrix:/ {
-        matrix=""
-        while (getline line) {
-            if (line ~ /^\[/) {
-                gsub(/\[/,"",line)
-                gsub(/\]/,"",line)
-                if (matrix == "") {
-                    matrix="[" line "]"
-                } else {
-                    matrix=matrix ",[" line "]"
-                }
-            } else {
-                break
-            }
-        }
-        print "[" matrix "]"
-    }' "$FILE_PATH" |
+    python3 -c '
+import ast
+import re
+import sys
+import networkx as nx
+
+with open(sys.argv[1]) as f:
+    data = f.read()
+for match in re.findall(r"Solution adjacency matrix:\n((?:\[.*?\]\n?)+)", data):
+    matrix = ast.literal_eval("[" + ",".join(match.strip().splitlines()) + "]")
+    graph = nx.DiGraph((i, j) for i, row in enumerate(matrix)
+                      for j, value in enumerate(row) if value == 1)
+    if nx.is_directed_acyclic_graph(graph):
+        print(matrix)
+' "$FILE_PATH" |
 
     while read -r matrix; do
         matrix_index=$((matrix_index+1))
@@ -268,6 +265,12 @@ EOF
 }
 
 process_folder "$METHOD" "$MATRIX_DIR/adjacency_matrix.txt"
+
+if [ "$(wc -l < "$RESULT_FILE")" -le 1 ]; then
+    rm -f "$RESULT_FILE"
+    echo "Error: no valid graphs to evaluate." >&2
+    exit 1
+fi
 
 echo
 echo "================================"
