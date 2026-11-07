@@ -155,9 +155,9 @@ def experiment_section(exp, title, refs, orig_override, name_filter):
     figure = os.path.join(RESULTS_ROOT, exp, "figure_6_1_sorted_qerror.png")
     if os.path.isfile(figure):
         parts.append(
-            "<h3>Figure 6.1: sorted q-error profiles</h3>"
+            "<h3>Figure 6.1: sorted clamped q-error profiles (this run)</h3>"
             '<p class="meta">Thesis: Figure 6.1, Section 6.9, page 67. '
-            "Reproduced from this run's q-error data: per-query q-errors of "
+            "Generated from this run's data: per-query clamped q-errors of "
             "the stable SA and SQA estimates and of the deterministic "
             "baselines, sorted per estimator.</p>"
             f'<img class="fig-medium" src="{exp}/figure_6_1_sorted_qerror.png" '
@@ -186,13 +186,26 @@ def main():
 <p class="meta">Generated {stamp}. Frozen thesis values on the left,
 values reproduced by this run on the right.</p>
 <div class="note">
+<p><strong>Metric convention for this run: clamped q-error.</strong>
+For scoring only, both the estimate and true count are floored at 1 before
+their ratio is calculated. The original counts are retained. A score of 1
+does not necessarily mean an exact prediction: exact-match percentages
+compare the original counts with absolute tolerance 1e-9. Metrics use CSV
+precision before display rounding; stable SA/SQA estimates retain the
+two-decimal modal grouping and use the upper-median original value within
+the selected group. Frozen thesis tables retain their historical values.
+Corrected scores, percentages and rankings may therefore differ. The
+comparison targets below describe the original thesis reproduction and
+are not pass/fail requirements for this corrected branch.</p>
+</div>
+<div class="note">
 <p>Simulated annealing (SA) and simulated quantum annealing (SQA) are
 stochastic solvers. Regenerated structures and estimates are therefore
 expected to be similar, but not necessarily identical, to the values
-reported in the thesis. A reproduction is considered successful when the
-stable estimate vectors, the deterministic baseline columns, and the
-qualitative orderings and trends agree with the thesis. The table below
-states the expected level of agreement for each type of result table. The
+reported in the thesis. For the original thesis reproduction, success meant
+agreement in stable estimate vectors, deterministic baseline columns, and
+qualitative orderings and trends. The table below records those historical
+expectations for each type of result table. The
 mapping between reference files and thesis tables is documented in
 original_results/MANIFEST.md.</p>
 <table>

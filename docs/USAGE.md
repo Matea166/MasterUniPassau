@@ -1518,13 +1518,21 @@ The generated CSV currently labels the Chow--Liu baseline column as `BNSL`. In t
 
 ## 4.2. q-error Calculation
 
-The q-error calculation evaluates the accuracy of AnnealBN-CE estimates. For a query with true cardinality `C` and estimated cardinality `C_hat`, the q-error is:
+New evaluations on `btw2027` use **clamped q-error** consistently for SA, SQA, the tree, PostgreSQL, and random structures. For a query with true cardinality `C` and estimated cardinality `C_hat`:
 
 ```text
-max(C_hat / C, C / C_hat)
+C_eval = max(C, 1)
+C_hat_eval = max(C_hat, 1)
+q_error = max(C_hat_eval / C_eval, C_eval / C_hat_eval)
 ```
 
-A q-error of `1` is perfect. Larger values indicate larger estimation error.
+This floors counts below one for scoring only; the recorded estimates and true counts remain unchanged. Counts must be finite and non-negative. Scores are always at least one, and the ordinary q-error formula is unchanged when both counts are at least one.
+
+For example, `(estimate, truth)` pairs `(0, 0)`, `(0.2, 0)`, and `(0, 1)` all have clamped q-error 1; `(10, 0)` has score 10. Therefore, score 1 does not necessarily mean an exact prediction. The `exact_queries` and `exact_estimates` percentages compare the original counts with absolute tolerance `1e-9`, independently of clamping and display rounding.
+
+Metrics use the precision available in the input CSVs. The stable SA/SQA selection retains its existing two-decimal modal grouping and upper-median tie rule; within the selected group, it uses the upper-median original estimate for scoring. Tables still round estimates for display. Diversity counts retain their existing two-decimal grouping.
+
+Frozen thesis tables in `original_results/` keep their historical values and metric convention. New scores, exact-match percentages, and rankings can differ; old result CSVs must be recomputed to use this convention.
 
 The q-error script is:
 
@@ -1617,7 +1625,7 @@ The columns mean:
 | `query_sql`             | Query workload entry                          |
 | `estimated_cardinality` | AnnealBN-CE estimate for that graph and query |
 | `true_cardinality`      | True cardinality obtained from PostgreSQL     |
-| `q_error`               | q-error for that graph and query              |
+| `q_error`               | Clamped q-error for that graph and query      |
 
 The q-error CSV is the main file used for numerical accuracy analysis and for comparing solver configurations across reads, trials, SA, and SQA.
 

@@ -18,6 +18,7 @@ file names as their originals in original_results/.
 import os
 import re
 import sys
+import math
 from collections import Counter
 
 import matplotlib
@@ -79,11 +80,17 @@ def normalize_query(q):
 
 
 def qerror(est, true):
-    """Same convention as bnsl-qa/qerror_calculation.sh for zero values."""
+    """Clamped q-error: floor both counts at 1 for scoring only."""
     est, true = float(est), float(true)
-    if est == 0 or true == 0:
-        return max(est, true)
+    if not all(math.isfinite(v) and v >= 0 for v in (est, true)):
+        raise ValueError("Cardinalities must be finite and non-negative.")
+    est, true = max(est, 1.0), max(true, 1.0)
     return max(est / true, true / est)
+
+
+def exact_estimate(est, true):
+    """Compare original counts, independently of clamping or display rounding."""
+    return abs(float(est) - float(true)) <= EXACT_TOL
 
 
 def load_truth(exp_dir):
@@ -109,13 +116,18 @@ def load_estimates(exp_dir, solver, trials, reads):
 
 
 def modal_estimate(row, cols):
-    """The estimate produced by most learned structures (the thesis's
-    'stable' value); ties resolved by the median of the tied values."""
-    values = [round(float(row[c]), 2) for c in cols]
-    counts = Counter(values)
+    """Keep the existing two-decimal modal grouping and upper-median ties.
+
+    Return the upper-median original estimate within the selected group,
+    so scoring and exact-match checks do not use a rounded prediction.
+    """
+    values = [float(row[c]) for c in cols]
+    counts = Counter(round(v, 2) for v in values)
     top = max(counts.values())
     tied = sorted(v for v, n in counts.items() if n == top)
-    return tied[len(tied) // 2]
+    selected = tied[len(tied) // 2]
+    originals = sorted(v for v in values if round(v, 2) == selected)
+    return originals[len(originals) // 2]
 
 
 def fmt_pct(x, decimals=1):
@@ -181,8 +193,8 @@ def make_sorted_qerror_figure(exp_dir, truth, sa_vals, sqa_vals):
     ax.yaxis.set_minor_formatter(NullFormatter())
     ax.set_xticks(range(1, n + 1))
     ax.set_xlabel("Sorted query rank")
-    ax.set_ylabel("q-error")
-    ax.set_title("Sorted q-error")
+    ax.set_ylabel("Clamped q-error")
+    ax.set_title("Sorted clamped q-error")
     ax.legend(loc="upper left", frameon=False)
     ax.grid(True, which="major", linewidth=0.4, alpha=0.35)
     ax.spines[["top", "right"]].set_visible(False)
@@ -214,8 +226,8 @@ def summarize_experiment(exp, cfg):
             rows.append({
                 "query": f"Q{i + 1}",
                 "true_cardinality": t["true_cardinality"],
-                "sa_estimate": sa_vals[i],
-                "sqa_estimate": sqa_vals[i],
+                "sa_estimate": round(sa_vals[i], 2),
+                "sqa_estimate": round(sqa_vals[i], 2),
                 "classical_baseline": round(float(t["bn_est_cardinality"]), 2),
                 "postgresql": t["pg_est_cardinality"],
             })
@@ -229,20 +241,22 @@ def summarize_experiment(exp, cfg):
             ("Classical baseline", truth["bn_est_cardinality"].tolist()),
             ("PostgreSQL", truth["pg_est_cardinality"].tolist()),
         ]:
-            qerrs = [
-                qerror(est, t)
+            pairs = [
+                (est, t)
                 for est, t in zip(estimates, truth["true_cardinality"])
                 if est is not None
             ]
-            if not qerrs:
+            if not pairs:
                 continue
+            qerrs = [qerror(est, t) for est, t in pairs]
             s = pd.Series(qerrs)
+            exact = pd.Series([exact_estimate(est, t) for est, t in pairs])
             summary.append({
                 "estimator": label,
                 "min_qerror": f"{s.min():.3f}",
                 "median_qerror": f"{s.median():.3f}",
                 "max_qerror": f"{s.max():.3f}",
-                "exact_queries": fmt_pct(100.0 * (s <= 1 + EXACT_TOL).mean()),
+                "exact_queries": fmt_pct(100.0 * exact.mean()),
             })
         write_table(exp_dir, numbers["qerror"], "qerror_summary", pd.DataFrame(summary))
 
@@ -267,11 +281,12 @@ def summarize_experiment(exp, cfg):
                         continue
                     cols = graph_columns(est)
                     merged = merge_estimates(truth, est)
-                    cell_qerrs, distinct_per_query = [], []
+                    cell_qerrs, cell_exact, distinct_per_query = [], [], []
                     for _, row in merged.iterrows():
-                        values = [round(float(row[c]), 2) for c in cols]
-                        distinct_per_query.append(len(set(values)))
+                        values = [float(row[c]) for c in cols]
+                        distinct_per_query.append(len({round(v, 2) for v in values}))
                         cell_qerrs.extend(qerror(v, row["true_cardinality"]) for v in values)
+                        cell_exact.extend(exact_estimate(v, row["true_cardinality"]) for v in values)
                     s = pd.Series(cell_qerrs)
                     rows.append({
                         "method": solver,
@@ -279,7 +294,7 @@ def summarize_experiment(exp, cfg):
                         "unique_matrices": len(cols),
                         "max_distinct_per_query": max(distinct_per_query),
                         "median_qerror": f"{s.median():.3f}",
-                        "exact_estimates": fmt_pct(100.0 * (s <= 1 + EXACT_TOL).mean()),
+                        "exact_estimates": fmt_pct(100.0 * pd.Series(cell_exact).mean()),
                     })
             if rows:
                 write_table(exp_dir, numbers[kind], kind + "_summary", pd.DataFrame(rows))
@@ -326,11 +341,14 @@ def structure_row(label, truth, est_df):
     cols = graph_columns(est_df)
     merged = merge_estimates(truth, est_df)
     vectors = set()
-    cell_qerrs = []
+    cell_qerrs, cell_exact = [], []
     for c in cols:
         vectors.add(tuple(round(float(v), 2) for v in merged[c]))
         cell_qerrs.extend(
             qerror(v, t) for v, t in zip(merged[c], merged["true_cardinality"])
+        )
+        cell_exact.extend(
+            exact_estimate(v, t) for v, t in zip(merged[c], merged["true_cardinality"])
         )
     s = pd.Series(cell_qerrs)
     return {
@@ -339,7 +357,7 @@ def structure_row(label, truth, est_df):
         "distinct_ce_vectors": len(vectors),
         "median_qerror": f"{s.median():.2f}",
         "max_qerror": f"{s.max():.2f}",
-        "exact_estimates": fmt_pct(100.0 * (s <= 1 + EXACT_TOL).mean(), 2),
+        "exact_estimates": fmt_pct(100.0 * pd.Series(cell_exact).mean(), 2),
     }
 
 
