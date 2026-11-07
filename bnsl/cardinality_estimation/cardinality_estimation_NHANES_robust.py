@@ -54,7 +54,6 @@ except Exception as e:
 # ==========================================
 # 5. TRIPLE QUERY MAPPING
 # ==========================================
-# A. Encoded model conditions, retained for reference in the intermediate CSV.
 sa_queries = [
     "SELECT * FROM nhanes_data WHERE DIQ010 = 1",
     "SELECT * FROM nhanes_data WHERE BMXBMI = 3 AND DIQ010 = 0",
@@ -64,7 +63,6 @@ sa_queries = [
     "SELECT * FROM nhanes_data WHERE age_group = 1 AND RIAGENDR = 0 AND BMXBMI = 2 AND DIQ010 = 1"
 ]
 
-# B. Original SQL used for Postgres execution and matching the SA/SQA results.
 pg_queries = [
     "SELECT * FROM nhanes_data WHERE DIQ010 = 2",
     "SELECT * FROM nhanes_data WHERE BMXBMI >= 30.0 AND DIQ010 = 1",

@@ -140,7 +140,6 @@ if [ -f "$output_csv" ]; then
             echo "Warning: Could not get PG estimate."
         fi
 
-        # Match SA/SQA results using the original SQL, not encoded model states.
         echo "\"$clean_pg_query\",$true_card,$bn_est,$pg_rows" >> "$final_csv"
 
         echo "--- Query Processed ---"

@@ -246,7 +246,6 @@ est=float("$est")
 act=float("$true_card")
 if not all(math.isfinite(v) and v >= 0 for v in (est, act)):
     raise ValueError("Cardinalities must be finite and non-negative.")
-# Clamped q-error; keep the original counts in the CSV.
 est, act = max(est, 1.0), max(act, 1.0)
 print(max(est / act, act / est))
 PYEOF

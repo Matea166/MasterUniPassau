@@ -84,7 +84,6 @@ def calcAlphaijSum(alpha, parentSet, i, j, states):
   return sum
 
 def calcJthState(j, parentSet, states):
-  # The second parent's state varies fastest: j = states[p1]*sp0 + sp1.
   return divmod(j, states[parentSet[1]])
 
 def calcNijk(examples, parentSet, i, j, k, states):

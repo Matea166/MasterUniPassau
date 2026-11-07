@@ -80,7 +80,6 @@ def normalize_query(q):
 
 
 def qerror(est, true):
-    """Clamped q-error: floor both counts at 1 for scoring only."""
     est, true = float(est), float(true)
     if not all(math.isfinite(v) and v >= 0 for v in (est, true)):
         raise ValueError("Cardinalities must be finite and non-negative.")
@@ -89,7 +88,6 @@ def qerror(est, true):
 
 
 def exact_estimate(est, true):
-    """Compare original counts, independently of clamping or display rounding."""
     return abs(float(est) - float(true)) <= EXACT_TOL
 
 
@@ -116,11 +114,6 @@ def load_estimates(exp_dir, solver, trials, reads):
 
 
 def modal_estimate(row, cols):
-    """Keep the existing two-decimal modal grouping and upper-median ties.
-
-    Return the upper-median original estimate within the selected group,
-    so scoring and exact-match checks do not use a rounded prediction.
-    """
     values = [float(row[c]) for c in cols]
     counts = Counter(round(v, 2) for v in values)
     top = max(counts.values())
@@ -143,7 +136,6 @@ def write_table(exp_dir, number, kind, df):
 
 
 def merge_estimates(truth, est_df):
-    """Require the same SQL workload; never infer query identity from row order."""
     for label, frame in [("Baseline", truth), ("Estimates", est_df)]:
         keys = frame["join_key"]
         if frame.empty or keys.isna().any() or keys.eq("").any():
