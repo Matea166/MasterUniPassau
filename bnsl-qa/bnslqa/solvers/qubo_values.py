@@ -84,14 +84,8 @@ def calcAlphaijSum(alpha, parentSet, i, j, states):
   return sum
 
 def calcJthState(j, parentSet, states):
-  #ASSUMPTION: all the variables have the same number of states,
-  #if this is false, some combinations will be ignored
-  p0 = parentSet[0]
-  #j = (states[p0]^1)*sp0 + (states[p1]^0)*sp1
-  #j = states[p0]*sp0 + sp1
-  sp0 = j//states[p0]
-  sp1 = j%states[p0]
-  return sp0, sp1
+  # The second parent's state varies fastest: j = states[p1]*sp0 + sp1.
+  return divmod(j, states[parentSet[1]])
 
 def calcNijk(examples, parentSet, i, j, k, states):
   count = 0
