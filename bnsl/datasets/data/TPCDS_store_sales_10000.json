@@ -1,0 +1,76 @@
+{
+  "generator_repository": "https://github.com/gregrahn/tpcds-kit",
+  "generator_commit": "5a3a81796992b725c2a8b216767e142609966752",
+  "generator_base_version": "2.10.0",
+  "scale_factor": 1,
+  "generator_seed": 19620718,
+  "source_rows": 2880404,
+  "source_sha256": "10995a37886ce3e5c84c80d3a0dc1f297886be9ac1c4a5df9f1c3ac362a72929",
+  "sample_rows": 10000,
+  "sample_seed": 2027,
+  "sampling_method": "random.Random(2027).sample(range(source_rows), 10000); retained in source order",
+  "sample_sha256": "7ebdf25665af7067638bda256d6800c6ca54eda8efae2e3cbe688abce5a37d38",
+  "rows_with_any_null": 856,
+  "null_representation_csv": "Unquoted empty field",
+  "null_representation_postgresql": "SQL NULL",
+  "scope": "TPC-DS-derived single-table sample; not an official TPC-DS benchmark result",
+  "generator_command": "./dsdgen -SCALE 1 -TABLE store_sales -RNGSEED 19620718 -DIR /tmp/tpcds-data",
+  "columns": [
+    {
+      "name": "ss_quantity",
+      "source_position": 11,
+      "type": "INTEGER",
+      "description": "Number of units purchased",
+      "missing": 400
+    },
+    {
+      "name": "ss_sales_price",
+      "source_position": 14,
+      "type": "NUMERIC(7,2)",
+      "description": "Sale price per unit",
+      "missing": 386
+    },
+    {
+      "name": "ss_coupon_amt",
+      "source_position": 20,
+      "type": "NUMERIC(7,2)",
+      "description": "Coupon amount for the sale",
+      "missing": 442
+    },
+    {
+      "name": "ss_net_profit",
+      "source_position": 23,
+      "type": "NUMERIC(7,2)",
+      "description": "Profit from the sale",
+      "missing": 412
+    },
+    {
+      "name": "ss_wholesale_cost",
+      "source_position": 12,
+      "type": "NUMERIC(7,2)",
+      "description": "Wholesale cost per unit",
+      "missing": 422
+    },
+    {
+      "name": "ss_net_paid",
+      "source_position": 21,
+      "type": "NUMERIC(7,2)",
+      "description": "Amount paid after coupons",
+      "missing": 434
+    },
+    {
+      "name": "ss_list_price",
+      "source_position": 13,
+      "type": "NUMERIC(7,2)",
+      "description": "List price per unit",
+      "missing": 429
+    },
+    {
+      "name": "ss_store_sk",
+      "source_position": 8,
+      "type": "INTEGER",
+      "description": "Store surrogate key, used as a category",
+      "missing": 406
+    }
+  ]
+}

@@ -59,7 +59,8 @@ Every pipeline stage can be driven in two ways:
 
 ## 1. Preparing the Datasets
 
-This repository uses two aligned representations for each dataset:
+The completed experiments use three aligned representations for each dataset.
+TPC-DS currently has the CSV and PostgreSQL representations only:
 
 | Representation            | Location                    | Purpose                                                                                                                                           |
 | ------------------------- | --------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------- |
@@ -722,6 +723,87 @@ PostgreSQL table: transactions
 ```
 
 The file names used here should match the names expected by the solver dispatch scripts and the cardinality-estimation scripts. If a dataset name, CSV file name, TXT file name, database name, or table name is changed, update the corresponding configuration variables in the relevant Python scripts before running the next stage.
+
+---
+
+## 1.8. TPC-DS Store Sales Sample
+
+On `btw2027`, TPC-DS preparation follows the same E0 workflow as the existing
+datasets. The fixed sample is stored in
+[`bnsl/datasets/data/TPCDS_store_sales_10000.csv`](../bnsl/datasets/data/TPCDS_store_sales_10000.csv).
+Its [JSON metadata](../bnsl/datasets/data/TPCDS_store_sales_10000.json) records
+the source revision, generator settings, sampling seed and SHA-256 checksums.
+No external data download is needed for normal reproduction.
+
+The source is the [TPC-DS](https://www.tpc.org/tpcds/) synthetic retail
+benchmark, generated with
+[`gregrahn/tpcds-kit` at commit `5a3a81796992b725c2a8b216767e142609966752`](https://github.com/gregrahn/tpcds-kit/tree/5a3a81796992b725c2a8b216767e142609966752),
+based on generator version 2.10.0. At scale factor 1 and generator seed
+19620718, `store_sales` contains 2,880,404 rows. We sample 10,000 rows without
+replacement across the complete relation using Python's
+`random.Random(2027).sample(range(2880404), 10000)` and retain source order.
+Each row represents one item line within a store purchase.
+
+The [source schema](https://github.com/gregrahn/tpcds-kit/blob/5a3a81796992b725c2a8b216767e142609966752/tools/tpcds.sql#L561-L587)
+defines the original column positions and types. The selected columns are:
+
+| Column | Meaning | PostgreSQL type |
+|---|---|---|
+| `ss_quantity` | Units purchased | `INTEGER` |
+| `ss_sales_price` | Sale price per unit | `NUMERIC(7,2)` |
+| `ss_coupon_amt` | Coupon amount for the sale | `NUMERIC(7,2)` |
+| `ss_net_profit` | Profit from the sale | `NUMERIC(7,2)` |
+| `ss_wholesale_cost` | Wholesale cost per unit | `NUMERIC(7,2)` |
+| `ss_net_paid` | Amount paid after coupons | `NUMERIC(7,2)` |
+| `ss_list_price` | List price per unit | `NUMERIC(7,2)` |
+| `ss_store_sk` | Store key, treated as a category | `INTEGER` |
+
+All sampled rows are retained, including duplicate projected rows and missing
+values. Empty CSV fields become SQL `NULL`, not zero. There are 856 rows with
+at least one missing value. No binning or imputation has been applied.
+Negative net profits are preserved: the
+[generator computes](https://github.com/gregrahn/tpcds-kit/blob/5a3a81796992b725c2a8b216767e142609966752/tools/pricing.c#L140-L199)
+`net_profit = net_paid - quantity * wholesale_cost`.
+
+After rebuilding the application image, the existing preparation command
+verifies the sample checksum, creates `tpcds.public.store_sales`, reloads it
+using CSV `COPY`, and runs `ANALYZE`. Reloading replaces the table contents
+inside a transaction, so repeated preparation does not duplicate rows.
+
+```bash
+docker compose up -d --build
+docker compose exec -T app bash scripts/prepare_datasets.sh
+docker compose exec -T postgres psql -U postgres -d tpcds -c "SELECT * FROM store_sales LIMIT 20;"
+```
+
+TPC-DS queries, discrete encoding, solver TXT input and estimator integration
+are not included yet. It has no experiment configuration or reported accuracy
+results at this stage. This is a TPC-DS-derived single-table research sample,
+not an official TPC-DS benchmark result. Attribution and upstream terms are
+listed in [NOTICE.md](../NOTICE.md#tpc-ds).
+
+### Optional regeneration from the source
+
+Normal runs use the committed CSV. To recreate it, run the following inside
+the application container, using an unused temporary checkout directory:
+
+```bash
+git clone https://github.com/gregrahn/tpcds-kit.git /tmp/tpcds-kit
+git -C /tmp/tpcds-kit checkout 5a3a81796992b725c2a8b216767e142609966752
+cd /tmp/tpcds-kit/tools
+make OS=LINUX LINUX_CFLAGS="-g -Wall -fcommon -Wno-error=implicit-int -Wno-error=implicit-function-declaration" dsdgen tpcds.idx
+mkdir -p /tmp/tpcds-data
+./dsdgen -SCALE 1 -TABLE store_sales -RNGSEED 19620718 -DIR /tmp/tpcds-data
+python /workspace/bnsl/datasets/gen_tpcds_sample.py /tmp/tpcds-data/store_sales.dat --output /tmp/TPCDS_store_sales_10000.csv
+```
+
+The sampling script verifies the complete generated source and the resulting
+CSV against the recorded checksums before writing the output. To check the
+committed sample without regenerating anything:
+
+```bash
+python /workspace/bnsl/datasets/gen_tpcds_sample.py --check
+```
 
 ---
 

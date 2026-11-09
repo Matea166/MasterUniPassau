@@ -67,4 +67,18 @@ psql_db nhanes -c "CREATE TABLE IF NOT EXISTS nhanes_data (
 (cd "$REPO_ROOT/bnsl/datasets" && python3 csv_to_db_NHANES.py)
 psql_db nhanes -c "ANALYZE nhanes_data;"
 
+log "TPC-DS: checking the fixed sample and importing CSV"
+python3 "$REPO_ROOT/bnsl/datasets/gen_tpcds_sample.py" --check
+ensure_database tpcds
+psql_db tpcds --single-transaction \
+    -c "CREATE TABLE IF NOT EXISTS store_sales (
+        ss_quantity INTEGER, ss_sales_price NUMERIC(7,2),
+        ss_coupon_amt NUMERIC(7,2), ss_net_profit NUMERIC(7,2),
+        ss_wholesale_cost NUMERIC(7,2), ss_net_paid NUMERIC(7,2),
+        ss_list_price NUMERIC(7,2), ss_store_sk INTEGER);
+        TRUNCATE TABLE store_sales;" \
+    -c "\copy store_sales (ss_quantity, ss_sales_price, ss_coupon_amt, ss_net_profit, ss_wholesale_cost, ss_net_paid, ss_list_price, ss_store_sk) FROM '$REPO_ROOT/bnsl/datasets/data/TPCDS_store_sales_10000.csv' WITH (FORMAT csv, HEADER true, NULL '')" \
+    -c "ANALYZE store_sales;" \
+    -c "SELECT count(*) AS tpcds_rows FROM store_sales;"
+
 log "=== E0 complete: all datasets prepared ==="

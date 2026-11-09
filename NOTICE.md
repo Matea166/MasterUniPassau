@@ -47,6 +47,25 @@ The full Apache License 2.0 text is provided in:
 THIRD_PARTY_LICENSES/Apache-2.0.txt
 ```
 
+## TPC-DS
+
+THE TPC SOFTWARE IS AVAILABLE WITHOUT CHARGE FROM TPC.
+
+The fixed `TPCDS_store_sales_10000.csv` sample was generated from
+[TPC-DS](https://www.tpc.org/tpcds/), maintained by the Transaction Processing
+Performance Council, using the
+[gregrahn/tpcds-kit](https://github.com/gregrahn/tpcds-kit/tree/5a3a81796992b725c2a8b216767e142609966752)
+port based on version 2.10.0. The generator reports copyright Transaction
+Processing Performance Council (TPC), 2001–2018. The generator source was
+not modified or copied into this repository.
+
+The accompanying JSON records the exact generation and sampling provenance.
+The upstream terms are preserved in
+[THIRD_PARTY_LICENSES/TPC-EULA.txt](THIRD_PARTY_LICENSES/TPC-EULA.txt).
+TPC material remains subject to those terms rather than the licence for
+original project code. This is a TPC-DS-derived single-table research sample;
+it is not an official TPC-DS benchmark result.
+
 ## Modification notice
 
 Where third-party code or scripts were modified, the modifications were made for
