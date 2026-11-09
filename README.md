@@ -30,12 +30,9 @@ detailed description of every script, dataset format, and output file, see
    `results/index.html`, which renders every reproduced table next to the
    frozen thesis values from [original_results/](original_results/).
 
-On `btw2027`, dataset preparation also loads a fixed 10,000-row,
-eight-column TPC-DS-derived `store_sales` sample into the `tpcds` database.
-The sample is committed, so normal runs need no dataset downloads. Its
-[source and regeneration instructions](docs/USAGE.md#18-tpc-ds-store-sales-sample)
-record the generator version, seeds and checksums. TPC-DS query workloads,
-tree/annealing integration and comparison results are not included yet.
+Dataset preparation also loads a 10,000-row, eight-column TPC-DS `store_sales`
+sample into PostgreSQL. See the
+[dataset instructions](docs/USAGE.md#18-tpc-ds-store-sales-sample).
 
 ## Requirements
 

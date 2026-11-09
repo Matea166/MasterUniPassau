@@ -13,63 +13,54 @@
   "rows_with_any_null": 856,
   "null_representation_csv": "Unquoted empty field",
   "null_representation_postgresql": "SQL NULL",
-  "scope": "TPC-DS-derived single-table sample; not an official TPC-DS benchmark result",
   "generator_command": "./dsdgen -SCALE 1 -TABLE store_sales -RNGSEED 19620718 -DIR /tmp/tpcds-data",
   "columns": [
     {
       "name": "ss_quantity",
       "source_position": 11,
       "type": "INTEGER",
-      "description": "Number of units purchased",
       "missing": 400
     },
     {
       "name": "ss_sales_price",
       "source_position": 14,
       "type": "NUMERIC(7,2)",
-      "description": "Sale price per unit",
       "missing": 386
     },
     {
       "name": "ss_coupon_amt",
       "source_position": 20,
       "type": "NUMERIC(7,2)",
-      "description": "Coupon amount for the sale",
       "missing": 442
     },
     {
       "name": "ss_net_profit",
       "source_position": 23,
       "type": "NUMERIC(7,2)",
-      "description": "Profit from the sale",
       "missing": 412
     },
     {
       "name": "ss_wholesale_cost",
       "source_position": 12,
       "type": "NUMERIC(7,2)",
-      "description": "Wholesale cost per unit",
       "missing": 422
     },
     {
       "name": "ss_net_paid",
       "source_position": 21,
       "type": "NUMERIC(7,2)",
-      "description": "Amount paid after coupons",
       "missing": 434
     },
     {
       "name": "ss_list_price",
       "source_position": 13,
       "type": "NUMERIC(7,2)",
-      "description": "List price per unit",
       "missing": 429
     },
     {
       "name": "ss_store_sk",
       "source_position": 8,
       "type": "INTEGER",
-      "description": "Store surrogate key, used as a category",
       "missing": 406
     }
   ]
