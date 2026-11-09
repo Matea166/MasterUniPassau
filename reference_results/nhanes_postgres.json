@@ -1,0 +1,132 @@
+{
+  "dataset": "bnsl/datasets/data/NHANES_age_prediction.csv",
+  "dataset_sha256": "a5e588ef5d015349b2656b2905cd2ac9603381643e188a5587a58cf5f972354d",
+  "workload": "workloads/nhanes.csv",
+  "workload_sha256": "013c1fe306dd2145dac206ccdbce8c3abf45723a30d690fa33ca34a39488ef28",
+  "database": "nhanes",
+  "table": "public.nhanes_data",
+  "measurement_table": "pg_temp.nhanes_data",
+  "measurement_method": "Temporary copy of the exact CSV with the existing public table schema and ordinary column statistics.",
+  "rows": 2278,
+  "postgres_version": "16.15 (Debian 16.15-1.pgdg13+2)",
+  "default_statistics_target": 100,
+  "column_statistics_targets": {
+    "seqn": -1,
+    "age_group": -1,
+    "ridageyr": -1,
+    "riagendr": -1,
+    "paq605": -1,
+    "bmxbmi": -1,
+    "lbxglu": -1,
+    "diq010": -1,
+    "lbxglt": -1,
+    "lbxin": -1
+  },
+  "extended_statistics_objects": 0,
+  "analyze": "ANALYZE pg_temp.nhanes_data;",
+  "explain_options": "ANALYZE, FORMAT JSON, TIMING OFF",
+  "selected_at_utc": "2026-11-09T23:36:33.671376+00:00",
+  "measured_at_utc": "2026-11-09T23:37:11.005642+00:00",
+  "results": [
+    {
+      "query_id": "Q01",
+      "postgres_estimate": 2199,
+      "true_cardinality": 2199
+    },
+    {
+      "query_id": "Q02",
+      "postgres_estimate": 7,
+      "true_cardinality": 9
+    },
+    {
+      "query_id": "Q03",
+      "postgres_estimate": 1,
+      "true_cardinality": 4
+    },
+    {
+      "query_id": "Q04",
+      "postgres_estimate": 635,
+      "true_cardinality": 675
+    },
+    {
+      "query_id": "Q05",
+      "postgres_estimate": 5,
+      "true_cardinality": 8
+    },
+    {
+      "query_id": "Q06",
+      "postgres_estimate": 53,
+      "true_cardinality": 75
+    },
+    {
+      "query_id": "Q07",
+      "postgres_estimate": 21,
+      "true_cardinality": 21
+    },
+    {
+      "query_id": "Q08",
+      "postgres_estimate": 58,
+      "true_cardinality": 58
+    },
+    {
+      "query_id": "Q09",
+      "postgres_estimate": 3,
+      "true_cardinality": 8
+    },
+    {
+      "query_id": "Q10",
+      "postgres_estimate": 18,
+      "true_cardinality": 13
+    },
+    {
+      "query_id": "Q11",
+      "postgres_estimate": 351,
+      "true_cardinality": 338
+    },
+    {
+      "query_id": "Q12",
+      "postgres_estimate": 6,
+      "true_cardinality": 5
+    },
+    {
+      "query_id": "Q13",
+      "postgres_estimate": 581,
+      "true_cardinality": 587
+    },
+    {
+      "query_id": "Q14",
+      "postgres_estimate": 15,
+      "true_cardinality": 24
+    },
+    {
+      "query_id": "Q15",
+      "postgres_estimate": 108,
+      "true_cardinality": 140
+    },
+    {
+      "query_id": "Q16",
+      "postgres_estimate": 81,
+      "true_cardinality": 82
+    },
+    {
+      "query_id": "Q17",
+      "postgres_estimate": 13,
+      "true_cardinality": 6
+    },
+    {
+      "query_id": "Q18",
+      "postgres_estimate": 178,
+      "true_cardinality": 179
+    },
+    {
+      "query_id": "Q19",
+      "postgres_estimate": 186,
+      "true_cardinality": 185
+    },
+    {
+      "query_id": "Q20",
+      "postgres_estimate": 2,
+      "true_cardinality": 2
+    }
+  ]
+}

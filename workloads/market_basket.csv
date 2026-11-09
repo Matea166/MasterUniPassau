@@ -1,0 +1,21 @@
+query_id,sql,reason
+Q01,SELECT * FROM transactions WHERE Bread = 1;,Check the most common item.
+Q02,SELECT * FROM transactions WHERE Beer = 1 AND Diapers = 1;,Keep the original beer/diapers dependency query.
+Q03,SELECT * FROM transactions WHERE Milk = 1 AND Diapers = 1;,Check a common two-item combination.
+Q04,SELECT * FROM transactions WHERE Eggs = 1 AND Milk = 0;,Keep the original eggs-without-milk combination.
+Q05,SELECT * FROM transactions WHERE Bread = 1 AND Diapers = 1 AND Milk = 1;,Test three items together.
+Q06,SELECT * FROM transactions WHERE Beer = 1 AND Bread = 0 AND Cola = 1 AND Diapers = 1 AND Eggs = 0 AND Milk = 1;,Keep the original six-attribute query; the least frequent basket here.
+Q07,SELECT * FROM transactions WHERE Milk = 1;,Check milk alone before combining it with other items.
+Q08,SELECT * FROM transactions WHERE Diapers = 1;,Check diapers alone before the combinations in Q02 and Q03.
+Q09,SELECT * FROM transactions WHERE Cola = 1;,Measure the cola-present group.
+Q10,SELECT * FROM transactions WHERE Cola = 0;,Change only cola relative to Q09.
+Q11,SELECT * FROM transactions WHERE Beer = 0;,Measure baskets without beer before splitting them by cola.
+Q12,SELECT * FROM transactions WHERE Beer = 1 AND Cola = 0;,Test the weak marginal relationship between beer and cola.
+Q13,SELECT * FROM transactions WHERE Beer = 0 AND Cola = 1;,Add cola to Q11; select one of the five basket patterns.
+Q14,SELECT * FROM transactions WHERE Beer = 0 AND Cola = 0;,"Change only cola relative to Q13, or beer relative to Q12."
+Q15,SELECT * FROM transactions WHERE Beer = 1 AND Milk = 1;,Combine beer and milk; compare with the milk/diapers pair Q03.
+Q16,SELECT * FROM transactions WHERE Cola = 0 AND Milk = 1;,Add milk to Q10; both conditions reduce the result.
+Q17,SELECT * FROM transactions WHERE Bread = 1 AND Milk = 1;,Add milk to Q01 before adding diapers in Q05.
+Q18,SELECT * FROM transactions WHERE Bread = 1 AND Diapers = 1;,Add diapers to Q01 before adding milk in Q05.
+Q19,SELECT * FROM transactions WHERE Beer = 1 AND Bread = 1 AND Milk = 1;,Add bread to Q15; all three conditions reduce the result.
+Q20,SELECT * FROM transactions WHERE Eggs = 1 AND Milk = 1;,Change only milk relative to Q04; deliberately test zero matching rows.

@@ -1,0 +1,126 @@
+{
+  "dataset": "bnsl/datasets/data/WetGrass_10000.csv",
+  "dataset_sha256": "0a760acf4c8bcca4148e94a69ae80b7a9c6d3e11ae4f9c51a29f0ffbea91ce1f",
+  "workload": "workloads/wetgrass.csv",
+  "workload_sha256": "5fa3571177f0fff8dff07472f6a5e5cb07e7a12fb31c923223157e6b9d52b0a5",
+  "database": "wetgrass",
+  "table": "public.wetgrass_data",
+  "measurement_table": "pg_temp.wetgrass_data",
+  "measurement_method": "Temporary copy of the exact CSV with the existing public table schema and ordinary column statistics.",
+  "rows": 10000,
+  "postgres_version": "16.15 (Debian 16.15-1.pgdg13+2)",
+  "default_statistics_target": 100,
+  "column_statistics_targets": {
+    "cloud": -1,
+    "sprinkler": -1,
+    "rain": -1,
+    "wetgrass": -1
+  },
+  "extended_statistics_objects": 0,
+  "analyze": "ANALYZE pg_temp.wetgrass_data;",
+  "explain_options": "ANALYZE, FORMAT JSON, TIMING OFF",
+  "selected_at_utc": "2026-11-09T23:36:33.671376+00:00",
+  "measured_at_utc": "2026-11-09T23:37:10.916453+00:00",
+  "results": [
+    {
+      "query_id": "Q01",
+      "postgres_estimate": 1746,
+      "true_cardinality": 1746
+    },
+    {
+      "query_id": "Q02",
+      "postgres_estimate": 2476,
+      "true_cardinality": 2136
+    },
+    {
+      "query_id": "Q03",
+      "postgres_estimate": 3219,
+      "true_cardinality": 3900
+    },
+    {
+      "query_id": "Q04",
+      "postgres_estimate": 3782,
+      "true_cardinality": 4160
+    },
+    {
+      "query_id": "Q05",
+      "postgres_estimate": 1135,
+      "true_cardinality": 240
+    },
+    {
+      "query_id": "Q06",
+      "postgres_estimate": 121,
+      "true_cardinality": 864
+    },
+    {
+      "query_id": "Q07",
+      "postgres_estimate": 8254,
+      "true_cardinality": 8254
+    },
+    {
+      "query_id": "Q08",
+      "postgres_estimate": 1860,
+      "true_cardinality": 600
+    },
+    {
+      "query_id": "Q09",
+      "postgres_estimate": 1140,
+      "true_cardinality": 2400
+    },
+    {
+      "query_id": "Q10",
+      "postgres_estimate": 4340,
+      "true_cardinality": 5600
+    },
+    {
+      "query_id": "Q11",
+      "postgres_estimate": 2418,
+      "true_cardinality": 2040
+    },
+    {
+      "query_id": "Q12",
+      "postgres_estimate": 725,
+      "true_cardinality": 360
+    },
+    {
+      "query_id": "Q13",
+      "postgres_estimate": 2647,
+      "true_cardinality": 3920
+    },
+    {
+      "query_id": "Q14",
+      "postgres_estimate": 1830,
+      "true_cardinality": 1200
+    },
+    {
+      "query_id": "Q15",
+      "postgres_estimate": 1510,
+      "true_cardinality": 336
+    },
+    {
+      "query_id": "Q16",
+      "postgres_estimate": 941,
+      "true_cardinality": 1536
+    },
+    {
+      "query_id": "Q17",
+      "postgres_estimate": 695,
+      "true_cardinality": 960
+    },
+    {
+      "query_id": "Q18",
+      "postgres_estimate": 2318,
+      "true_cardinality": 1940
+    },
+    {
+      "query_id": "Q19",
+      "postgres_estimate": 1913,
+      "true_cardinality": 194
+    },
+    {
+      "query_id": "Q20",
+      "postgres_estimate": 5035,
+      "true_cardinality": 4354
+    }
+  ]
+}

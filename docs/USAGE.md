@@ -791,6 +791,37 @@ Verify the committed CSV:
 python /workspace/bnsl/datasets/gen_tpcds_sample.py --check
 ```
 
+## 1.9. Shared Query Workloads
+
+Each CSV stores `query_id,sql,reason` with IDs Q01–Q20. Wetgrass, NHANES and
+Market Basket preserve their original six predicates as Q01–Q06, including
+the full-attribute query Q06. The same workload applies to both sizes of
+each synthetic dataset.
+
+| Dataset | Workload | PostgreSQL reference |
+|---|---|---|
+| Wetgrass | [20 queries](../workloads/wetgrass.csv) | [100 rows](../reference_results/wetgrass_100_postgres.json), [10,000 rows](../reference_results/wetgrass_10000_postgres.json) |
+| NHANES | [20 queries](../workloads/nhanes.csv) | [2,278 rows](../reference_results/nhanes_postgres.json) |
+| Market Basket | [20 queries](../workloads/market_basket.csv) | [100 rows](../reference_results/market_basket_100_postgres.json), [10,000 rows](../reference_results/market_basket_10000_postgres.json) |
+| TPC-DS | [20 queries](../workloads/tpcds_store_sales.csv) | [10,000 rows](../reference_results/tpcds_store_sales_postgres.json) |
+
+The additions cover frequent and rare matches, stronger and weaker
+associations, and comparisons that change one condition. Wetgrass also
+uses its known chains, fork and two-parent relationship. NHANES keeps the
+existing BMI bins and covers all three DIQ010 codes. Market Basket has only
+five distinct baskets: its workload covers 19 different nonempty row sets
+and one deliberate zero-result case, `Eggs = 1 AND Milk = 1`.
+
+Queries were selected before measuring PostgreSQL estimates. The 100 checks
+for Wetgrass, NHANES and Market Basket used temporary copies with the
+existing PostgreSQL schemas, ordinary statistics, `ANALYZE`, then
+`EXPLAIN (ANALYZE, FORMAT JSON, TIMING OFF)`. True counts matched `COUNT(*)`,
+the raw CSV and the existing encoded states. Reference files record the
+dataset and workload checksums and PostgreSQL settings.
+
+The estimator runners still use their original six hardcoded queries.
+Loading these shared workload files is the next integration step.
+
 ---
 
 ## 2. Running Cardinality Estimates

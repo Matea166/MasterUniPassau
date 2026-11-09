@@ -1,0 +1,21 @@
+query_id,sql,reason
+Q01,SELECT * FROM wetgrass_data WHERE wetgrass = 'f';,Check the frequency of dry grass.
+Q02,SELECT * FROM wetgrass_data WHERE cloud = 't' AND wetgrass = 't';,Test cloud and wet grass without observing the intermediate variables.
+Q03,SELECT * FROM wetgrass_data WHERE rain = 't' AND wetgrass = 't';,Check rain together with wet grass.
+Q04,SELECT * FROM wetgrass_data WHERE sprinkler = 'on' AND rain = 'f';,Test the weak marginal relationship between sprinkler and rain.
+Q05,SELECT * FROM wetgrass_data WHERE cloud = 't' AND sprinkler = 'on' AND rain = 'f';,Test the rare cloud/sprinkler/rain combination in the original workload.
+Q06,SELECT * FROM wetgrass_data WHERE cloud = 't' AND sprinkler = 'off' AND rain = 'f' AND wetgrass = 'f';,Keep the original query using all four attributes.
+Q07,SELECT * FROM wetgrass_data WHERE wetgrass = 't';,"Check the common wet-grass outcome, opposite to Q01."
+Q08,SELECT * FROM wetgrass_data WHERE cloud = 't' AND sprinkler = 'on';,Test the less frequent sprinkler state when cloudy.
+Q09,SELECT * FROM wetgrass_data WHERE cloud = 't' AND sprinkler = 'off';,Change only sprinkler relative to Q08.
+Q10,SELECT * FROM wetgrass_data WHERE cloud = 'f' AND sprinkler = 'on';,Change only cloud relative to Q08; this pair is common.
+Q11,SELECT * FROM wetgrass_data WHERE sprinkler = 'on' AND rain = 't';,Change only rain relative to Q04.
+Q12,SELECT * FROM wetgrass_data WHERE cloud = 't' AND sprinkler = 'on' AND rain = 't';,Change only rain relative to Q05; test a parent with its two children.
+Q13,SELECT * FROM wetgrass_data WHERE cloud = 'f' AND sprinkler = 'on' AND rain = 'f';,Change only cloud relative to Q05; compare the same fork.
+Q14,SELECT * FROM wetgrass_data WHERE cloud = 't' AND rain = 'f';,Test cloud and rain before adding wet grass in Q15.
+Q15,SELECT * FROM wetgrass_data WHERE cloud = 't' AND rain = 'f' AND wetgrass = 't';,Add wet grass to Q14 along the cloud/rain/wet-grass chain.
+Q16,SELECT * FROM wetgrass_data WHERE cloud = 't' AND sprinkler = 'off' AND wetgrass = 't';,Add the intermediate sprinkler state to Q02.
+Q17,SELECT * FROM wetgrass_data WHERE cloud = 't' AND sprinkler = 'off' AND rain = 'f';,Remove the wet-grass condition from the full query Q06.
+Q18,SELECT * FROM wetgrass_data WHERE sprinkler = 'off' AND rain = 'f';,Test both inputs to wet grass being absent.
+Q19,SELECT * FROM wetgrass_data WHERE sprinkler = 'off' AND rain = 'f' AND wetgrass = 't';,Add wet grass to Q18; a rare outcome with both inputs absent.
+Q20,SELECT * FROM wetgrass_data WHERE rain = 'f' AND wetgrass = 't';,Change only rain relative to Q03; wet grass can occur without rain.
