@@ -59,9 +59,6 @@ Every pipeline stage can be driven in two ways:
 
 ## 1. Preparing the Datasets
 
-The completed experiments use three aligned representations for each dataset.
-TPC-DS currently has the CSV and PostgreSQL representations only:
-
 | Representation            | Location                    | Purpose                                                                                                                                           |
 | ------------------------- | --------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------- |
 | Solver TXT representation | `bnsl-qa/qa-datasets/`      | Input format required by the `bnslqa` structure-learning solver. The values are finite integer states.                                            |
