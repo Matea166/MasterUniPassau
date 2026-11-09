@@ -1,0 +1,21 @@
+query_id,sql,reason
+Q01,SELECT * FROM store_sales WHERE ss_coupon_amt = 0;,Check the most common coupon value.
+Q02,SELECT * FROM store_sales WHERE ss_coupon_amt >= 1000;,Check less frequent large coupons.
+Q03,SELECT * FROM store_sales WHERE ss_net_profit < 0;,Check a common profit condition.
+Q04,SELECT * FROM store_sales WHERE ss_wholesale_cost >= 75 AND ss_list_price >= 50 AND ss_list_price < 100;,Compare two list-price ranges at the same wholesale cost.
+Q05,SELECT * FROM store_sales WHERE ss_wholesale_cost >= 75 AND ss_list_price >= 100;,Change only list price relative to Q04.
+Q06,SELECT * FROM store_sales WHERE ss_quantity < 26 AND ss_wholesale_cost >= 75;,Test weakly related quantity and wholesale cost.
+Q07,SELECT * FROM store_sales WHERE ss_store_sk = 7 AND ss_quantity >= 76;,Test weakly related store and quantity.
+Q08,SELECT * FROM store_sales WHERE ss_quantity < 26 AND ss_coupon_amt >= 1000;,Test rare large coupons with low quantity.
+Q09,SELECT * FROM store_sales WHERE ss_quantity >= 76 AND ss_coupon_amt >= 1000;,Change only quantity relative to Q08.
+Q10,SELECT * FROM store_sales WHERE ss_wholesale_cost >= 75 AND ss_sales_price >= 50 AND ss_sales_price < 100;,Test the endpoints of the price chain.
+Q11,SELECT * FROM store_sales WHERE ss_wholesale_cost >= 75 AND ss_list_price >= 100 AND ss_sales_price >= 50 AND ss_sales_price < 100;,Add the middle attribute to Q10.
+Q12,SELECT * FROM store_sales WHERE ss_quantity >= 76 AND ss_net_paid < 1000 AND ss_net_profit >= 0 AND ss_net_profit < 1000;,Test a rare quantity/payment/profit combination.
+Q13,SELECT * FROM store_sales WHERE ss_quantity >= 76 AND ss_net_paid < 1000 AND ss_net_profit < 0;,Change only profit relative to Q12.
+Q14,SELECT * FROM store_sales WHERE ss_quantity >= 26 AND ss_quantity < 51 AND ss_sales_price >= 50 AND ss_sales_price < 100 AND ss_net_paid < 1000;,Test low payment with fixed quantity and price.
+Q15,SELECT * FROM store_sales WHERE ss_quantity >= 26 AND ss_quantity < 51 AND ss_sales_price >= 50 AND ss_sales_price < 100 AND ss_net_paid >= 1000 AND ss_net_paid < 3000;,Change only payment relative to Q14.
+Q16,SELECT * FROM store_sales WHERE ss_quantity >= 26 AND ss_quantity < 51 AND ss_sales_price >= 50 AND ss_sales_price < 100 AND ss_net_paid < 1000 AND ss_coupon_amt >= 1000;,Add a large coupon to Q14's low-payment case.
+Q17,SELECT * FROM store_sales WHERE ss_wholesale_cost >= 75 AND ss_list_price >= 100 AND ss_sales_price >= 50 AND ss_sales_price < 100 AND ss_net_profit < 0;,Add profit to Q11's price chain.
+Q18,SELECT * FROM store_sales WHERE ss_wholesale_cost >= 75 AND ss_list_price >= 100 AND ss_sales_price >= 50 AND ss_sales_price < 100 AND ss_net_profit < 0 AND ss_quantity >= 51 AND ss_quantity < 76 AND ss_coupon_amt = 0;,Extend Q17 to six attributes.
+Q19,SELECT * FROM store_sales WHERE ss_wholesale_cost >= 75 AND ss_list_price >= 100 AND ss_sales_price >= 50 AND ss_sales_price < 100 AND ss_net_profit < 0 AND ss_quantity >= 51 AND ss_quantity < 76 AND ss_coupon_amt = 0 AND ss_net_paid >= 3000;,Add payment to the same six-attribute case.
+Q20,SELECT * FROM store_sales WHERE ss_wholesale_cost >= 75 AND ss_list_price >= 100 AND ss_sales_price >= 50 AND ss_sales_price < 100 AND ss_net_profit < 0 AND ss_quantity >= 51 AND ss_quantity < 76 AND ss_coupon_amt = 0 AND ss_net_paid >= 3000 AND ss_store_sk = 10;,Add store; all eight conditions affect the result.

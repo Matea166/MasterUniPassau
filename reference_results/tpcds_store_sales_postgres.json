@@ -1,0 +1,127 @@
+{
+  "dataset": "bnsl/datasets/data/TPCDS_store_sales_10000.csv",
+  "dataset_sha256": "7ebdf25665af7067638bda256d6800c6ca54eda8efae2e3cbe688abce5a37d38",
+  "workload": "workloads/tpcds_store_sales.csv",
+  "workload_sha256": "9f4db4b401304aeb8db62205828483a1b61bcdbec2a83c1a41ec28c54a86bbe1",
+  "database": "tpcds",
+  "table": "public.store_sales",
+  "rows": 10000,
+  "postgres_version": "16.15 (Debian 16.15-1.pgdg13+2)",
+  "default_statistics_target": 100,
+  "column_statistics_targets": {
+    "ss_quantity": -1,
+    "ss_sales_price": -1,
+    "ss_coupon_amt": -1,
+    "ss_net_profit": -1,
+    "ss_wholesale_cost": -1,
+    "ss_net_paid": -1,
+    "ss_list_price": -1,
+    "ss_store_sk": -1
+  },
+  "extended_statistics_objects": 0,
+  "analyze": "ANALYZE public.store_sales;",
+  "explain_options": "ANALYZE, FORMAT JSON, TIMING OFF",
+  "measured_at_utc": "2026-11-09T23:03:11.482113+00:00",
+  "results": [
+    {
+      "query_id": "Q01",
+      "postgres_estimate": 7674,
+      "true_cardinality": 7674
+    },
+    {
+      "query_id": "Q02",
+      "postgres_estimate": 562,
+      "true_cardinality": 562
+    },
+    {
+      "query_id": "Q03",
+      "postgres_estimate": 7051,
+      "true_cardinality": 7052
+    },
+    {
+      "query_id": "Q04",
+      "postgres_estimate": 789,
+      "true_cardinality": 351
+    },
+    {
+      "query_id": "Q05",
+      "postgres_estimate": 713,
+      "true_cardinality": 1994
+    },
+    {
+      "query_id": "Q06",
+      "postgres_estimate": 567,
+      "true_cardinality": 591
+    },
+    {
+      "query_id": "Q07",
+      "postgres_estimate": 396,
+      "true_cardinality": 386
+    },
+    {
+      "query_id": "Q08",
+      "postgres_estimate": 133,
+      "true_cardinality": 24
+    },
+    {
+      "query_id": "Q09",
+      "postgres_estimate": 138,
+      "true_cardinality": 208
+    },
+    {
+      "query_id": "Q10",
+      "postgres_estimate": 525,
+      "true_cardinality": 895
+    },
+    {
+      "query_id": "Q11",
+      "postgres_estimate": 157,
+      "true_cardinality": 719
+    },
+    {
+      "query_id": "Q12",
+      "postgres_estimate": 228,
+      "true_cardinality": 44
+    },
+    {
+      "query_id": "Q13",
+      "postgres_estimate": 880,
+      "true_cardinality": 749
+    },
+    {
+      "query_id": "Q14",
+      "postgres_estimate": 273,
+      "true_cardinality": 46
+    },
+    {
+      "query_id": "Q15",
+      "postgres_estimate": 137,
+      "true_cardinality": 356
+    },
+    {
+      "query_id": "Q16",
+      "postgres_estimate": 15,
+      "true_cardinality": 42
+    },
+    {
+      "query_id": "Q17",
+      "postgres_estimate": 111,
+      "true_cardinality": 582
+    },
+    {
+      "query_id": "Q18",
+      "postgres_estimate": 20,
+      "true_cardinality": 97
+    },
+    {
+      "query_id": "Q19",
+      "postgres_estimate": 4,
+      "true_cardinality": 93
+    },
+    {
+      "query_id": "Q20",
+      "postgres_estimate": 1,
+      "true_cardinality": 21
+    }
+  ]
+}

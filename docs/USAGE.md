@@ -759,6 +759,18 @@ docker compose exec -T app bash scripts/prepare_datasets.sh
 docker compose exec -T postgres psql -U postgres -d tpcds -c "SELECT * FROM store_sales LIMIT 20;"
 ```
 
+The [20-query workload](../workloads/tpcds_store_sales.csv) records stable
+IDs Q01–Q20, SQL and a short reason for each query. It covers common and rare
+combinations, weak and strong dependencies, and one query using all eight
+attributes.
+
+The [PostgreSQL reference](../reference_results/tpcds_store_sales_postgres.json)
+records estimates and true cardinalities measured with PostgreSQL 16.15,
+ordinary statistics, `ANALYZE store_sales`, then
+`EXPLAIN (ANALYZE, FORMAT JSON, TIMING OFF)`. Every true count was checked
+against `COUNT(*)` and the CSV. Dataset and workload checksums identify the
+inputs used.
+
 ### Optional regeneration from the source
 
 Run inside the application container:
