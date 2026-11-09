@@ -35,10 +35,9 @@ sample into PostgreSQL. See the
 [dataset instructions](docs/USAGE.md#18-tpc-ds-store-sales-sample) and
 [20-query workload](workloads/tpcds_store_sales.csv).
 
-The [shared workloads](workloads/) also contain 20 queries each for Wetgrass,
-NHANES and Market Basket, preserving their original six. PostgreSQL counts
-are in [reference_results/](reference_results/). These files are not yet
-loaded by the estimator runners; see [workload details](docs/USAGE.md#19-shared-query-workloads).
+The [workloads](workloads/) contain 20 queries per dataset, with PostgreSQL
+counts in [reference_results/](reference_results/).
+See [workload details](docs/USAGE.md#19-shared-query-workloads).
 
 ## Requirements
 

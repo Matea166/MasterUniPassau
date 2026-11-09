@@ -1,21 +1,21 @@
 query_id,sql,reason
-Q01,SELECT * FROM nhanes_data WHERE DIQ010 = 2;,Check the most common DIQ010 response.
-Q02,SELECT * FROM nhanes_data WHERE BMXBMI >= 30.0 AND DIQ010 = 1;,Test the rare DIQ010 code 1 together with the highest BMI bin.
-Q03,SELECT * FROM nhanes_data WHERE age_group = 'Senior' AND BMXBMI >= 30.0 AND DIQ010 = 1;,Add the Senior group to Q02.
-Q04,SELECT * FROM nhanes_data WHERE age_group = 'Adult' AND BMXBMI >= 18.5 AND BMXBMI < 25.0 AND DIQ010 = 2;,Check a common age/BMI/response combination.
-Q05,SELECT * FROM nhanes_data WHERE age_group = 'Adult' AND BMXBMI >= 25.0 AND BMXBMI < 30.0 AND DIQ010 = 1;,Test a rare response in the Adult overweight group.
-Q06,SELECT * FROM nhanes_data WHERE age_group = 'Senior' AND RIAGENDR = 1 AND BMXBMI >= 25.0 AND BMXBMI < 30.0 AND DIQ010 = 2;,Keep the original query using all four modeled attributes.
-Q07,SELECT * FROM nhanes_data WHERE DIQ010 = 1;,Check the rarest DIQ010 category alone.
-Q08,SELECT * FROM nhanes_data WHERE DIQ010 = 3;,"Cover the third DIQ010 category, absent from the original queries."
-Q09,SELECT * FROM nhanes_data WHERE age_group = 'Senior' AND DIQ010 = 1;,Add age to Q07 before adding BMI in Q03.
-Q10,SELECT * FROM nhanes_data WHERE age_group = 'Adult' AND DIQ010 = 1;,Change only age group relative to Q09.
-Q11,SELECT * FROM nhanes_data WHERE age_group = 'Senior' AND DIQ010 = 2;,Change only the response relative to Q09.
-Q12,SELECT * FROM nhanes_data WHERE age_group = 'Adult' AND BMXBMI >= 30.0 AND DIQ010 = 1;,"Change only age relative to Q03, or BMI relative to Q05."
-Q13,SELECT * FROM nhanes_data WHERE age_group = 'Adult' AND BMXBMI >= 30.0 AND DIQ010 = 2;,Change only the response relative to Q12; a common combination.
-Q14,SELECT * FROM nhanes_data WHERE age_group = 'Adult' AND BMXBMI >= 30.0 AND DIQ010 = 3;,Complete the three-response comparison with Q12 and Q13.
-Q15,SELECT * FROM nhanes_data WHERE age_group = 'Senior' AND BMXBMI >= 25.0 AND BMXBMI < 30.0 AND DIQ010 = 2;,Remove gender from the full query Q06.
-Q16,SELECT * FROM nhanes_data WHERE BMXBMI >= 0 AND BMXBMI < 18.5;,"Cover the underweight bin, absent from the original queries."
-Q17,SELECT * FROM nhanes_data WHERE age_group = 'Senior' AND BMXBMI >= 0 AND BMXBMI < 18.5;,Add age to Q16; a rare age/BMI combination.
-Q18,SELECT * FROM nhanes_data WHERE age_group = 'Senior' AND RIAGENDR = 1;,"Test age and gender, which are almost independent in this sample."
-Q19,SELECT * FROM nhanes_data WHERE age_group = 'Senior' AND RIAGENDR = 2;,Change only gender relative to Q18.
-Q20,SELECT * FROM nhanes_data WHERE age_group = 'Senior' AND RIAGENDR = 1 AND DIQ010 = 1;,Add the rare response to Q18; all three conditions reduce the result.
+Q01,SELECT * FROM nhanes_data WHERE DIQ010 = 2;,Most common response.
+Q02,SELECT * FROM nhanes_data WHERE BMXBMI >= 30.0 AND DIQ010 = 1;,Rare response with BMI of 30 or more.
+Q03,SELECT * FROM nhanes_data WHERE age_group = 'Senior' AND BMXBMI >= 30.0 AND DIQ010 = 1;,Senior subgroup of Q02.
+Q04,SELECT * FROM nhanes_data WHERE age_group = 'Adult' AND BMXBMI >= 18.5 AND BMXBMI < 25.0 AND DIQ010 = 2;,Common age/BMI/response combination.
+Q05,SELECT * FROM nhanes_data WHERE age_group = 'Adult' AND BMXBMI >= 25.0 AND BMXBMI < 30.0 AND DIQ010 = 1;,Rare response in overweight adults.
+Q06,SELECT * FROM nhanes_data WHERE age_group = 'Senior' AND RIAGENDR = 1 AND BMXBMI >= 25.0 AND BMXBMI < 30.0 AND DIQ010 = 2;,All four modeled attributes.
+Q07,SELECT * FROM nhanes_data WHERE DIQ010 = 1;,Rarest response.
+Q08,SELECT * FROM nhanes_data WHERE DIQ010 = 3;,Third response category.
+Q09,SELECT * FROM nhanes_data WHERE age_group = 'Senior' AND DIQ010 = 1;,Senior subgroup of Q07.
+Q10,SELECT * FROM nhanes_data WHERE age_group = 'Adult' AND DIQ010 = 1;,Q09 with adults.
+Q11,SELECT * FROM nhanes_data WHERE age_group = 'Senior' AND DIQ010 = 2;,Q09 with the common response.
+Q12,SELECT * FROM nhanes_data WHERE age_group = 'Adult' AND BMXBMI >= 30.0 AND DIQ010 = 1;,Q03 with adults.
+Q13,SELECT * FROM nhanes_data WHERE age_group = 'Adult' AND BMXBMI >= 30.0 AND DIQ010 = 2;,Q12 with the common response.
+Q14,SELECT * FROM nhanes_data WHERE age_group = 'Adult' AND BMXBMI >= 30.0 AND DIQ010 = 3;,Q12 with the third response.
+Q15,SELECT * FROM nhanes_data WHERE age_group = 'Senior' AND BMXBMI >= 25.0 AND BMXBMI < 30.0 AND DIQ010 = 2;,Q06 without gender.
+Q16,SELECT * FROM nhanes_data WHERE BMXBMI >= 0 AND BMXBMI < 18.5;,Underweight group.
+Q17,SELECT * FROM nhanes_data WHERE age_group = 'Senior' AND BMXBMI >= 0 AND BMXBMI < 18.5;,Rare underweight senior group.
+Q18,SELECT * FROM nhanes_data WHERE age_group = 'Senior' AND RIAGENDR = 1;,Nearly independent age and gender.
+Q19,SELECT * FROM nhanes_data WHERE age_group = 'Senior' AND RIAGENDR = 2;,Q18 with the other gender.
+Q20,SELECT * FROM nhanes_data WHERE age_group = 'Senior' AND RIAGENDR = 1 AND DIQ010 = 1;,Rare response added to Q18.
