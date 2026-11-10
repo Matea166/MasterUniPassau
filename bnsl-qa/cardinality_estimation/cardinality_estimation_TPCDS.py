@@ -22,13 +22,20 @@ from bnsl.datasets.tpcds_encoding import (
 )
 
 
+def load_data(path):
+    raw = pd.read_csv(path)
+    return raw, encode(raw)
+
+
 def fit_model(encoded, matrix):
+    columns = COLUMNS
     matrix = np.asarray(matrix)
-    if matrix.shape != (8, 8) or not np.isin(matrix, [0, 1]).all():
-        raise ValueError("Expected an 8 by 8 binary adjacency matrix.")
-    edges = [(COLUMNS[i], COLUMNS[j]) for i, j in zip(*np.nonzero(matrix))]
+    size = len(columns)
+    if matrix.shape != (size, size) or not np.isin(matrix, [0, 1]).all():
+        raise ValueError(f"Expected a {size} by {size} binary adjacency matrix.")
+    edges = [(columns[i], columns[j]) for i, j in zip(*np.nonzero(matrix))]
     model = DiscreteBayesianNetwork()
-    model.add_nodes_from(COLUMNS)
+    model.add_nodes_from(columns)
     model.add_edges_from(edges)
     if not nx.is_directed_acyclic_graph(model):
         raise ValueError("Cannot estimate a cyclic graph.")
@@ -46,6 +53,22 @@ def estimate_probability(inference, filters):
     return sum(float(result.get_value(**query)) for query in assignments(filters))
 
 
+def draw_graph(model, output_dir, graph_index):
+    try:
+        graph = graphviz.Digraph()
+        graph.attr(rankdir="TB")
+        for column in model.nodes():
+            graph.node(
+                column, column, shape="ellipse", style="filled", fillcolor="lightblue"
+            )
+        graph.edges(model.edges())
+        graph.render(
+            str(output_dir / f"Graph_{graph_index}"), format="png", cleanup=True
+        )
+    except Exception as exc:
+        print(f"[Warning] Could not generate graph: {exc}")
+
+
 def main():
     parser = argparse.ArgumentParser()
     parser.add_argument("matrix", type=ast.literal_eval)
@@ -56,39 +79,25 @@ def main():
     )
     parser.add_argument("--workload", type=Path, default=WORKLOAD_PATH)
     args = parser.parse_args()
-    encoded = encode(pd.read_csv(args.input))
-    queries = load_queries(args.workload)
+    raw, encoded = load_data(args.input)
+    queries = [
+        (query["sql"], filters) for query, filters in load_queries(args.workload)
+    ]
     model = fit_model(encoded, args.matrix)
     inference = VariableElimination(model)
     results = []
-    for query, filters in queries:
+    for sql, filters in queries:
         try:
             cardinality = estimate_probability(inference, filters) * len(encoded)
         except Exception as exc:
             raise RuntimeError(
                 f"Inference failed for graph {args.graph_index}, query {filters!r}"
             ) from exc
-        results.append(
-            {"query_sql": query["sql"], "estimated_cardinality": cardinality}
-        )
+        results.append({"query_sql": sql, "estimated_cardinality": cardinality})
     args.output_dir.mkdir(parents=True, exist_ok=True)
     output = args.output_dir / f"graph_{args.graph_index}_cardinality.csv"
     pd.DataFrame(results).to_csv(output, index=False)
-    try:
-        graph = graphviz.Digraph()
-        graph.attr(rankdir="TB")
-        for column in COLUMNS:
-            graph.node(
-                column, column, shape="ellipse", style="filled", fillcolor="lightblue"
-            )
-        graph.edges(model.edges())
-        graph.render(
-            str(args.output_dir / f"Graph_{args.graph_index}"),
-            format="png",
-            cleanup=True,
-        )
-    except Exception as exc:
-        print(f"[Warning] Could not generate graph: {exc}")
+    draw_graph(model, args.output_dir, args.graph_index)
     print(f"Results saved to: {output}")
 
 

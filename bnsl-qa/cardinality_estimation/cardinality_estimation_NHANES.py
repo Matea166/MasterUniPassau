@@ -1,8 +1,6 @@
 import argparse
 import ast
 import os
-import sys
-import warnings
 from pathlib import Path
 
 import graphviz
@@ -16,88 +14,91 @@ from pgmpy.models import DiscreteBayesianNetwork
 from bnsl.workloads import load_queries
 
 
-def estimate_cardinality(query_dict, inference, total_rows, graph_index):
-    try:
-        result = inference.query(
-            variables=list(query_dict.keys()), evidence={}, show_progress=False
-        )
-        est_prob = result.get_value(**query_dict)
-    except Exception as exc:
-        raise RuntimeError(
-            f"Inference failed for graph {graph_index}, query {query_dict!r}"
-        ) from exc
-    return est_prob * total_rows
-
-
-def main():
-    warnings.simplefilter(action="ignore", category=FutureWarning)
-    parser = argparse.ArgumentParser()
-    parser.add_argument("matrix", type=ast.literal_eval)
-    parser.add_argument("output_dir", type=Path)
-    parser.add_argument("graph_index")
-    args = parser.parse_args()
-    sa_matrix = args.matrix
-    output_dir = args.output_dir
-    graph_index = args.graph_index
-    os.makedirs(output_dir, exist_ok=True)
-    dataset_path = os.environ.get(
-        "CE_DATASET_CSV", "../bnsl/datasets/data/NHANES_age_prediction.csv"
-    )
-    try:
-        df_raw = pd.read_csv(dataset_path)
-    except Exception as e:
-        print(f"CRITICAL ERROR: Could not read dataset {dataset_path}: {e}")
-        sys.exit(1)
+def load_data(path):
+    raw = pd.read_csv(path)
     columns = ["age_group", "BMXBMI", "RIAGENDR", "DIQ010"]
-    df_bn = df_raw[columns].copy()
-    df_bn["BMXBMI"] = pd.cut(
-        df_bn["BMXBMI"],
+    encoded = raw[columns].copy()
+    encoded["BMXBMI"] = pd.cut(
+        encoded["BMXBMI"],
         bins=[0, 18.5, 25.0, 30.0, 150.0],
         labels=[0, 1, 2, 3],
         right=False,
     ).astype(int)
-    df_bn["age_group"] = df_bn["age_group"].astype("category").cat.codes
-    df_bn["RIAGENDR"] = df_bn["RIAGENDR"].astype("category").cat.codes
-    df_bn["DIQ010"] = df_bn["DIQ010"].astype("category").cat.codes
-    total_rows = len(df_bn)
-    num_vars = len(columns)
-    adj_matrix = np.array(sa_matrix)
-    edges = []
-    for i in range(num_vars):
-        for j in range(num_vars):
-            if adj_matrix[i, j] == 1:
-                edges.append((columns[i], columns[j]))
-    graph = nx.DiGraph(edges)
-    if not nx.is_directed_acyclic_graph(graph):
+    for column in ["age_group", "RIAGENDR", "DIQ010"]:
+        encoded[column] = encoded[column].astype("category").cat.codes
+    return raw, encoded
+
+
+def fit_model(encoded, matrix):
+    columns = encoded.columns.tolist()
+    matrix = np.asarray(matrix)
+    size = len(columns)
+    if matrix.shape != (size, size) or not np.isin(matrix, [0, 1]).all():
+        raise ValueError(f"Expected a {size} by {size} binary adjacency matrix.")
+    edges = [(columns[i], columns[j]) for i, j in zip(*np.nonzero(matrix))]
+    model = DiscreteBayesianNetwork()
+    model.add_nodes_from(columns)
+    model.add_edges_from(edges)
+    if not nx.is_directed_acyclic_graph(model):
         raise ValueError("Cannot estimate a cyclic graph.")
-    final_edges = list(graph.edges())
+    model.fit(encoded, estimator=MaximumLikelihoodEstimator)
+    model.check_model()
+    return model
+
+
+def estimate_probability(inference, filters):
+    result = inference.query(variables=list(filters), evidence={}, show_progress=False)
+    return result.get_value(**filters)
+
+
+def draw_graph(model, output_dir, graph_index):
     try:
-        qubo_dot = graphviz.Digraph(comment="Learned Bayesian Network")
-        qubo_dot.attr(rankdir="TB")
-        for var in columns:
-            qubo_dot.node(
-                var, var, shape="ellipse", style="filled", fillcolor="lightblue"
+        graph = graphviz.Digraph()
+        graph.attr(rankdir="TB")
+        for column in model.nodes():
+            graph.node(
+                column, column, shape="ellipse", style="filled", fillcolor="lightblue"
             )
-        for parent, child in final_edges:
-            qubo_dot.edge(parent, child)
-        graph_filename = os.path.join(output_dir, f"Graph_{graph_index}")
-        qubo_dot.render(graph_filename, format="png", cleanup=True)
-    except Exception as e:
-        print(f"[Warning] Could not generate graph: {e}")
-    bn = DiscreteBayesianNetwork(final_edges)
-    bn.add_nodes_from(columns)
-    bn.fit(df_bn, estimator=MaximumLikelihoodEstimator)
-    inference = VariableElimination(bn)
-    queries = load_queries("nhanes", df_raw, df_bn)
-    results_data = []
-    for sql, q_dict in queries:
-        est_card = estimate_cardinality(q_dict, inference, total_rows, graph_index)
-        results_data.append({"query_sql": sql, "estimated_cardinality": est_card})
-    csv_filename = os.path.join(output_dir, f"graph_{graph_index}_cardinality.csv")
-    pd.DataFrame(results_data).to_csv(csv_filename, index=False)
-    print(
-        f"Successfully generated {csv_filename} with format: query_sql,estimated_cardinality"
+        graph.edges(model.edges())
+        graph.render(
+            str(output_dir / f"Graph_{graph_index}"), format="png", cleanup=True
+        )
+    except Exception as exc:
+        print(f"[Warning] Could not generate graph: {exc}")
+
+
+def main():
+    parser = argparse.ArgumentParser()
+    parser.add_argument("matrix", type=ast.literal_eval)
+    parser.add_argument("output_dir", type=Path)
+    parser.add_argument("graph_index")
+    parser.add_argument(
+        "--input",
+        type=Path,
+        default=os.environ.get(
+            "CE_DATASET_CSV", "../bnsl/datasets/data/NHANES_age_prediction.csv"
+        ),
     )
+    parser.add_argument("--workload", type=Path)
+    args = parser.parse_args()
+    raw, encoded = load_data(args.input)
+    queries = load_queries("nhanes", raw, encoded, path=args.workload)
+    model = fit_model(encoded, args.matrix)
+    inference = VariableElimination(model)
+    results = []
+    for sql, filters in queries:
+        try:
+            cardinality = estimate_probability(inference, filters) * len(encoded)
+        except Exception as exc:
+            raise RuntimeError(
+                f"Inference failed for graph {args.graph_index}, query {filters!r}"
+            ) from exc
+        results.append({"query_sql": sql, "estimated_cardinality": cardinality})
+    args.output_dir.mkdir(parents=True, exist_ok=True)
+    output = args.output_dir / f"graph_{args.graph_index}_cardinality.csv"
+    pd.DataFrame(results).to_csv(output, index=False)
+    draw_graph(model, args.output_dir, args.graph_index)
+    print(f"Results saved to: {output}")
 
 
 if __name__ == "__main__":

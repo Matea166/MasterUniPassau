@@ -4,6 +4,7 @@ import os
 from pathlib import Path
 
 import graphviz
+import networkx as nx
 import numpy as np
 import pandas as pd
 from pgmpy.estimators import MaximumLikelihoodEstimator
@@ -13,17 +14,51 @@ from pgmpy.models import DiscreteBayesianNetwork
 from bnsl.workloads import load_queries
 
 
-def estimate_cardinality(query_dict, inference, total_rows, graph_index):
+def load_data(path):
+    raw = pd.read_csv(path)
+    columns = ["Beer", "Bread", "Cola", "Diapers", "Eggs", "Milk"]
+    encoded = raw[columns].copy()
+    for column in encoded.columns:
+        encoded[column] = encoded[column].astype("category")
+    return raw, encoded
+
+
+def fit_model(encoded, matrix):
+    columns = encoded.columns.tolist()
+    matrix = np.asarray(matrix)
+    size = len(columns)
+    if matrix.shape != (size, size) or not np.isin(matrix, [0, 1]).all():
+        raise ValueError(f"Expected a {size} by {size} binary adjacency matrix.")
+    edges = [(columns[i], columns[j]) for i, j in zip(*np.nonzero(matrix))]
+    model = DiscreteBayesianNetwork()
+    model.add_nodes_from(columns)
+    model.add_edges_from(edges)
+    if not nx.is_directed_acyclic_graph(model):
+        raise ValueError("Cannot estimate a cyclic graph.")
+    model.fit(encoded, estimator=MaximumLikelihoodEstimator)
+    model.check_model()
+    return model
+
+
+def estimate_probability(inference, filters):
+    result = inference.query(variables=list(filters), evidence={}, show_progress=False)
+    return result.get_value(**filters)
+
+
+def draw_graph(model, output_dir, graph_index):
     try:
-        result = inference.query(
-            variables=list(query_dict.keys()), evidence={}, show_progress=False
+        graph = graphviz.Digraph()
+        graph.attr(rankdir="TB")
+        for column in model.nodes():
+            graph.node(
+                column, column, shape="ellipse", style="filled", fillcolor="lightblue"
+            )
+        graph.edges(model.edges())
+        graph.render(
+            str(output_dir / f"Graph_{graph_index}"), format="png", cleanup=True
         )
-        est_prob = result.get_value(**query_dict)
     except Exception as exc:
-        raise RuntimeError(
-            f"Inference failed for graph {graph_index}, query {query_dict!r}"
-        ) from exc
-    return est_prob * total_rows
+        print(f"[Warning] Could not generate graph: {exc}")
 
 
 def main():
@@ -31,55 +66,33 @@ def main():
     parser.add_argument("matrix", type=ast.literal_eval)
     parser.add_argument("output_dir", type=Path)
     parser.add_argument("graph_index")
-    args = parser.parse_args()
-    sa_matrix = args.matrix
-    output_dir = args.output_dir
-    graph_index = args.graph_index
-    os.makedirs(output_dir, exist_ok=True)
-    print(f"Loading Market Basket dataset for Graph {graph_index}...")
-    df = pd.read_csv(
-        os.environ.get(
+    parser.add_argument(
+        "--input",
+        type=Path,
+        default=os.environ.get(
             "CE_DATASET_CSV", "../bnsl/datasets/data/DataMining_MarketBasket_100.csv"
-        )
+        ),
     )
-    columns = ["Beer", "Bread", "Cola", "Diapers", "Eggs", "Milk"]
-    total_rows = len(df)
-    num_vars = len(columns)
-    for col in columns:
-        if col in df.columns:
-            df[col] = df[col].astype("category")
-    adj_matrix = np.array(sa_matrix)
-    edges = []
-    for i in range(num_vars):
-        for j in range(num_vars):
-            if adj_matrix[i, j] == 1:
-                edges.append((columns[i], columns[j]))
-    try:
-        qubo_dot = graphviz.Digraph(comment="Market Basket Bayesian Network")
-        qubo_dot.attr(rankdir="TB")
-        for var in columns:
-            qubo_dot.node(
-                var, var, shape="ellipse", style="filled", fillcolor="lightblue"
-            )
-        for i in range(num_vars):
-            for j in range(num_vars):
-                if adj_matrix[i, j] == 1:
-                    qubo_dot.edge(columns[i], columns[j])
-        graph_filename = os.path.join(output_dir, f"Graph_{graph_index}")
-        qubo_dot.render(graph_filename, format="png", cleanup=True)
-    except Exception as e:
-        print(f"[Warning] Could not generate graph: {e}")
-    bn = DiscreteBayesianNetwork(edges)
-    bn.add_nodes_from(columns)
-    bn.fit(df, estimator=MaximumLikelihoodEstimator)
-    inference = VariableElimination(bn)
-    queries = load_queries("market_basket", df, df)
-    results_data = []
-    for sql, q_dict in queries:
-        est_card = estimate_cardinality(q_dict, inference, total_rows, graph_index)
-        results_data.append({"query_sql": sql, "estimated_cardinality": est_card})
-    csv_filename = os.path.join(output_dir, f"graph_{graph_index}_cardinality.csv")
-    pd.DataFrame(results_data).to_csv(csv_filename, index=False)
+    parser.add_argument("--workload", type=Path)
+    args = parser.parse_args()
+    raw, encoded = load_data(args.input)
+    queries = load_queries("market_basket", raw, encoded, path=args.workload)
+    model = fit_model(encoded, args.matrix)
+    inference = VariableElimination(model)
+    results = []
+    for sql, filters in queries:
+        try:
+            cardinality = estimate_probability(inference, filters) * len(encoded)
+        except Exception as exc:
+            raise RuntimeError(
+                f"Inference failed for graph {args.graph_index}, query {filters!r}"
+            ) from exc
+        results.append({"query_sql": sql, "estimated_cardinality": cardinality})
+    args.output_dir.mkdir(parents=True, exist_ok=True)
+    output = args.output_dir / f"graph_{args.graph_index}_cardinality.csv"
+    pd.DataFrame(results).to_csv(output, index=False)
+    draw_graph(model, args.output_dir, args.graph_index)
+    print(f"Results saved to: {output}")
 
 
 if __name__ == "__main__":
