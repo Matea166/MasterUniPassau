@@ -47,16 +47,23 @@ class TpcdsEncodingTests(unittest.TestCase):
             missing = self.encoded[column].eq(STATE_NAMES[column][-1])
             pd.testing.assert_series_equal(missing, self.raw[column].isna())
             pd.testing.assert_series_equal(categories[column].eq("MISSING"), missing)
-        self.assertTrue(self.encoded.loc[self.raw.ss_net_profit < 0, "ss_net_profit"].eq(0).all())
+        pd.testing.assert_series_equal(self.encoded.ss_net_profit.isin([0, 1, 2, 3]),
+                                       self.raw.ss_net_profit.lt(0))
 
     def test_boundaries_and_zero(self):
         cases = {
             "ss_quantity": ([1, 25, 26, 50, 51, 75, 76, 100, None], [0, 0, 1, 1, 2, 2, 3, 3, 4]),
             "ss_sales_price": ([0, 24.99, 25, 49.99, 50, 99.99, 100, None], [0, 0, 1, 1, 2, 2, 3, 4]),
-            "ss_coupon_amt": ([0, 0.01, 999.99, 1000, None], [0, 1, 1, 2, 3]),
-            "ss_net_profit": ([-1000, -0.01, 0, 999.99, 1000, None], [0, 0, 1, 1, 2, 3]),
+            "ss_coupon_amt": ([0, 0.01, 99.99, 100, 499.99, 500, 999.99, 1000,
+                               1999.99, 2000, 12592, None],
+                              [0, 1, 1, 2, 2, 3, 3, 4, 4, 5, 5, 6]),
+            "ss_net_profit": ([-9035.60, -2000.01, -2000, -1000.01, -1000, -250.01,
+                               -250, -0.01, 0, 249.99, 250, 999.99, 1000, 7824.88, None],
+                              [0, 0, 1, 1, 2, 2, 3, 3, 4, 4, 5, 5, 6, 6, 7]),
             "ss_wholesale_cost": ([0, 24.99, 25, 49.99, 50, 74.99, 75, None], [0, 0, 1, 1, 2, 2, 3, 4]),
-            "ss_net_paid": ([0, 999.99, 1000, 2999.99, 3000, None], [0, 0, 1, 1, 2, 3]),
+            "ss_net_paid": ([0, 249.99, 250, 999.99, 1000, 1999.99, 2000, 2999.99,
+                             3000, 5999.99, 6000, 15891.84, None],
+                            [0, 0, 1, 1, 2, 2, 3, 3, 4, 4, 5, 5, 6]),
             "ss_list_price": ([0, 49.99, 50, 99.99, 100, None], [0, 0, 1, 1, 2, 3]),
             "ss_store_sk": ([1, 2, 4, 7, 8, 10, None], [0, 1, 2, 3, 4, 5, 6]),
         }
@@ -92,9 +99,13 @@ class TpcdsEncodingTests(unittest.TestCase):
         def filters(condition):
             return query_filters("SELECT * FROM store_sales WHERE " + condition + ";")
         self.assertEqual(filters("ss_quantity > 25"), {"ss_quantity": [1, 2, 3]})
-        self.assertEqual(filters("ss_coupon_amt > 0"), {"ss_coupon_amt": [1, 2]})
-        self.assertEqual(filters("ss_coupon_amt IS NULL"), {"ss_coupon_amt": [3]})
-        self.assertEqual(filters("ss_coupon_amt IS NOT NULL"), {"ss_coupon_amt": [0, 1, 2]})
+        self.assertEqual(filters("ss_coupon_amt > 0"), {"ss_coupon_amt": [1, 2, 3, 4, 5]})
+        self.assertEqual(filters("ss_coupon_amt >= 1000"), {"ss_coupon_amt": [4, 5]})
+        self.assertEqual(filters("ss_net_profit < 0"), {"ss_net_profit": [0, 1, 2, 3]})
+        self.assertEqual(filters("ss_net_paid < 1000"), {"ss_net_paid": [0, 1]})
+        self.assertEqual(filters("ss_net_paid >= 3000"), {"ss_net_paid": [4, 5]})
+        self.assertEqual(filters("ss_coupon_amt IS NULL"), {"ss_coupon_amt": [6]})
+        self.assertEqual(filters("ss_coupon_amt IS NOT NULL"), {"ss_coupon_amt": [0, 1, 2, 3, 4, 5]})
         self.assertEqual(filters("ss_coupon_amt IS NULL AND ss_coupon_amt = 0"), {"ss_coupon_amt": []})
         self.assertEqual(filters("ss_coupon_amt >= 1000 AND ss_coupon_amt < 1000"), {"ss_coupon_amt": []})
         with self.assertRaisesRegex(ValueError, "cuts through"):
@@ -108,7 +119,7 @@ class TpcdsEncodingTests(unittest.TestCase):
             write_solver_input(self.encoded, path)
             examples, n, states = qubo.getExamples(path)
         self.assertEqual(n, 8)
-        self.assertEqual(states, [5, 5, 4, 4, 5, 4, 4, 7])
+        self.assertEqual(states, [5, 5, 7, 8, 5, 7, 4, 7])
         self.assertEqual(examples, self.encoded.to_numpy().tolist())
         for child, parents in [(i, ()) for i in range(8)] + [(0, (1, 7)), (3, (0, 6)), (7, (3, 4))]:
             count = sum(qubo.calcNijSum(examples, parents, child, j, states)
@@ -122,8 +133,8 @@ class TpcdsEncodingTests(unittest.TestCase):
         encoded = encode(raw)
         model = BayesianNetwork([("ss_store_sk", "ss_net_profit")])
         model.update(Relation(tree_data(encoded[["ss_store_sk", "ss_net_profit"]])))
-        self.assertAlmostEqual(tree.estimate_probability(model, {"ss_net_profit": [0]}), 0.5)
-        self.assertAlmostEqual(tree.estimate_probability(model, {"ss_net_profit": [1]}), 0.5)
+        self.assertAlmostEqual(tree.estimate_probability(model, {"ss_net_profit": [0, 1, 2, 3]}), 0.5)
+        self.assertAlmostEqual(tree.estimate_probability(model, {"ss_net_profit": [4, 5]}), 0.5)
 
     def test_tree_matches_independent_mle_inference(self):
         model = tree.fit_model(self.encoded)

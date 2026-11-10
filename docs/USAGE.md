@@ -782,18 +782,31 @@ including `MISSING`; annealing uses integer states.
 |---|---|---|
 | `ss_quantity` | 1–25; 26–50; 51–75; 76–100 | 4 |
 | `ss_sales_price` | [0,25); [25,50); [50,100); ≥100 | 4 |
-| `ss_coupon_amt` | 0; (0,1000); ≥1000 | 3 |
-| `ss_net_profit` | <0; [0,1000); ≥1000 | 3 |
+| `ss_coupon_amt` | 0; (0,100); [100,500); [500,1000); [1000,2000); ≥2000 | 6 |
+| `ss_net_profit` | <−2000; [−2000,−1000); [−1000,−250); [−250,0); [0,250); [250,1000); ≥1000 | 7 |
 | `ss_wholesale_cost` | [0,25); [25,50); [50,75); ≥75 | 4 |
-| `ss_net_paid` | [0,1000); [1000,3000); ≥3000 | 3 |
+| `ss_net_paid` | [0,250); [250,1000); [1000,2000); [2000,3000); [3000,6000); ≥6000 | 6 |
 | `ss_list_price` | [0,50); [50,100); ≥100 | 3 |
 | `ss_store_sk` | 1; 2; 4; 7; 8; 10 | 6 |
 
-The groups preserve the 20 workload predicates, coupon zero and negative
-profit while limiting conditional-table size. They are a fixed modeling
-choice, not optimized against estimator accuracy. Missing states do not
-match numeric filters and are included when a column is unfiltered.
-Queries cutting through a group are rejected instead of approximated.
+The groups preserve the 20 workload predicates. Coupon zero remains separate;
+the upper coupon split at 2000 gives 290 and 272 rows, compared with 409 and
+153 at a split of 3000. Net-profit groups distinguish loss sizes, and net-paid
+groups separate payment levels. Counts in group order, excluding missing:
+
+| Column | Rows per group |
+|---|---|
+| `ss_coupon_amt` | 7674; 470; 536; 316; 290; 272 |
+| `ss_net_profit` | 1733; 1422; 2176; 1721; 1004; 831; 701 |
+| `ss_net_paid` | 2496; 2594; 1635; 921; 1347; 573 |
+
+These are fixed choices based on the sample distribution and query boundaries,
+not estimator accuracy. With at most two parents, the largest conditional
+table has 392 cells. Some category combinations remain rare or absent.
+Missing states do not match numeric filters and are included when a column
+is unfiltered. Queries cutting through a group are rejected instead of
+approximated. Regenerate solver input and rerun models after changing groups;
+estimates from the previous encoding must be kept separate.
 
 E0 generates `bnsl-qa/qa-datasets/TPCDS_store_sales_10000.txt`. To generate it
 separately and run the tree inside the app container:
