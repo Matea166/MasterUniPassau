@@ -782,27 +782,25 @@ including `MISSING`; annealing uses integer states.
 |---|---|---|
 | `ss_quantity` | 1–25; 26–50; 51–75; 76–100 | 4 |
 | `ss_sales_price` | [0,25); [25,50); [50,100); ≥100 | 4 |
-| `ss_coupon_amt` | 0; (0,100); [100,500); [500,1000); [1000,2000); ≥2000 | 6 |
-| `ss_net_profit` | <−2000; [−2000,−1000); [−1000,−250); [−250,0); [0,250); [250,1000); ≥1000 | 7 |
+| `ss_coupon_amt` | 0; (0,1000); ≥1000 | 3 |
+| `ss_net_profit` | <0; [0,1000); ≥1000 | 3 |
 | `ss_wholesale_cost` | [0,25); [25,50); [50,75); ≥75 | 4 |
-| `ss_net_paid` | [0,250); [250,1000); [1000,2000); [2000,3000); [3000,6000); ≥6000 | 6 |
+| `ss_net_paid` | [0,1000); [1000,3000); ≥3000 | 3 |
 | `ss_list_price` | [0,50); [50,100); ≥100 | 3 |
 | `ss_store_sk` | 1; 2; 4; 7; 8; 10 | 6 |
 
-The groups preserve the 20 workload predicates. Coupon zero remains separate;
-the upper coupon split at 2000 gives 290 and 272 rows, compared with 409 and
-153 at a split of 3000. Net-profit groups distinguish loss sizes, and net-paid
-groups separate payment levels. Counts in group order, excluding missing:
+The groups preserve the 20 workload predicates. Coupon zero remains separate,
+and negative net profit forms its own group. Counts in group order, excluding missing:
 
 | Column | Rows per group |
 |---|---|
-| `ss_coupon_amt` | 7674; 470; 536; 316; 290; 272 |
-| `ss_net_profit` | 1733; 1422; 2176; 1721; 1004; 831; 701 |
-| `ss_net_paid` | 2496; 2594; 1635; 921; 1347; 573 |
+| `ss_coupon_amt` | 7674; 1322; 562 |
+| `ss_net_profit` | 7052; 1835; 701 |
+| `ss_net_paid` | 5090; 2556; 1920 |
 
-These are fixed choices based on the sample distribution and query boundaries,
-not estimator accuracy. With at most two parents, the largest conditional
-table has 392 cells. Some category combinations remain rare or absent.
+These groups were selected after comparing eight encodings on this sample.
+With at most two parents, the largest conditional table has 175 cells.
+Some category combinations remain rare or absent.
 Missing states do not match numeric filters and are included when a column
 is unfiltered. Queries cutting through a group are rejected instead of
 approximated. Regenerate solver input and rerun models after changing groups;
@@ -827,6 +825,18 @@ For SA/SQA, use `qa-datasets/TPCDS_store_sales_10000.txt` and
 Both TPC-DS estimators read `workloads/tpcds_store_sales.csv`.
 The tree keeps normalized mutual information and its existing fitting and
 inference; SA/SQA keep maximum-likelihood fitting and variable elimination.
+
+Run the fixed TPC-DS comparison:
+
+```bash
+docker compose exec -T app bash scripts/run_tpcds_store_sales.sh
+```
+
+The [configuration](../config/tpcds_store_sales.env) uses SA with 20 trials ×
+100 reads and SQA with 10 trials × 1,000 reads. These settings apply only to
+TPC-DS. The script reloads the raw PostgreSQL table, runs `ANALYZE`, regenerates
+the solver input, and saves estimates, q-errors and the combined comparison
+under `results/tpcds_store_sales/`.
 
 Run the encoding and model checks from the repository root:
 

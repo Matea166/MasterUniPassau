@@ -34,6 +34,10 @@ Dataset preparation also loads a 10,000-row, eight-column TPC-DS `store_sales`
 sample into PostgreSQL and generates its encoded solver input. See the
 [dataset instructions](docs/USAGE.md#18-tpc-ds-store-sales-sample) and
 [20-query workload](workloads/tpcds_store_sales.csv).
+Run its fixed comparison with
+`docker compose exec -T app bash scripts/run_tpcds_store_sales.sh`:
+SA uses 20 trials × 100 reads; SQA uses 10 trials × 1,000 reads.
+Results go to `results/tpcds_store_sales/`.
 
 The [workloads](workloads/) contain 20 queries per dataset, with PostgreSQL
 counts in [reference_results/](reference_results/). Both estimator pipelines
