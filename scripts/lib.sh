@@ -79,7 +79,7 @@ build_config_pairs() {
 
 prepare_tpcds() {
     python3 "$REPO_ROOT/bnsl/datasets/gen_tpcds_sample.py" --check
-    python3 -m bnsl.datasets.tpcds_encoding
+    (cd "$REPO_ROOT/bnsl-qa" && python3 Tpcds_csv_to_txt.py)
     ensure_database "$DB_NAME"
     psql_db "$DB_NAME" --single-transaction \
         -c "CREATE TABLE IF NOT EXISTS $TABLE_NAME (

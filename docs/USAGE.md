@@ -112,7 +112,8 @@ bnsl-qa/
 │   └── WetGrass.json
 ├── qa-datasets/              # Solver TXT files used by bnslqa
 ├── Market_Basket_synthetic_data_gen.py
-└── Nhanes_csv_to_txt.py
+├── Nhanes_csv_to_txt.py
+└── Tpcds_csv_to_txt.py
 
 bnsl/
 └── datasets/
@@ -810,7 +811,7 @@ E0 generates `bnsl-qa/qa-datasets/TPCDS_store_sales_10000.txt`. To generate it
 separately and run the tree inside the app container:
 
 ```bash
-python -m bnsl.datasets.tpcds_encoding
+python bnsl-qa/Tpcds_csv_to_txt.py
 python -m bnsl.cardinality_estimation.cardinality_estimation_tpcds
 ```
 
