@@ -69,6 +69,7 @@ psql_db nhanes -c "ANALYZE nhanes_data;"
 
 log "TPC-DS: checking the fixed sample and importing CSV"
 python3 "$REPO_ROOT/bnsl/datasets/gen_tpcds_sample.py" --check
+python3 -m bnsl.datasets.tpcds_encoding
 ensure_database tpcds
 psql_db tpcds --single-transaction \
     -c "CREATE TABLE IF NOT EXISTS store_sales (

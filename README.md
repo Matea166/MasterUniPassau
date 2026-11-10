@@ -31,7 +31,7 @@ detailed description of every script, dataset format, and output file, see
    frozen thesis values from [original_results/](original_results/).
 
 Dataset preparation also loads a 10,000-row, eight-column TPC-DS `store_sales`
-sample into PostgreSQL. See the
+sample into PostgreSQL and generates its encoded solver input. See the
 [dataset instructions](docs/USAGE.md#18-tpc-ds-store-sales-sample) and
 [20-query workload](workloads/tpcds_store_sales.csv).
 

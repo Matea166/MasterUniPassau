@@ -746,8 +746,8 @@ Selected columns from the [source schema](https://github.com/gregrahn/tpcds-kit/
 | `ss_list_price` | List price per unit | `NUMERIC(7,2)` |
 | `ss_store_sk` | Store key, treated as a category | `INTEGER` |
 
-Empty CSV fields become SQL `NULL`. Rows are retained without binning,
-imputation or deduplication. The [generator](https://github.com/gregrahn/tpcds-kit/blob/5a3a81796992b725c2a8b216767e142609966752/tools/pricing.c#L140-L199)
+Empty CSV fields become SQL `NULL`. The CSV and PostgreSQL retain the raw
+rows without binning, imputation or deduplication. The [generator](https://github.com/gregrahn/tpcds-kit/blob/5a3a81796992b725c2a8b216767e142609966752/tools/pricing.c#L140-L199)
 sets `net_profit = net_paid - quantity * wholesale_cost`.
 
 E0 verifies the CSV checksum, reloads `tpcds.public.store_sales` using
@@ -770,6 +770,56 @@ ordinary statistics, `ANALYZE store_sales`, then
 `EXPLAIN (ANALYZE, FORMAT JSON, TIMING OFF)`. Every true count was checked
 against `COUNT(*)` and the CSV. Dataset and workload checksums identify the
 inputs used.
+
+### Model encoding
+
+Both estimators use the [same encoding](../bnsl/datasets/tpcds_encoding.py).
+Codes start at zero in the order below; the last code in each column means
+missing. All 10,000 rows are retained. The tree uses categorical strings,
+including `MISSING`; annealing uses integer states.
+
+| Column | Nonmissing groups, in code order | Missing code |
+|---|---|---|
+| `ss_quantity` | 1–25; 26–50; 51–75; 76–100 | 4 |
+| `ss_sales_price` | [0,25); [25,50); [50,100); ≥100 | 4 |
+| `ss_coupon_amt` | 0; (0,1000); ≥1000 | 3 |
+| `ss_net_profit` | <0; [0,1000); ≥1000 | 3 |
+| `ss_wholesale_cost` | [0,25); [25,50); [50,75); ≥75 | 4 |
+| `ss_net_paid` | [0,1000); [1000,3000); ≥3000 | 3 |
+| `ss_list_price` | [0,50); [50,100); ≥100 | 3 |
+| `ss_store_sk` | 1; 2; 4; 7; 8; 10 | 6 |
+
+The groups preserve the 20 workload predicates, coupon zero and negative
+profit while limiting conditional-table size. They are a fixed modeling
+choice, not optimized against estimator accuracy. Missing states do not
+match numeric filters and are included when a column is unfiltered.
+Queries cutting through a group are rejected instead of approximated.
+
+E0 generates `bnsl-qa/qa-datasets/TPCDS_store_sales_10000.txt`. To generate it
+separately and run the tree inside the app container:
+
+```bash
+python -m bnsl.datasets.tpcds_encoding
+python -m bnsl.cardinality_estimation.cardinality_estimation_tpcds
+```
+
+To add PostgreSQL estimates, run from `bnsl/`:
+
+```bash
+BENCH_DB=tpcds BENCH_SCRIPT=cardinality_estimation/cardinality_estimation_tpcds.py bash cardinality_benchmarks.sh
+```
+
+For SA/SQA, use `qa-datasets/TPCDS_store_sales_10000.txt` and
+`cardinality_estimation/cardinality_estimation_TPCDS.py` in `bnsl-qa/dispatch.sh`.
+Both TPC-DS estimators read `workloads/tpcds_store_sales.csv`.
+The tree keeps normalized mutual information and its existing fitting and
+inference; SA/SQA keep maximum-likelihood fitting and variable elimination.
+
+Run the encoding and model checks from the repository root:
+
+```bash
+python -m unittest discover -s tests -p 'test_tpcds_encoding.py'
+```
 
 ### Optional regeneration from the source
 
@@ -811,7 +861,7 @@ PostgreSQL references use ordinary statistics after `ANALYZE`, with counts
 checked against the CSV and encoded data. Settings and checksums are
 recorded in each reference file.
 
-The estimator runners still use the original six queries.
+The Wetgrass, NHANES and Market Basket estimator runners still use the original six queries.
 
 ---
 
