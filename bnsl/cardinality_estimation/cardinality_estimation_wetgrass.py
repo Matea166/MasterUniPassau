@@ -73,8 +73,8 @@ for sql, filters in queries:
     results_log.append({
         "query_sql": sql,
         "true_cardinality": true_card,
-        "bn_est_cardinality": round(est_card, 2),
-        "est_selectivity": f"{est_prob:.10f}"
+        "bn_est_cardinality": est_card,
+        "est_selectivity": est_prob
     })
 
 # ==========================================

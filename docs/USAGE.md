@@ -838,6 +838,12 @@ TPC-DS. The script reloads the raw PostgreSQL table, runs `ANALYZE`, regenerates
 the solver input, and saves estimates, q-errors and the combined comparison
 under `results/tpcds_store_sales/`.
 
+TPC-DS uses the same `run_ce_experiment` runner as the other datasets.
+Tree exports use `query_sql,true_cardinality,bn_est_cardinality,est_selectivity`;
+annealing exports use `query_sql,estimated_cardinality`. Estimates retain
+full precision for every dataset. The TPC-DS tree also exports its graph,
+and its result filename follows the same timestamp convention.
+
 The one-button entry points run this as E7, followed by report generation
 as E8. `QUICK=1` keeps the same TPC-DS settings. The report includes
 per-query estimates and clamped q-errors, a summary across all 20 queries,
@@ -1708,7 +1714,9 @@ This floors counts below one for scoring only; the recorded estimates and true c
 
 For example, `(estimate, truth)` pairs `(0, 0)`, `(0.2, 0)`, and `(0, 1)` all have clamped q-error 1; `(10, 0)` has score 10. Therefore, score 1 does not necessarily mean an exact prediction. The `exact_queries` and `exact_estimates` percentages compare the original counts with absolute tolerance `1e-9`, independently of clamping and display rounding.
 
-Metrics use the precision available in the input CSVs. The stable SA/SQA selection retains its existing two-decimal modal grouping and upper-median tie rule; within the selected group, it uses the upper-median original estimate for scoring. Tables still round estimates for display. Diversity counts retain their existing two-decimal grouping.
+Estimator CSVs retain full precision for all datasets. The stable SA/SQA selection retains its existing two-decimal modal grouping and upper-median tie rule; within the selected group, it uses the upper-median original estimate for scoring. The same report function produces per-query estimates, q-errors and minimum/median/95th-percentile/maximum summaries for every dataset. HTML tables round numbers for display; CSVs retain precision. Diversity counts retain their existing two-decimal grouping.
+
+Each run records its solver budgets in `results/<experiment>/configurations.csv`. Report generation excludes other configurations left by older runs. A `.running` marker blocks reporting if an experiment was interrupted; rerunning that experiment successfully clears it. PostgreSQL is pinned to the recorded 16.15 image; the baseline still uses ordinary `ANALYZE` statistics.
 
 Frozen thesis tables in `original_results/` keep their historical values and metric convention. New scores, exact-match percentages, and rankings can differ; old result CSVs must be recomputed to use this convention.
 

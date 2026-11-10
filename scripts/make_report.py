@@ -84,6 +84,10 @@ def table_html(csv_path, float_format=None):
     if not os.path.isfile(csv_path):
         return '<p class="missing">not available</p>'
     df = pd.read_csv(csv_path)
+    if {"sql", "reason"}.issubset(df.columns):
+        df = df.drop(columns=["sql", "reason"])
+    if float_format is None:
+        float_format = lambda value: f"{value:.3f}"
     return df.to_html(index=False, border=0, na_rep="", float_format=float_format)
 
 
@@ -194,12 +198,12 @@ def tpcds_section():
         parts.append(f"<h3>{title}</h3>")
         if filename == "cardinality_estimates.csv":
             parts.append('<p class="meta">Query IDs, SQL and selection reasons are retained in the CSV.</p>')
-            frame = pd.read_csv(path).drop(columns=["sql", "reason"])
-            rendered = frame.to_html(index=False, border=0, float_format=lambda v: f"{v:.3f}")
-        else:
-            rendered = table_html(path, float_format=lambda v: f"{v:.3f}")
+        rendered = table_html(path)
         parts.append(f'<div class="pane">{rendered}</div>')
         parts.append(f'<p><a href="{exp}/reproduced_tables/{filename}">Download CSV</a></p>')
+    if os.path.isfile(os.path.join(exp_dir, "combined_results.png")):
+        parts.append('<h3>Comparison chart (headline configuration)</h3>'
+                     f'<img src="{exp}/combined_results.png" alt="TPC-DS grouped bar chart">')
     return "\n".join(parts)
 
 

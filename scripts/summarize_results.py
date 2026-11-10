@@ -1,22 +1,7 @@
 #!/usr/bin/env python3
-"""Builds reproduced versions of the thesis result tables from the raw
-outputs in results/<experiment>/, mirroring the column layout of the frozen
-reference CSVs in original_results/ so the two can be compared side by side
-(scripts/make_report.py renders the comparison as results/index.html).
-
-Inputs per experiment (written by scripts/run_*.sh):
-  estimates/estimates_<SOLVER>_T<T>_R<R>.csv  query_sql + one column per learned graph
-  qerrors/qerrors_<SOLVER>_T<T>_R<R>.csv      per-graph, per-query q-errors
-  chowliu_pg_final.csv                        true, Chow-Liu and PostgreSQL estimates
-Random control:
-  final_queries_cardinality.csv               query_sql + one column per random matrix
-
-Outputs: results/<experiment>/reproduced_tables/table_*.csv with the same
-file names as their originals in original_results/.
-"""
+"""Build common estimate and q-error tables from the current experiment outputs."""
 
 import os
-import re
 import sys
 import math
 from collections import Counter
@@ -27,6 +12,7 @@ import matplotlib.pyplot as plt
 from matplotlib.ticker import FixedLocator, NullFormatter, ScalarFormatter
 
 import pandas as pd
+from bnsl.workloads import normalize_query
 
 REPO_ROOT = os.environ.get("REPO_ROOT", "/workspace")
 RESULTS_ROOT = os.path.join(REPO_ROOT, "results")
@@ -66,19 +52,6 @@ def parse_env(path):
     return cfg
 
 
-def normalize_query(q):
-    """Same join key as bnsl/merge_csv_logic.py."""
-    if not isinstance(q, str):
-        return q
-    match = re.search(r"WHERE\s+(.*)", q, re.IGNORECASE)
-    key = match.group(1) if match else q
-    key = key.lower()
-    key = "".join(key.split()).replace(";", "")
-    key = key.replace("'", "").replace('"', "")
-    key = key.replace(".0", "")
-    return key
-
-
 def qerror(est, true):
     est, true = float(est), float(true)
     if not all(math.isfinite(v) and v >= 0 for v in (est, true)):
@@ -92,6 +65,8 @@ def exact_estimate(est, true):
 
 
 def load_truth(exp_dir):
+    if os.path.exists(os.path.join(exp_dir, ".running")):
+        raise ValueError(f"Incomplete experiment: {exp_dir}. Rerun it before building the report.")
     path = os.path.join(exp_dir, "chowliu_pg_final.csv")
     if not os.path.isfile(path):
         return None
@@ -105,6 +80,14 @@ def graph_columns(df):
 
 
 def load_estimates(exp_dir, solver, trials, reads):
+    manifest = os.path.join(exp_dir, "configurations.csv")
+    if os.path.isfile(manifest):
+        configurations = pd.read_csv(manifest)
+        selected = configurations["solver"].eq(solver)
+        selected &= configurations["trials"].eq(int(trials))
+        selected &= configurations["reads"].eq(int(reads))
+        if not selected.any():
+            return None
     path = os.path.join(exp_dir, "estimates", f"estimates_{solver}_T{trials}_R{reads}.csv")
     if not os.path.isfile(path):
         return None
@@ -156,6 +139,35 @@ def stable_estimates(truth, est_df):
     return [modal_estimate(row, cols) for _, row in merged.iterrows()]
 
 
+def workload_truth(truth, dataset):
+    workload = pd.read_csv(os.path.join(REPO_ROOT, "workloads", f"{dataset}.csv"))
+    workload["join_key"] = workload["sql"].apply(normalize_query)
+    ids = workload["query_id"]
+    if ids.isna().any() or ids.duplicated().any() or ids.str.strip().eq("").any():
+        raise ValueError("Missing or duplicate query IDs.")
+    return merge_estimates(workload, truth)
+
+
+def estimate_tables(truth, sa_vals, sqa_vals):
+    per_query = truth[["query_id", "sql", "reason", "true_cardinality"]].copy()
+    rows = []
+    for key, label, values in [
+        ("sa", "SA stable", sa_vals), ("sqa", "SQA stable", sqa_vals),
+        ("tree", "Tree baseline", truth["bn_est_cardinality"].tolist()),
+        ("postgresql", "PostgreSQL", truth["pg_est_cardinality"].tolist()),
+    ]:
+        qerrs = pd.Series([qerror(est, true)
+                           for est, true in zip(values, truth["true_cardinality"])])
+        per_query[f"{key}_estimate"] = values
+        per_query[f"{key}_qerror"] = qerrs.tolist()
+        exact = sum(exact_estimate(est, true) for est, true in zip(values, truth["true_cardinality"]))
+        rows.append({"estimator": label, "queries": len(truth),
+                     "min_qerror": qerrs.min(), "median_qerror": qerrs.median(),
+                     "p95_qerror": qerrs.quantile(0.95), "max_qerror": qerrs.max(),
+                     "exact_queries": fmt_pct(100.0 * exact / len(truth))})
+    return per_query, pd.DataFrame(rows)
+
+
 def make_sorted_qerror_figure(exp_dir, truth, sa_vals, sqa_vals):
     """Reproduces thesis Figure 6.1 (sorted q-error profiles, Market Basket
     N = 100) from this run's data: per-query q-errors of the stable SA/SQA
@@ -203,54 +215,29 @@ def summarize_experiment(exp, cfg):
     if truth is None:
         print(f"  {exp}: no chowliu_pg_final.csv — skipped")
         return
+    truth = workload_truth(truth, exp.rsplit("_", 1)[0])
 
     numbers = TABLE_NUMBERS[exp]
+    for kind, number in numbers.items():
+        suffix = {"estimates": "cardinality_estimates", "qerror": "qerror_summary"}.get(kind, kind + "_summary")
+        previous = os.path.join(exp_dir, "reproduced_tables", f"table_{number}_{suffix}.csv")
+        if os.path.isfile(previous):
+            os.remove(previous)
     ht, hr = cfg["HEADLINE_TRIALS"], cfg["HEADLINE_READS"]
     sa = load_estimates(exp_dir, "SA", ht, hr)
     sqa = load_estimates(exp_dir, "SQA", ht, hr)
+    if sa is None or sqa is None:
+        raise ValueError(f"{exp}: missing headline estimates; rerun the experiment.")
 
     # --- cardinality estimates (Tables 6.3 / 6.5 / 6.8 / 6.10 / 6.15) ---
     if sa is not None and sqa is not None:
-        rows = []
         sa_vals = stable_estimates(truth, sa)
         sqa_vals = stable_estimates(truth, sqa)
-        for i, (_, t) in enumerate(truth.iterrows()):
-            rows.append({
-                "query": f"Q{i + 1}",
-                "true_cardinality": t["true_cardinality"],
-                "sa_estimate": round(sa_vals[i], 2),
-                "sqa_estimate": round(sqa_vals[i], 2),
-                "classical_baseline": round(float(t["bn_est_cardinality"]), 2),
-                "postgresql": t["pg_est_cardinality"],
-            })
-        write_table(exp_dir, numbers["estimates"], "cardinality_estimates", pd.DataFrame(rows))
+        per_query, summary = estimate_tables(truth, sa_vals, sqa_vals)
+        write_table(exp_dir, numbers["estimates"], "cardinality_estimates", per_query)
 
         # --- q-error summary (Tables 6.4 / 6.6 / 6.9 / 6.11 / 6.16) ---
-        summary = []
-        for label, estimates in [
-            ("SA stable", sa_vals),
-            ("SQA stable", sqa_vals),
-            ("Classical baseline", truth["bn_est_cardinality"].tolist()),
-            ("PostgreSQL", truth["pg_est_cardinality"].tolist()),
-        ]:
-            pairs = [
-                (est, t)
-                for est, t in zip(estimates, truth["true_cardinality"])
-                if est is not None
-            ]
-            if not pairs:
-                continue
-            qerrs = [qerror(est, t) for est, t in pairs]
-            s = pd.Series(qerrs)
-            exact = pd.Series([exact_estimate(est, t) for est, t in pairs])
-            summary.append({
-                "estimator": label,
-                "min_qerror": f"{s.min():.3f}",
-                "median_qerror": f"{s.median():.3f}",
-                "max_qerror": f"{s.max():.3f}",
-                "exact_queries": fmt_pct(100.0 * exact.mean()),
-            })
-        write_table(exp_dir, numbers["qerror"], "qerror_summary", pd.DataFrame(summary))
+        write_table(exp_dir, numbers["qerror"], "qerror_summary", summary)
 
         # Thesis Figure 6.1 belongs to the Market Basket N=100 experiment
         if exp == "market_basket_100":
@@ -294,6 +281,8 @@ def summarize_experiment(exp, cfg):
 
 def summarize_random_control():
     exp_dir = os.path.join(RESULTS_ROOT, "random_control")
+    if os.path.exists(os.path.join(exp_dir, ".running")):
+        raise ValueError("Incomplete random-control experiment. Rerun it before building the report.")
     final_csv = os.path.join(exp_dir, "final_queries_cardinality.csv")
     if not os.path.isfile(final_csv):
         print("  random_control: no final_queries_cardinality.csv — skipped")
@@ -359,15 +348,8 @@ def summarize_tpcds():
     truth = load_truth(exp_dir)
     if truth is None:
         raise ValueError("TPC-DS: missing chowliu_pg_final.csv.")
-    workload = pd.read_csv(os.path.join(REPO_ROOT, "workloads", "tpcds_store_sales.csv"))
-    workload["join_key"] = workload["sql"].apply(normalize_query)
-    if workload["query_id"].isna().any() or workload["query_id"].duplicated().any():
-        raise ValueError("TPC-DS: missing or duplicate query IDs.")
-    truth = merge_estimates(workload, truth)
-    estimates = {
-        "tree": truth["bn_est_cardinality"].tolist(),
-        "postgresql": truth["pg_est_cardinality"].tolist(),
-    }
+    truth = workload_truth(truth, "tpcds_store_sales")
+    estimates = {}
     settings = []
     for solver in ("SA", "SQA"):
         trials, reads = cfg[f"{solver}_TRIALS"], cfg[f"{solver}_READS"]
@@ -378,30 +360,12 @@ def summarize_tpcds():
         settings.append({"solver": solver, "trials": int(trials), "reads": int(reads),
                          "unique_structures": len(graph_columns(est))})
 
-    per_query = truth[["query_id", "sql", "reason", "true_cardinality"]].copy()
-    summary = []
-    for key, label in [("sa", "SA stable"), ("sqa", "SQA stable"),
-                       ("tree", "Tree baseline"), ("postgresql", "PostgreSQL")]:
-        values = estimates[key]
-        qerrs = pd.Series([qerror(est, true)
-                           for est, true in zip(values, truth["true_cardinality"])])
-        per_query[f"{key}_estimate"] = values
-        per_query[f"{key}_qerror"] = qerrs.tolist()
-        summary.append({
-            "estimator": label,
-            "queries": len(truth),
-            "min_qerror": qerrs.min(),
-            "median_qerror": qerrs.median(),
-            "p95_qerror": qerrs.quantile(0.95),
-            "max_qerror": qerrs.max(),
-            "exact_queries": sum(exact_estimate(est, true)
-                                 for est, true in zip(values, truth["true_cardinality"])),
-        })
+    per_query, summary = estimate_tables(truth, estimates["sa"], estimates["sqa"])
 
     out_dir = os.path.join(exp_dir, "reproduced_tables")
     os.makedirs(out_dir, exist_ok=True)
     for filename, frame in [("cardinality_estimates.csv", per_query),
-                            ("qerror_summary.csv", pd.DataFrame(summary)),
+                            ("qerror_summary.csv", summary),
                             ("solver_settings.csv", pd.DataFrame(settings))]:
         out = os.path.join(out_dir, filename)
         frame.to_csv(out, index=False)

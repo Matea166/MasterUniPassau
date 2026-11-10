@@ -4,6 +4,7 @@ import re
 import os
 import matplotlib.pyplot as plt
 import numpy as np
+from bnsl.workloads import normalize_query
 
 if len(sys.argv) < 4:
     print("Usage: python3 merge_csv_logic.py <sa_path> <sqa_path> <bn_path> [rng_path]")
@@ -42,21 +43,6 @@ if rng_path != "NONE":
     df_rng = pd.read_csv(rng_path)
 else:
     df_rng = pd.DataFrame()
-
-
-def normalize_query(q):
-    if not isinstance(q, str):
-        return q
-
-    match = re.search(r'WHERE\s+(.*)', q, re.IGNORECASE)
-    key = match.group(1) if match else q
-
-    key = key.lower()
-    key = "".join(key.split()).replace(";", "")
-    key = key.replace("'", "").replace('"', "")
-    key = key.replace(".0", "")
-
-    return key
 
 
 def prepare_queries(df, label):

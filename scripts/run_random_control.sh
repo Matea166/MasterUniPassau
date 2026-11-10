@@ -13,6 +13,7 @@ source "$REPO_ROOT/$BASE_CONFIG"
 exp_dir="$RESULTS_ROOT/random_control"
 log_dir="$exp_dir/logs"
 mkdir -p "$log_dir"
+touch "$exp_dir/.running"
 
 matrices_count="$NUM_MATRICES"
 if [ "$QUICK" = "1" ]; then
@@ -53,4 +54,5 @@ fi
 cp "$REPO_ROOT/bnsl-qa/$out_dir/final_queries_cardinality.csv" "$exp_dir/final_queries_cardinality.csv"
 cp "$REPO_ROOT/bnsl-qa/$matrix_file" "$exp_dir/random_matrices.txt"
 
+rm "$exp_dir/.running"
 log "[random_control] complete — outputs in results/random_control/"

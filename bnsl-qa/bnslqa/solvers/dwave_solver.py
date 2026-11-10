@@ -227,7 +227,7 @@ def main(args):
         for index, value in zip(indexQUBO, minXt)
         if index[0] == 'd' and value == 1
     )
-    if not nx.is_directed_acyclic_graph(graph):
+    if not nx.is_directed_acyclic_graph(graph) or any(degree > 2 for _, degree in graph.in_degree()):
         return
 
     printInfoResults(expXt, expY, minXt, minY, n)

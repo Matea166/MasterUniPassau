@@ -21,6 +21,7 @@ psycopg==3.3.3
 # Visualisation and graph rendering
 matplotlib==3.10.8
 graphviz==0.21
+pydot==4.0.1
 pillow==12.1.0
 
 # D-Wave / annealing stack

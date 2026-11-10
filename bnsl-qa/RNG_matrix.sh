@@ -64,28 +64,40 @@ run_estimation() {
     python3 - <<EOF
 import os
 import glob
+import re
 import pandas as pd
 
 output_dir = "$OUTPUT_DIR"
-csv_files = sorted(glob.glob(os.path.join(output_dir, "*_cardinality.csv")))
+csv_files = sorted(glob.glob(os.path.join(output_dir, "*_cardinality.csv")),
+                   key=lambda file: int(re.search(r"graph_(\d+)", file).group(1)))
 
 if len(csv_files) == 0:
-    print("No CSV files found to combine.")
-    exit(0)
+    raise ValueError("No CSV files found to combine.")
 
 # Read first CSV
-df_final = pd.read_csv(csv_files[0])
-df_final.columns = ["query_sql", f"matrix_1"]
+df_final = None
 
 # Merge remaining CSVs
-for i, csv in enumerate(csv_files[1:], start=2):
+for csv in csv_files:
+    graph_id = re.search(r"graph_(\d+)", csv).group(1)
     df = pd.read_csv(csv)
-    df_final[f"matrix_{i}"] = df["estimated_cardinality"]
+    if df.empty or df["query_sql"].isna().any() or df["query_sql"].duplicated().any():
+        raise ValueError(f"Missing or duplicate queries in {csv}")
+    df = df.rename(columns={"estimated_cardinality": f"matrix_{graph_id}"})
+    if df_final is None:
+        df_final = df
+    else:
+        if set(df_final["query_sql"]) != set(df["query_sql"]):
+            raise ValueError(f"Query mismatch in {csv}")
+        df_final = df_final.merge(df, on="query_sql", validate="one_to_one")
 
 final_csv = os.path.join(output_dir, "final_queries_cardinality.csv")
 df_final.to_csv(final_csv, index=False)
 print(f"Final CSV saved to: {final_csv}")
 EOF
+    if [ "$?" -ne 0 ]; then
+        return 1
+    fi
 
     echo "All done. Results in: $OUTPUT_DIR"
     # Machine-readable result path for orchestration scripts

@@ -1,4 +1,5 @@
 import csv
+from decimal import Decimal
 import math
 import operator
 import re
@@ -8,6 +9,21 @@ from pathlib import Path
 TABLES = {"wetgrass": "wetgrass_data", "market_basket": "transactions", "nhanes": "nhanes_data"}
 BMI_BINS = [(0, 18.5), (18.5, 25), (25, 30), (30, 150)]
 OPERATORS = {"=": operator.eq, ">=": operator.ge, "<": operator.lt}
+
+
+def normalize_query(query):
+    if not isinstance(query, str):
+        return query
+    tokens = re.findall(r"'(?:[^']|'')*'|\"(?:[^\"]|\"\")*\"|-?\d+(?:\.\d+)?|[A-Za-z_]\w*|[^\s]", query)
+    normalized = []
+    for token in tokens:
+        if token.startswith(("'", '"')):
+            normalized.append(token)
+        elif re.fullmatch(r"-?\d+(?:\.\d+)?", token):
+            normalized.append(format(Decimal(token).normalize(), "f"))
+        elif token != ";":
+            normalized.append(token.lower())
+    return " ".join(normalized)
 
 
 def query_filters(sql, dataset, raw, modeled):

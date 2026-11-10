@@ -125,7 +125,7 @@ def printAdjMat(n, xt):
 def getNumExamples(filename):
   with open(filename,'r') as f:
     # first line info on data
-    return len(f.read().splitlines()) - 1
+    return len(f.read().splitlines()) - 3
 
 def printInfoResults(expXt, expY, minXt, minY, n):
   print('Expected adjacency matrix:')

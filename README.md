@@ -107,11 +107,18 @@ Each experiment folder contains, under stable names:
 - `combined_results.{csv,png}` — merged headline comparison (grouped bar chart)
 - `reproduced_tables/table_*.csv` — reproduced thesis tables (written by E8)
 - `logs/` — full logs of every step
+- `configurations.csv` — solver budgets used in the current run
 
 TPC-DS uses `reproduced_tables/cardinality_estimates.csv`,
 `qerror_summary.csv` and `solver_settings.csv`. These retain the query IDs,
 full-precision estimates, clamped q-errors and separate SA/SQA budgets.
 The HTML rounds displayed numbers only.
+
+All datasets use the same experiment runner and report-table calculation.
+Estimator CSVs retain full precision. Reports use the current run's
+configuration list, so an earlier full run cannot add old sweep results to
+a later quick run. An interrupted experiment blocks report generation
+until that experiment is rerun successfully.
 
 ## Comparing with the thesis results
 
@@ -172,6 +179,17 @@ always uses the two fixed settings in its configuration file.
 The interactive menus (`bnsl-qa/dispatch.sh`, `bnsl/cardinality_benchmarks.sh`,
 …) remain available for exploratory use inside the container; they are not
 part of the reproduction path. See [docs/USAGE.md](docs/USAGE.md).
+
+To check the supported single-table SA/SQA workflow without running the
+experiments:
+
+```bash
+docker compose run --build --rm --no-deps app python -m unittest discover -s tests -v
+```
+
+The copied upstream tests under `bnsl/tldks_2020/tests/` target the older
+`phd` package and are separate from this maintained suite. Join estimation
+and hardware backends are outside the validated experiment workflow.
 
 ## Licence
 

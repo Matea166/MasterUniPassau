@@ -18,5 +18,7 @@ bnsl-qa/RNG_Matrix/
 bnsl-qa/tmp_cardinality_runs/
 bnsl/card_results/
 bnsl/output_bn/
+output_bn/
+graphs/
 bnsl/graphs/
 bnsl/combined_results_*

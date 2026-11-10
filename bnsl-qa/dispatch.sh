@@ -103,7 +103,10 @@ if [ "$mode" = "Run solver now" ]; then
     progress_bar 0 $executions $start_time
 
     for i in $(seq 1 $executions); do
-        python3 -m bnslqa solve "$dataset_path" $solver --reads $reads >> "$matrix_file" 2>&1
+        if ! python3 -m bnslqa solve "$dataset_path" "$solver" --reads "$reads" >> "$matrix_file" 2>&1; then
+            echo "Error: $solver failed on trial $i; see $matrix_file" >&2
+            exit 1
+        fi
         progress_bar $i $executions $start_time
     done
     echo -e "\nOutputs saved to: $matrix_file"
@@ -185,7 +188,7 @@ for line in matrices:
     matrix = ast.literal_eval(line)
     graph = nx.DiGraph((i, j) for i, row in enumerate(matrix)
                       for j, value in enumerate(row) if value == 1)
-    if nx.is_directed_acyclic_graph(graph):
+    if nx.is_directed_acyclic_graph(graph) and all(degree <= 2 for _, degree in graph.in_degree()):
         valid_matrices.append(line)
 with open(sys.argv[1], 'w') as f:
     f.writelines(valid_matrices)
@@ -242,28 +245,38 @@ final_csv="${results_dir}/final_queriescardinality_${solver}_${dataset_name}_${r
 
 echo "Merging all results into final CSV..."
 python3 -c "
-import pandas as pd, glob, os, re
+import pandas as pd, glob, os, re, math
 csv_files = glob.glob(os.path.join('$card_out_dir', 'graph_*_cardinality.csv'))
 if not csv_files:
-    print('No valid results found to merge.')
-    exit()
+    raise ValueError('No valid results found to merge.')
+
+def read_estimates(file):
+    frame = pd.read_csv(file)
+    if frame.empty or frame['query_sql'].isna().any() or frame['query_sql'].duplicated().any():
+        raise ValueError(f'Empty or duplicate queries in {file}')
+    values = pd.to_numeric(frame['estimated_cardinality'], errors='raise')
+    if values.isna().any() or (values < 0).any() or not values.map(math.isfinite).all():
+        raise ValueError(f'Invalid cardinalities in {file}')
+    return frame
 
 # Sort files numerically by the graph index extracted from the filename
 csv_files.sort(key=lambda x: int(re.search(r'graph_(\d+)', x).group(1)))
 
 # Start with the first available file
-df_final = pd.read_csv(csv_files[0])
+df_final = read_estimates(csv_files[0])
 # Rename cardinality column to the name of the first found graph
 first_id = re.search(r'graph_(\d+)', csv_files[0]).group(1)
 df_final = df_final.rename(columns={'estimated_cardinality': f'Graph_{first_id}.png'})
 
 for file in csv_files[1:]:
     graph_id = re.search(r'graph_(\d+)', file).group(1)
-    df_temp = pd.read_csv(file).rename(columns={'estimated_cardinality': f'Graph_{graph_id}.png'})
-    df_final = pd.merge(df_final, df_temp, on='query_sql')
+    df_temp = read_estimates(file).rename(columns={'estimated_cardinality': f'Graph_{graph_id}.png'})
+    if set(df_final['query_sql']) != set(df_temp['query_sql']):
+        raise ValueError(f'Query mismatch in {file}')
+    df_final = pd.merge(df_final, df_temp, on='query_sql', validate='one_to_one')
 
 df_final.to_csv('$final_csv', index=False)
-"
+" || exit 1
 echo "Process complete! Final report: $final_csv"
 
 # Machine-readable result paths for orchestration scripts

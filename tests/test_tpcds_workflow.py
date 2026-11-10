@@ -78,6 +78,36 @@ class TpcdsReportTests(unittest.TestCase):
         with self.assertRaisesRegex(ValueError, "duplicate query IDs"):
             summary.summarize_tpcds()
 
+    def test_incomplete_run_cannot_generate_summary(self):
+        (self.exp / ".running").touch()
+        with self.assertRaisesRegex(ValueError, "Incomplete experiment"):
+            summary.summarize_tpcds()
+
+    def test_old_configurations_are_excluded(self):
+        self.estimates.to_csv(self.exp / "estimates/estimates_SA_T20_R500.csv", index=False)
+        (self.exp / "configurations.csv").write_text("solver,trials,reads\nSA,20,100\nSQA,10,1000\n")
+        self.assertIsNone(summary.load_estimates(str(self.exp), "SA", 20, 500))
+        self.assertIsNotNone(summary.load_estimates(str(self.exp), "SA", 20, 100))
+
+    def test_market_basket_and_tpcds_use_identical_report_columns(self):
+        source = Path(__file__).resolve().parents[1]
+        market = self.root / "results/market_basket_10000"
+        (market / "estimates").mkdir(parents=True)
+        self.truth.to_csv(market / "chowliu_pg_final.csv", index=False)
+        for solver in ("SA", "SQA"):
+            self.estimates.to_csv(market / f"estimates/estimates_{solver}_T20_R1000.csv", index=False)
+        self.workload.to_csv(self.root / "workloads/market_basket.csv", index=False)
+        summary.summarize_experiment("market_basket_10000",
+                                     summary.parse_env(source / "config/market_basket_10000.env"))
+        summary.summarize_tpcds()
+        for tpcds_name, market_name in [
+            ("cardinality_estimates.csv", "table_6_15_cardinality_estimates.csv"),
+            ("qerror_summary.csv", "table_6_16_qerror_summary.csv"),
+        ]:
+            tpcds = pd.read_csv(self.exp / "reproduced_tables" / tpcds_name)
+            other = pd.read_csv(market / "reproduced_tables" / market_name)
+            pd.testing.assert_frame_equal(tpcds, other)
+
 
 class WorkflowTests(unittest.TestCase):
     def test_tpcds_runs_before_report_and_failure_stops_workflow(self):

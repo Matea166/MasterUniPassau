@@ -5,10 +5,20 @@ from pathlib import Path
 
 import pandas as pd
 
-from bnsl.workloads import TABLES, load_queries, query_filters
+from bnsl.workloads import TABLES, load_queries, normalize_query, query_filters
 
 
 class WorkloadTests(unittest.TestCase):
+    def test_query_keys_preserve_literals_and_table_names(self):
+        for left, right in [("x = 1.01", "x = 11"), ("x = 'Adult'", "x = 'adult'"),
+                            ("x = 'a b'", "x = 'ab'")]:
+            self.assertNotEqual(normalize_query("SELECT * FROM t WHERE " + left),
+                                normalize_query("SELECT * FROM t WHERE " + right))
+        self.assertNotEqual(normalize_query("SELECT * FROM t WHERE x=1"),
+                            normalize_query("SELECT * FROM other WHERE x=1"))
+        self.assertEqual(normalize_query("SELECT * FROM t WHERE x >= 25.0;"),
+                         normalize_query("select * from T where X>=25"))
+
     def representations(self):
         wetgrass = pd.DataFrame(itertools.product(["f", "t"], ["off", "on"], ["f", "t"], ["f", "t"]),
                                 columns=["Cloud", "Sprinkler", "Rain", "WetGrass"])

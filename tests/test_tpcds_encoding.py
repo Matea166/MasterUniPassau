@@ -4,6 +4,7 @@ import sqlite3
 import tempfile
 import unittest
 from pathlib import Path
+from unittest.mock import patch
 
 import numpy as np
 import pandas as pd
@@ -157,6 +158,23 @@ class TpcdsEncodingTests(unittest.TestCase):
         for _, query in self.queries:
             probability = annealing.estimate_probability(two_parent_inference, query)
             self.assertTrue(np.isfinite(probability) and 0 <= probability <= 1)
+
+    def test_tree_cli_exports_standard_csv_and_graph(self):
+        with tempfile.TemporaryDirectory() as folder:
+            root = Path(folder)
+            output = root / "result.csv"
+            with patch.object(tree, "ROOT", root), patch("sys.argv", [
+                "estimate", "--input", str(DATA_PATH), "--output", str(output),
+            ]):
+                tree.main()
+            result = pd.read_csv(output)
+            self.assertEqual(result.columns.tolist(), [
+                "query_sql", "true_cardinality", "bn_est_cardinality", "est_selectivity",
+            ])
+            self.assertEqual(len(result), len(self.queries))
+            graph = root / "output_bn" / (DATA_PATH.stem + "_bn.png")
+            self.assertTrue(graph.is_file())
+            self.assertGreater(graph.stat().st_size, 0)
 
 
 if __name__ == "__main__":

@@ -1,4 +1,4 @@
-FROM postgres:16
+FROM postgres:16.15@sha256:f9a7b9ebf6f56201f949db745e47bc423c0f0f8294bafe991cc10bf74b029657
 
 # Initialisation SQL and the NHANES CSV are baked into the image so the
 # database bootstrap does not depend on host bind mounts. The init scripts

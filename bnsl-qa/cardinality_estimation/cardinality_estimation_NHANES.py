@@ -129,7 +129,7 @@ for sql, q_dict in queries:
 
     results_data.append({
         "query_sql": sql,
-        "estimated_cardinality": f"{est_card:.5f}"
+        "estimated_cardinality": est_card
     })
 
 # Save to CSV with only the two requested columns

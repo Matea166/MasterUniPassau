@@ -52,17 +52,27 @@ def main():
     queries = load_queries(args.workload)
     model = fit_model(encoded, args.matrix)
     inference = VariableElimination(model)
-    results = [{"query_sql": query["sql"],
-                "estimated_cardinality": estimate_probability(inference, filters) * len(encoded)}
-               for query, filters in queries]
+    results = []
+    for query, filters in queries:
+        try:
+            cardinality = estimate_probability(inference, filters) * len(encoded)
+        except Exception as exc:
+            raise RuntimeError(
+                f"Inference failed for graph {args.graph_index}, query {filters!r}"
+            ) from exc
+        results.append({"query_sql": query["sql"], "estimated_cardinality": cardinality})
     args.output_dir.mkdir(parents=True, exist_ok=True)
     output = args.output_dir / f"graph_{args.graph_index}_cardinality.csv"
     pd.DataFrame(results).to_csv(output, index=False)
-    graph = graphviz.Digraph()
-    for column in COLUMNS:
-        graph.node(column)
-    graph.edges(model.edges())
-    graph.render(str(args.output_dir / f"Graph_{args.graph_index}"), format="png", cleanup=True)
+    try:
+        graph = graphviz.Digraph()
+        graph.attr(rankdir="TB")
+        for column in COLUMNS:
+            graph.node(column, column, shape="ellipse", style="filled", fillcolor="lightblue")
+        graph.edges(model.edges())
+        graph.render(str(args.output_dir / f"Graph_{args.graph_index}"), format="png", cleanup=True)
+    except Exception as exc:
+        print(f"[Warning] Could not generate graph: {exc}")
     print(f"Results saved to: {output}")
 
 

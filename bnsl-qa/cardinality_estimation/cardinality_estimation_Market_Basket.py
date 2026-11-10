@@ -101,7 +101,7 @@ results_data = []
 
 for sql, q_dict in queries:
     est_card = estimate_cardinality(q_dict)
-    results_data.append({"query_sql": sql, "estimated_cardinality": f"{est_card:.5f}"})
+    results_data.append({"query_sql": sql, "estimated_cardinality": est_card})
 
 # Save intermediate CSV
 csv_filename = os.path.join(output_dir, f"graph_{graph_index}_cardinality.csv")

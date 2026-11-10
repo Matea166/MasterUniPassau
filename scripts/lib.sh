@@ -50,6 +50,12 @@ import_csv_into_db() { # $1 = db, $2 = table, $3 = csv path relative to bnsl/dat
 # reduces the list to the headline configuration.
 build_config_pairs() {
     CONFIG_PAIRS=()
+    local solver="${1:-SA}"
+    local trials_var="${solver}_TRIALS" reads_var="${solver}_READS"
+    if [ -n "${!trials_var:-}" ] && [ -n "${!reads_var:-}" ]; then
+        CONFIG_PAIRS=("${!trials_var}:${!reads_var}")
+        return
+    fi
     if [ "$QUICK" = "1" ]; then
         CONFIG_PAIRS=("${HEADLINE_TRIALS}:${HEADLINE_READS}")
         return
@@ -71,6 +77,21 @@ build_config_pairs() {
     done
 }
 
+prepare_tpcds() {
+    python3 "$REPO_ROOT/bnsl/datasets/gen_tpcds_sample.py" --check
+    python3 -m bnsl.datasets.tpcds_encoding
+    ensure_database "$DB_NAME"
+    psql_db "$DB_NAME" --single-transaction \
+        -c "CREATE TABLE IF NOT EXISTS $TABLE_NAME (
+            ss_quantity INTEGER, ss_sales_price NUMERIC(7,2),
+            ss_coupon_amt NUMERIC(7,2), ss_net_profit NUMERIC(7,2),
+            ss_wholesale_cost NUMERIC(7,2), ss_net_paid NUMERIC(7,2),
+            ss_list_price NUMERIC(7,2), ss_store_sk INTEGER);
+            TRUNCATE TABLE $TABLE_NAME;" \
+        -c "\copy $TABLE_NAME (ss_quantity, ss_sales_price, ss_coupon_amt, ss_net_profit, ss_wholesale_cost, ss_net_paid, ss_list_price, ss_store_sk) FROM '$REPO_ROOT/bnsl/datasets/data/$CSV_NAME.csv' WITH (FORMAT csv, HEADER true, NULL '')" \
+        -c "ANALYZE $TABLE_NAME;"
+}
+
 # Full AnnealBN-CE experiment for one dataset configuration:
 #   import data -> SA/SQA over the Table 6.2 grid (solve, estimate, q-error)
 #   -> Chow-Liu + PostgreSQL baseline -> merged headline bar chart.
@@ -82,9 +103,14 @@ run_ce_experiment() { # $1 = config file relative to repo root
     local exp_dir="$RESULTS_ROOT/$EXPERIMENT"
     local log_dir="$exp_dir/logs"
     mkdir -p "$exp_dir/estimates" "$exp_dir/qerrors" "$log_dir"
+    touch "$exp_dir/.running"
 
     local csv_rel="data/${CSV_NAME}.csv"
     local csv_from_qa="../bnsl/datasets/data/${CSV_NAME}.csv"
+
+    if [ "$EXPERIMENT" = "tpcds_store_sales" ]; then
+        prepare_tpcds
+    fi
 
     if [ ! -f "$REPO_ROOT/bnsl/datasets/$csv_rel" ] || [ ! -f "$REPO_ROOT/bnsl-qa/$SOLVER_TXT" ]; then
         echo "Error: dataset files for $EXPERIMENT missing — run scripts/prepare_datasets.sh first."
@@ -92,20 +118,28 @@ run_ce_experiment() { # $1 = config file relative to repo root
     fi
 
     log "[$EXPERIMENT] importing ${CSV_NAME}.csv into $DB_NAME.$TABLE_NAME"
-    ensure_database "$DB_NAME"
-    import_csv_into_db "$DB_NAME" "$TABLE_NAME" "$csv_rel"
-
-    build_config_pairs
-    log "[$EXPERIMENT] ${#CONFIG_PAIRS[@]} configurations x SA/SQA (QUICK=$QUICK)"
+    if [ "$EXPERIMENT" != "tpcds_store_sales" ]; then
+        ensure_database "$DB_NAME"
+        import_csv_into_db "$DB_NAME" "$TABLE_NAME" "$csv_rel"
+    fi
+    printf 'solver,trials,reads\n' > "$exp_dir/configurations.csv"
 
     local headline_sa="" headline_sqa=""
     local solver pair trials reads tag dlog qlog solver_dir final_csv qerr_file
+    local trials_var reads_var headline_trials headline_reads
 
     for solver in SA SQA; do
+        build_config_pairs "$solver"
+        log "[$EXPERIMENT] ${#CONFIG_PAIRS[@]} $solver configurations (QUICK=$QUICK)"
+        trials_var="${solver}_TRIALS"
+        reads_var="${solver}_READS"
+        headline_trials="${!trials_var:-${HEADLINE_TRIALS:-}}"
+        headline_reads="${!reads_var:-${HEADLINE_READS:-}}"
         for pair in "${CONFIG_PAIRS[@]}"; do
             trials="${pair%%:*}"
             reads="${pair##*:}"
             tag="${solver}_T${trials}_R${reads}"
+            printf '%s,%s,%s\n' "$solver" "$trials" "$reads" >> "$exp_dir/configurations.csv"
             dlog="$log_dir/dispatch_${tag}.log"
 
             log "[$EXPERIMENT] $tag: solver + cardinality estimation"
@@ -137,7 +171,7 @@ run_ce_experiment() { # $1 = config file relative to repo root
             fi
             cp "$REPO_ROOT/bnsl-qa/$qerr_file" "$exp_dir/qerrors/qerrors_${tag}.csv"
 
-            if [ "$trials" = "$HEADLINE_TRIALS" ] && [ "$reads" = "$HEADLINE_READS" ]; then
+            if [ "$trials" = "$headline_trials" ] && [ "$reads" = "$headline_reads" ]; then
                 if [ "$solver" = "SA" ]; then
                     headline_sa="$final_csv"
                 else
@@ -155,11 +189,18 @@ run_ce_experiment() { # $1 = config file relative to repo root
         bash cardinality_benchmarks.sh) 2>&1 | tee "$blog"
 
     bench_final=$(extract_result_var BENCH_FINAL_CSV "$blog")
-    if [ -z "$bench_final" ] || [ ! -f "$REPO_ROOT/bnsl/$bench_final" ]; then
+    if [ -z "$bench_final" ]; then
         echo "Error: baseline benchmark produced no final CSV (see $blog)"
         exit 1
     fi
-    cp "$REPO_ROOT/bnsl/$bench_final" "$exp_dir/chowliu_pg_final.csv"
+    if [[ "$bench_final" != /* ]]; then
+        bench_final="$REPO_ROOT/bnsl/$bench_final"
+    fi
+    if [ ! -f "$bench_final" ]; then
+        echo "Error: baseline benchmark produced no final CSV (see $blog)"
+        exit 1
+    fi
+    cp "$bench_final" "$exp_dir/chowliu_pg_final.csv"
 
     # Merged grouped bar chart for the headline configuration
     if [ -n "$headline_sa" ] && [ -n "$headline_sqa" ]; then
@@ -177,5 +218,6 @@ run_ce_experiment() { # $1 = config file relative to repo root
         [ -n "$newest_png" ] && cp "$newest_png" "$exp_dir/combined_results.png"
     fi
 
+    rm "$exp_dir/.running"
     log "[$EXPERIMENT] complete — outputs in results/$EXPERIMENT/"
 }

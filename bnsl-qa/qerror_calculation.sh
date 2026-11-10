@@ -146,7 +146,13 @@ fi
 
 # Extract executions and reads from folder name.
 BASENAME=$(basename "$MATRIX_DIR")
-IFS='_' read -r _ _ _ _ _ EXECUTIONS READS REST <<< "$BASENAME"
+if [[ "$BASENAME" =~ ^${METHOD}_Matrix_(.*)_([0-9]+)_([0-9]+)_([0-9]{4}-[0-9]{2}-[0-9]{2}_[0-9]{2}-[0-9]{2}-[0-9]{2})$ ]]; then
+    EXECUTIONS="${BASH_REMATCH[2]}"
+    READS="${BASH_REMATCH[3]}"
+else
+    echo "Error: cannot read trials and reads from $BASENAME" >&2
+    exit 1
+fi
 
 RESULT_FILE="$OUTPUT_BASE/results_${DATASET_NAME}_${METHOD}_${EXECUTIONS}_${READS}_${timestamp}.csv"
 echo "method,graph_index,query_sql,estimated_cardinality,true_cardinality,q_error" > "$RESULT_FILE"
@@ -177,7 +183,7 @@ for match in re.findall(r"Solution adjacency matrix:\n((?:\[.*?\]\n?)+)", data):
     matrix = ast.literal_eval("[" + ",".join(match.strip().splitlines()) + "]")
     graph = nx.DiGraph((i, j) for i, row in enumerate(matrix)
                       for j, value in enumerate(row) if value == 1)
-    if nx.is_directed_acyclic_graph(graph):
+    if nx.is_directed_acyclic_graph(graph) and all(degree <= 2 for _, degree in graph.in_degree()):
         print(matrix)
 ' "$FILE_PATH" |
 
