@@ -353,6 +353,61 @@ def structure_row(label, truth, est_df):
     }
 
 
+def summarize_tpcds():
+    exp_dir = os.path.join(RESULTS_ROOT, "tpcds_store_sales")
+    cfg = parse_env(os.path.join(CONFIG_DIR, "tpcds_store_sales.env"))
+    truth = load_truth(exp_dir)
+    if truth is None:
+        raise ValueError("TPC-DS: missing chowliu_pg_final.csv.")
+    workload = pd.read_csv(os.path.join(REPO_ROOT, "workloads", "tpcds_store_sales.csv"))
+    workload["join_key"] = workload["sql"].apply(normalize_query)
+    if workload["query_id"].isna().any() or workload["query_id"].duplicated().any():
+        raise ValueError("TPC-DS: missing or duplicate query IDs.")
+    truth = merge_estimates(workload, truth)
+    estimates = {
+        "tree": truth["bn_est_cardinality"].tolist(),
+        "postgresql": truth["pg_est_cardinality"].tolist(),
+    }
+    settings = []
+    for solver in ("SA", "SQA"):
+        trials, reads = cfg[f"{solver}_TRIALS"], cfg[f"{solver}_READS"]
+        est = load_estimates(exp_dir, solver, trials, reads)
+        if est is None:
+            raise ValueError(f"TPC-DS: missing {solver} estimates for {trials} trials and {reads} reads.")
+        estimates[solver.lower()] = stable_estimates(truth, est)
+        settings.append({"solver": solver, "trials": int(trials), "reads": int(reads),
+                         "unique_structures": len(graph_columns(est))})
+
+    per_query = truth[["query_id", "sql", "reason", "true_cardinality"]].copy()
+    summary = []
+    for key, label in [("sa", "SA stable"), ("sqa", "SQA stable"),
+                       ("tree", "Tree baseline"), ("postgresql", "PostgreSQL")]:
+        values = estimates[key]
+        qerrs = pd.Series([qerror(est, true)
+                           for est, true in zip(values, truth["true_cardinality"])])
+        per_query[f"{key}_estimate"] = values
+        per_query[f"{key}_qerror"] = qerrs.tolist()
+        summary.append({
+            "estimator": label,
+            "queries": len(truth),
+            "min_qerror": qerrs.min(),
+            "median_qerror": qerrs.median(),
+            "p95_qerror": qerrs.quantile(0.95),
+            "max_qerror": qerrs.max(),
+            "exact_queries": sum(exact_estimate(est, true)
+                                 for est, true in zip(values, truth["true_cardinality"])),
+        })
+
+    out_dir = os.path.join(exp_dir, "reproduced_tables")
+    os.makedirs(out_dir, exist_ok=True)
+    for filename, frame in [("cardinality_estimates.csv", per_query),
+                            ("qerror_summary.csv", pd.DataFrame(summary)),
+                            ("solver_settings.csv", pd.DataFrame(settings))]:
+        out = os.path.join(out_dir, filename)
+        frame.to_csv(out, index=False)
+        print(f"  wrote {os.path.relpath(out, RESULTS_ROOT)}")
+
+
 def main():
     ran_any = False
     print("Summarizing reproduced results:")
@@ -363,6 +418,9 @@ def main():
             ran_any = True
     if os.path.isdir(os.path.join(RESULTS_ROOT, "random_control")):
         summarize_random_control()
+        ran_any = True
+    if os.path.isdir(os.path.join(RESULTS_ROOT, "tpcds_store_sales")):
+        summarize_tpcds()
         ran_any = True
     if not ran_any:
         print("  no experiment outputs found under results/ — run scripts/run_*.sh first")

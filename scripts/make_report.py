@@ -80,11 +80,11 @@ TABLE_REFERENCES = {
 }
 
 
-def table_html(csv_path):
+def table_html(csv_path, float_format=None):
     if not os.path.isfile(csv_path):
         return '<p class="missing">not available</p>'
     df = pd.read_csv(csv_path)
-    return df.to_html(index=False, border=0, na_rep="")
+    return df.to_html(index=False, border=0, na_rep="", float_format=float_format)
 
 
 def pair_html(title, number, original_csv, reproduced_csv):
@@ -175,16 +175,45 @@ def experiment_section(exp, title, refs, orig_override, name_filter):
     return "\n".join(parts)
 
 
+def tpcds_section():
+    exp = "tpcds_store_sales"
+    exp_dir = os.path.join(RESULTS_ROOT, exp)
+    tables = os.path.join(exp_dir, "reproduced_tables")
+    parts = ["<h2>E7: TPC-DS Store Sales, N = 10,000</h2>",
+             "<p>Eight attributes and 20 fixed single-table queries. "
+             "Tree and annealing use the same coarse groups; PostgreSQL uses "
+             "the raw data with ordinary ANALYZE statistics. "
+             "SA/SQA values use the stable-estimate aggregation described above.</p>"]
+    if not os.path.isfile(os.path.join(tables, "cardinality_estimates.csv")):
+        parts.append('<p class="missing">TPC-DS results not generated yet.</p>')
+        return "\n".join(parts)
+    for filename, title in [("solver_settings.csv", "Annealing settings"),
+                            ("qerror_summary.csv", "Clamped q-error summary"),
+                            ("cardinality_estimates.csv", "Estimates and q-errors by query")]:
+        path = os.path.join(tables, filename)
+        parts.append(f"<h3>{title}</h3>")
+        if filename == "cardinality_estimates.csv":
+            parts.append('<p class="meta">Query IDs, SQL and selection reasons are retained in the CSV.</p>')
+            frame = pd.read_csv(path).drop(columns=["sql", "reason"])
+            rendered = frame.to_html(index=False, border=0, float_format=lambda v: f"{v:.3f}")
+        else:
+            rendered = table_html(path, float_format=lambda v: f"{v:.3f}")
+        parts.append(f'<div class="pane">{rendered}</div>')
+        parts.append(f'<p><a href="{exp}/reproduced_tables/{filename}">Download CSV</a></p>')
+    return "\n".join(parts)
+
+
 def main():
     stamp = datetime.datetime.now().strftime("%Y-%m-%d %H:%M")
     sections = [experiment_section(*e) for e in EXPERIMENTS]
+    sections.append(tpcds_section())
 
     body = f"""<meta charset="utf-8">
 <title>AnnealBN-CE Reproduction Report</title>
 <style>{CSS}</style>
 <h1>AnnealBN-CE Reproduction Report</h1>
-<p class="meta">Generated {stamp}. Frozen thesis values on the left,
-values reproduced by this run on the right.</p>
+<p class="meta">Generated {stamp}. Historical experiments show frozen thesis
+values alongside regenerated values. The TPC-DS extension follows in its own section.</p>
 <div class="note">
 <p><strong>Metric convention for this run: clamped q-error.</strong>
 For scoring only, both the estimate and true count are floored at 1 before

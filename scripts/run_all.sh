@@ -1,11 +1,4 @@
 #!/usr/bin/env bash
-# Complete reproduction sequence (E0-E7), executed INSIDE the app container.
-# This is the single source of truth for what "reproduce everything" means;
-# the host-side buttons (reproduce_all.sh on macOS/Linux, reproduce_all.bat
-# on Windows) only build the image and invoke this script.
-#
-# QUICK=1 limits every experiment to its headline configuration.
-
 source "$(dirname "$0")/lib.sh"
 
 run_step() {
@@ -21,8 +14,9 @@ run_step "E3: NHANES"                                scripts/run_nhanes.sh
 run_step "E4: Market Basket N=100"                   scripts/run_market_basket_100.sh
 run_step "E5: Market Basket N=10,000"                scripts/run_market_basket_10000.sh
 run_step "E6: random-structure robustness check"     scripts/run_random_control.sh
-run_step "E7: summary tables and comparison report"  scripts/make_report.sh
+run_step "E7: TPC-DS Store Sales N=10,000"            scripts/run_tpcds_store_sales.sh
+run_step "E8: summary tables and comparison report"  scripts/make_report.sh
 
 echo ""
 echo "All experiments complete. Outputs are in results/ (./results/ on the host)."
-echo "Open results/index.html for the side-by-side comparison with the thesis."
+echo "Open results/index.html for the experiment report."

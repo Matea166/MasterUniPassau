@@ -20,21 +20,22 @@ detailed description of every script, dataset format, and output file, see
    Docker images: the code is copied into the image at build time, and only
    the results directory is mounted back out.
 2. **One script runs everything.** It bootstraps the containers, executes
-   experiments E0–E7 inside them in order, and exposes every artefact on
+   experiments E0–E8 inside them in order, and exposes every artefact on
    the host in `./results/`.
 3. **Results regenerate from the original data.** All datasets are
    committed or generated deterministically (WetGrass: expected-value
-   generation; Market Basket: fixed seed; NHANES: committed CSV). No
+   generation; Market Basket: fixed seed; NHANES and TPC-DS: committed CSVs). No
    external downloads are required.
-4. **Compare with the thesis.** The run ends by generating
+4. **Inspect the results.** The run ends by generating
    `results/index.html`, which renders every reproduced table next to the
-   frozen thesis values from [original_results/](original_results/).
+   frozen thesis values from [original_results/](original_results/), followed
+   by the TPC-DS estimates and q-error summaries.
 
 Dataset preparation also loads a 10,000-row, eight-column TPC-DS `store_sales`
 sample into PostgreSQL and generates its encoded solver input. See the
 [dataset instructions](docs/USAGE.md#18-tpc-ds-store-sales-sample) and
 [20-query workload](workloads/tpcds_store_sales.csv).
-Run its fixed comparison with
+It runs automatically through the one-button workflow. To run it separately, use
 `docker compose exec -T app bash scripts/run_tpcds_store_sales.sh`:
 SA uses 20 trials × 100 reads; SQA uses 10 trials × 1,000 reads.
 Results go to `results/tpcds_store_sales/`.
@@ -54,7 +55,7 @@ See [workload details](docs/USAGE.md#19-shared-query-workloads).
 ## Quick start: reproduce everything
 
 ```bash
-git clone https://github.com/Matea166/MasterUniPassau.git
+git clone --branch btw2027 https://github.com/Matea166/MasterUniPassau.git
 cd MasterUniPassau
 ```
 
@@ -67,21 +68,20 @@ Then run the entry point for your platform:
 
 Both entry points are thin wrappers around the same in-container sequence
 (`scripts/run_all.sh`), so every platform runs the identical pipeline:
-build the images, start PostgreSQL, prepare all datasets, run experiments
-E1–E6 with the exact configurations from thesis Table 6.2, and write every
-table and figure to `./results/`, ending with the comparison report
+build the images, start PostgreSQL, prepare all datasets, run the historical
+experiments E1–E6 and the fixed TPC-DS experiment E7, and write every
+table and figure to `./results/`, ending with the report
 `results/index.html`.
 
-> **Runtime disclaimer.** The full reproduction executes the complete
-> thesis grid of 84 solver configurations (read and trial sweeps for both SA
-> and SQA on every dataset) plus the baselines and the 1000-matrix
-> random-structure check, and takes **several hours** (measured:
-> 6 h 16 min on an Apple-Silicon MacBook). Plan for an overnight run, keep
+> **Runtime.** The full reproduction executes the historical read/trial
+> sweeps, the baselines, the 1000-matrix random-structure check and TPC-DS.
+> Plan for several hours, keep
 > the machine plugged in, and prevent it from sleeping (macOS:
 > `caffeinate -i ./reproduce_all.sh`; Windows: set sleep to "Never" while
-> plugged in). The `QUICK` smoke test runs one headline configuration per
-> experiment in roughly **45 minutes** including the image build and is the
-> recommended first run.
+> plugged in). `QUICK=1` reduces the historical experiments to their headline
+> configurations. TPC-DS keeps SA at 20 trials × 100 reads and SQA at
+> 10 trials × 1,000 reads in both modes. The total runtime of the expanded
+> workflow has not yet been measured.
 
 ## Mapping between experiments and thesis results
 
@@ -96,7 +96,8 @@ table and figure to `./results/`, ending with the comparison report
 | E4 | Market Basket, N = 100 | `scripts/run_market_basket_100.sh` | `market_basket_100/` | Tables 6.10–6.13, Figure 6.1 |
 | E5 | Market Basket, N = 10,000 | `scripts/run_market_basket_10000.sh` | `market_basket_10000/` | Tables 6.15–6.18 |
 | E6 | Random-structure robustness check | `scripts/run_random_control.sh` | `random_control/` | Table 6.14 |
-| E7 | Summary tables + comparison report | `scripts/make_report.sh` | `*/reproduced_tables/`, `index.html` | Chapter 6 tables |
+| E7 | TPC-DS Store Sales, N = 10,000 | `scripts/run_tpcds_store_sales.sh` | `tpcds_store_sales/` | New experiment |
+| E8 | Summary tables + report | `scripts/make_report.sh` | `*/reproduced_tables/`, `index.html` | Chapter 6 tables and TPC-DS |
 
 Each experiment folder contains, under stable names:
 
@@ -104,8 +105,13 @@ Each experiment folder contains, under stable names:
 - `qerrors/qerrors_<SOLVER>_T<trials>_R<reads>.csv` — per-structure, per-query q-errors
 - `chowliu_pg_final.csv` — true cardinalities, Chow–Liu, and PostgreSQL estimates
 - `combined_results.{csv,png}` — merged headline comparison (grouped bar chart)
-- `reproduced_tables/table_*.csv` — reproduced thesis tables (written by E7)
+- `reproduced_tables/table_*.csv` — reproduced thesis tables (written by E8)
 - `logs/` — full logs of every step
+
+TPC-DS uses `reproduced_tables/cardinality_estimates.csv`,
+`qerror_summary.csv` and `solver_settings.csv`. These retain the query IDs,
+full-precision estimates, clamped q-errors and separate SA/SQA budgets.
+The HTML rounds displayed numbers only.
 
 ## Comparing with the thesis results
 
@@ -125,7 +131,7 @@ pass/fail requirements for this corrected branch.
 
 SA and SQA are stochastic, so regenerated numbers are **similar but not
 necessarily identical** to the originals. `results/index.html` (generated by
-E7) renders each reproduced table next to its thesis original so the
+E8) renders each reproduced table next to its thesis original so the
 comparison is visible at a glance. The expected level of agreement depends
 on the table type:
 
@@ -152,7 +158,7 @@ manual comparison with the thesis PDF.
 docker compose up -d --build
 docker compose exec app bash scripts/prepare_datasets.sh   # E0, once
 docker compose exec app bash scripts/run_wetgrass_100.sh   # any experiment
-docker compose exec app bash scripts/make_report.sh        # E7, refresh report
+docker compose exec app bash scripts/make_report.sh        # E8, refresh report
 ```
 
 Each experiment reads its frozen configuration from `config/<name>.env`
@@ -160,7 +166,8 @@ Each experiment reads its frozen configuration from `config/<name>.env`
 writes only to its own `results/<name>/` folder — experiments never
 overwrite each other. Run E0 first; E6's report row additionally references
 E4's outputs. `docker compose exec -e QUICK=1 app bash scripts/run_<name>.sh`
-runs just the headline configuration of one experiment.
+runs just the headline configuration of a historical experiment. TPC-DS
+always uses the two fixed settings in its configuration file.
 
 The interactive menus (`bnsl-qa/dispatch.sh`, `bnsl/cardinality_benchmarks.sh`,
 …) remain available for exploratory use inside the container; they are not

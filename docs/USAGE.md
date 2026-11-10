@@ -838,6 +838,15 @@ TPC-DS. The script reloads the raw PostgreSQL table, runs `ANALYZE`, regenerates
 the solver input, and saves estimates, q-errors and the combined comparison
 under `results/tpcds_store_sales/`.
 
+The one-button entry points run this as E7, followed by report generation
+as E8. `QUICK=1` keeps the same TPC-DS settings. The report includes
+per-query estimates and clamped q-errors, a summary across all 20 queries,
+and the solver settings. CSVs in `reproduced_tables/` retain full precision
+and workload IDs; the HTML rounds numbers for display. SA/SQA use the same
+stable-estimate aggregation as the other datasets: the most frequent
+two-decimal group, with the upper median used to resolve ties and select
+an original value within that group.
+
 Run the encoding and model checks from the repository root:
 
 ```bash
