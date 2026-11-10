@@ -17,6 +17,7 @@ from bnsl.datasets.tpcds_encoding import (
 )
 from bnsl.tldks_2020.bn import BayesianNetwork
 from bnsl.tldks_2020.rel import Relation
+from bnsl.workloads import load_queries as load_workload_queries
 
 
 def load_module(name, path):
@@ -56,6 +57,38 @@ class TpcdsEncodingTests(unittest.TestCase):
         pd.testing.assert_frame_equal(raw, self.raw)
         pd.testing.assert_frame_equal(encoded, self.encoded)
 
+    def test_common_workload_loader_matches_tpcds_parser(self):
+        expected = [(row["sql"], filters) for row, filters in self.queries]
+        self.assertEqual(load_workload_queries("tpcds_store_sales", self.raw, self.encoded), expected)
+        with tempfile.TemporaryDirectory() as directory:
+            path = Path(directory) / "queries.csv"
+            queries = [
+                "SELECT * FROM store_sales WHERE ss_coupon_amt IS NULL;",
+                "SELECT * FROM store_sales WHERE ss_coupon_amt IS NOT NULL;",
+                "SELECT * FROM store_sales WHERE ss_quantity > 25;",
+                "SELECT * FROM store_sales WHERE ss_coupon_amt IS NULL AND ss_coupon_amt = 0;",
+            ]
+            pd.DataFrame({"query_id": ["Q1", "Q2", "Q3", "Q4"], "sql": queries}).to_csv(path, index=False)
+            actual = load_workload_queries("tpcds_store_sales", self.raw, self.encoded, path=path)
+            self.assertEqual(actual, [(sql, query_filters(sql)) for sql in queries])
+            for ids in [["Q1", "Q1", "Q3", "Q4"], ["Q1", " ", "Q3", "Q4"]]:
+                pd.DataFrame({"query_id": ids, "sql": queries}).to_csv(path, index=False)
+                with self.assertRaisesRegex(ValueError, "unique and nonempty"):
+                    load_workload_queries("tpcds_store_sales", self.raw, self.encoded, path=path)
+        with self.assertRaisesRegex(ValueError, "same row index"):
+            load_workload_queries("tpcds_store_sales", self.raw, self.encoded.iloc[::-1])
+
+    def test_annealing_preserves_matrix_order_and_unobserved_states(self):
+        encoded = self.encoded.iloc[:1, ::-1]
+        matrix = np.zeros((8, 8), dtype=int)
+        matrix[0, 3] = matrix[1, 3] = 1
+        model = annealing.fit_model(encoded, matrix)
+        self.assertEqual(set(model.edges()), {("ss_quantity", "ss_net_profit"),
+                                             ("ss_sales_price", "ss_net_profit")})
+        for cpd in model.get_cpds():
+            for column, states in cpd.state_names.items():
+                self.assertEqual(states, STATE_NAMES[column])
+
     def test_boundaries_and_zero(self):
         cases = {
             "ss_quantity": ([1, 25, 26, 50, 51, 75, 76, 100, None], [0, 0, 1, 1, 2, 2, 3, 3, 4]),
@@ -78,6 +111,11 @@ class TpcdsEncodingTests(unittest.TestCase):
                 raw = self.raw.iloc[:len(values)].copy()
                 raw[column] = values
                 self.assertEqual(encode(raw)[column].tolist(), expected)
+                with tempfile.TemporaryDirectory() as directory:
+                    path = Path(directory) / "boundary.csv"
+                    raw.to_csv(path, index=False)
+                    _, encoded = annealing.load_data(path)
+                    self.assertEqual(encoded[column].tolist(), expected)
 
     def test_invalid_values_are_rejected(self):
         for column, value in [("ss_quantity", 1.5), ("ss_quantity", 101), ("ss_sales_price", 0.001),
@@ -87,6 +125,11 @@ class TpcdsEncodingTests(unittest.TestCase):
                 raw[column] = value
                 with self.assertRaises(ValueError):
                     encode(raw)
+                with tempfile.TemporaryDirectory() as directory:
+                    path = Path(directory) / "invalid.csv"
+                    raw.to_csv(path, index=False)
+                    with self.assertRaises(ValueError):
+                        annealing.load_data(path)
 
     def test_sql_and_encoding_select_identical_rows(self):
         reference = json.loads((ROOT / "reference_results/tpcds_store_sales_postgres.json").read_text())

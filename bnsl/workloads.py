@@ -5,6 +5,8 @@ import operator
 import re
 from pathlib import Path
 
+from bnsl.datasets.tpcds_encoding import query_filters as tpcds_query_filters
+
 
 TABLES = {"wetgrass": "wetgrass_data", "market_basket": "transactions", "nhanes": "nhanes_data"}
 BMI_BINS = [(0, 18.5), (18.5, 25), (25, 30), (30, 150)]
@@ -27,6 +29,8 @@ def normalize_query(query):
 
 
 def query_filters(sql, dataset, raw, modeled):
+    if dataset == "tpcds_store_sales":
+        return tpcds_query_filters(sql)
     match = re.fullmatch(r"\s*SELECT\s+\*\s+FROM\s+(\w+)\s+WHERE\s+(.+?)\s*;?\s*", sql, re.I)
     if match is None or match[1].lower() != TABLES[dataset]:
         raise ValueError(f"Expected a selection from {TABLES[dataset]}.")
