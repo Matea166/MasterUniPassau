@@ -1,54 +1,39 @@
 import os
 
-import psycopg2
 import pandas as pd
+import psycopg2
 
-# ---------- CONFIG (overridable via environment for scripted runs) ----------
-DB_NAME = os.environ.get("DB_NAME", "wetgrass")
-DB_USER = os.environ.get("POSTGRES_USER", "postgres")
-DB_PASSWORD = os.environ.get("POSTGRES_PASSWORD", "postgres")
 
-DB_HOST = os.environ.get("POSTGRES_HOST", "postgres")
-DB_PORT = os.environ.get("POSTGRES_PORT", "5432")
+def main():
+    db_name = os.environ.get("DB_NAME", "wetgrass")
+    db_user = os.environ.get("POSTGRES_USER", "postgres")
+    db_password = os.environ.get("POSTGRES_PASSWORD", "postgres")
+    db_host = os.environ.get("POSTGRES_HOST", "postgres")
+    db_port = os.environ.get("POSTGRES_PORT", "5432")
+    csv_file = os.environ.get("CSV_FILE", "data/WetGrass_variance_zero.csv")
+    table_name = os.environ.get("TABLE_NAME", "wetgrass_data")
+    conn = psycopg2.connect(
+        dbname=db_name, user=db_user, password=db_password, host=db_host, port=db_port
+    )
+    cur = conn.cursor()
+    df = pd.read_csv(csv_file)
+    cur.execute(f"TRUNCATE TABLE {table_name}")
+    columns = [c.lower() for c in df.columns]
+    placeholders = ", ".join(["%s"] * len(columns))
+    insert_query = (
+        f"INSERT INTO {table_name} ({', '.join(columns)}) VALUES ({placeholders})"
+    )
+    for _, row in df.iterrows():
+        cur.execute(
+            insert_query, tuple((v.item() if hasattr(v, "item") else v for v in row))
+        )
+    conn.commit()
+    cur.execute(f"ANALYZE {table_name}")
+    conn.commit()
+    cur.close()
+    conn.close()
+    print(f"Imported {len(df)} rows from {csv_file} into {db_name}.{table_name}")
 
-CSV_FILE = os.environ.get("CSV_FILE", "data/WetGrass_variance_zero.csv")
-TABLE_NAME = os.environ.get("TABLE_NAME", "wetgrass_data")
-# ----------------------------
 
-conn = psycopg2.connect(
-    dbname=DB_NAME,
-    user=DB_USER,
-    password=DB_PASSWORD,
-    host=DB_HOST,
-    port=DB_PORT
-)
-
-cur = conn.cursor()
-
-# Read CSV
-df = pd.read_csv(CSV_FILE)
-
-# The table is emptied first so repeated imports stay idempotent, and the
-# insert columns are taken from the CSV header (lowercased to match the
-# PostgreSQL schemas), so the same script works for every dataset.
-cur.execute(f"TRUNCATE TABLE {TABLE_NAME}")
-
-columns = [c.lower() for c in df.columns]
-placeholders = ", ".join(["%s"] * len(columns))
-insert_query = f"INSERT INTO {TABLE_NAME} ({', '.join(columns)}) VALUES ({placeholders})"
-
-# Insert rows (numpy scalars converted to native Python types for psycopg2)
-for _, row in df.iterrows():
-    cur.execute(insert_query, tuple(
-        v.item() if hasattr(v, "item") else v for v in row
-    ))
-
-conn.commit()
-
-cur.execute(f"ANALYZE {TABLE_NAME}")
-conn.commit()
-
-cur.close()
-conn.close()
-
-print(f"Imported {len(df)} rows from {CSV_FILE} into {DB_NAME}.{TABLE_NAME}")
+if __name__ == "__main__":
+    main()

@@ -12,7 +12,13 @@ from pgmpy.inference import VariableElimination
 from pgmpy.models import DiscreteBayesianNetwork
 
 from bnsl.datasets.tpcds_encoding import (
-    COLUMNS, DATA_PATH, STATE_NAMES, WORKLOAD_PATH, assignments, encode, load_queries,
+    COLUMNS,
+    DATA_PATH,
+    STATE_NAMES,
+    WORKLOAD_PATH,
+    assignments,
+    encode,
+    load_queries,
 )
 
 
@@ -45,7 +51,9 @@ def main():
     parser.add_argument("matrix", type=ast.literal_eval)
     parser.add_argument("output_dir", type=Path)
     parser.add_argument("graph_index")
-    parser.add_argument("--input", type=Path, default=os.environ.get("CE_DATASET_CSV", DATA_PATH))
+    parser.add_argument(
+        "--input", type=Path, default=os.environ.get("CE_DATASET_CSV", DATA_PATH)
+    )
     parser.add_argument("--workload", type=Path, default=WORKLOAD_PATH)
     args = parser.parse_args()
     encoded = encode(pd.read_csv(args.input))
@@ -60,7 +68,9 @@ def main():
             raise RuntimeError(
                 f"Inference failed for graph {args.graph_index}, query {filters!r}"
             ) from exc
-        results.append({"query_sql": query["sql"], "estimated_cardinality": cardinality})
+        results.append(
+            {"query_sql": query["sql"], "estimated_cardinality": cardinality}
+        )
     args.output_dir.mkdir(parents=True, exist_ok=True)
     output = args.output_dir / f"graph_{args.graph_index}_cardinality.csv"
     pd.DataFrame(results).to_csv(output, index=False)
@@ -68,9 +78,15 @@ def main():
         graph = graphviz.Digraph()
         graph.attr(rankdir="TB")
         for column in COLUMNS:
-            graph.node(column, column, shape="ellipse", style="filled", fillcolor="lightblue")
+            graph.node(
+                column, column, shape="ellipse", style="filled", fillcolor="lightblue"
+            )
         graph.edges(model.edges())
-        graph.render(str(args.output_dir / f"Graph_{args.graph_index}"), format="png", cleanup=True)
+        graph.render(
+            str(args.output_dir / f"Graph_{args.graph_index}"),
+            format="png",
+            cleanup=True,
+        )
     except Exception as exc:
         print(f"[Warning] Could not generate graph: {exc}")
     print(f"Results saved to: {output}")

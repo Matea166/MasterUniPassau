@@ -8,7 +8,6 @@ from pathlib import Path
 import numpy as np
 import pandas as pd
 
-
 ROOT = Path(__file__).resolve().parents[2]
 DATA_PATH = ROOT / "bnsl/datasets/data/TPCDS_store_sales_10000.csv"
 WORKLOAD_PATH = ROOT / "workloads/tpcds_store_sales.csv"
@@ -18,13 +17,18 @@ DOMAINS = {
     "ss_sales_price": (100, [(0, 2499), (2500, 4999), (5000, 9999), (10000, math.inf)]),
     "ss_coupon_amt": (100, [(0, 0), (1, 99999), (100000, math.inf)]),
     "ss_net_profit": (100, [(-math.inf, -1), (0, 99999), (100000, math.inf)]),
-    "ss_wholesale_cost": (100, [(0, 2499), (2500, 4999), (5000, 7499), (7500, math.inf)]),
+    "ss_wholesale_cost": (
+        100,
+        [(0, 2499), (2500, 4999), (5000, 7499), (7500, math.inf)],
+    ),
     "ss_net_paid": (100, [(0, 99999), (100000, 299999), (300000, math.inf)]),
     "ss_list_price": (100, [(0, 4999), (5000, 9999), (10000, math.inf)]),
     "ss_store_sk": (1, [(1, 1), (2, 2), (4, 4), (7, 7), (8, 8), (10, 10)]),
 }
 COLUMNS = list(DOMAINS)
-STATE_NAMES = {column: list(range(len(groups) + 1)) for column, (_, groups) in DOMAINS.items()}
+STATE_NAMES = {
+    column: list(range(len(groups) + 1)) for column, (_, groups) in DOMAINS.items()
+}
 
 
 def encode(raw):
@@ -33,7 +37,9 @@ def encode(raw):
         values = pd.to_numeric(raw[column], errors="raise")
         scaled = values * scale
         present = scaled.dropna().to_numpy(dtype=float)
-        if not np.isfinite(present).all() or not np.allclose(present, np.rint(present), rtol=0, atol=1e-7):
+        if not np.isfinite(present).all() or not np.allclose(
+            present, np.rint(present), rtol=0, atol=1e-7
+        ):
             raise ValueError(f"Invalid precision or nonfinite value in {column}.")
         scaled = scaled.round()
         codes = pd.Series(-1, index=raw.index, dtype=int)
@@ -51,12 +57,21 @@ def tree_state(column, code):
 
 
 def tree_data(encoded):
-    return pd.DataFrame({column: encoded[column].map(lambda code: tree_state(column, code))
-                         for column in encoded.columns}, index=encoded.index)
+    return pd.DataFrame(
+        {
+            column: encoded[column].map(lambda code: tree_state(column, code))
+            for column in encoded.columns
+        },
+        index=encoded.index,
+    )
 
 
 def query_filters(sql):
-    match = re.fullmatch(r"\s*SELECT\s+\*\s+FROM\s+(?:public\.)?store_sales\s+WHERE\s+(.+?)\s*;?\s*", sql, re.I)
+    match = re.fullmatch(
+        r"\s*SELECT\s+\*\s+FROM\s+(?:public\.)?store_sales\s+WHERE\s+(.+?)\s*;?\s*",
+        sql,
+        re.I,
+    )
     if match is None:
         raise ValueError("Expected a single-table store_sales selection.")
     bounds = {}
@@ -67,8 +82,12 @@ def query_filters(sql):
             column = null_match[1].lower()
             if column not in DOMAINS:
                 raise ValueError(f"Unknown column: {column}")
-            states = STATE_NAMES[column][:-1] if null_match[2] else STATE_NAMES[column][-1:]
-            null_filters[column] = set(states) & null_filters.get(column, set(STATE_NAMES[column]))
+            states = (
+                STATE_NAMES[column][:-1] if null_match[2] else STATE_NAMES[column][-1:]
+            )
+            null_filters[column] = set(states) & null_filters.get(
+                column, set(STATE_NAMES[column])
+            )
             continue
         condition = re.fullmatch(r"(\w+)\s*(>=|<=|=|<|>)\s*(-?\d+(?:\.\d+)?)", clause)
         if condition is None or condition[1].lower() not in DOMAINS:
@@ -95,7 +114,9 @@ def query_filters(sql):
             if max(lower, left) > min(upper, right):
                 continue
             if lower > left or upper < right:
-                raise ValueError(f"Predicate cuts through a group in {column}; refine the encoding first.")
+                raise ValueError(
+                    f"Predicate cuts through a group in {column}; refine the encoding first."
+                )
             states.append(code)
         filters[column] = states
     for column, states in null_filters.items():

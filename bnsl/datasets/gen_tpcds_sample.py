@@ -18,7 +18,9 @@ def main():
     metadata = json.loads((data_dir / "TPCDS_store_sales_10000.json").read_text())
     parser = argparse.ArgumentParser()
     parser.add_argument("source", type=Path, nargs="?")
-    parser.add_argument("--output", type=Path, default=data_dir / "TPCDS_store_sales_10000.csv")
+    parser.add_argument(
+        "--output", type=Path, default=data_dir / "TPCDS_store_sales_10000.csv"
+    )
     parser.add_argument("--check", action="store_true")
     args = parser.parse_args()
     if args.check:
@@ -35,9 +37,16 @@ def main():
         for line in handle:
             digest.update(line)
             total += 1
-    if total != metadata["source_rows"] or digest.hexdigest() != metadata["source_sha256"]:
+    if (
+        total != metadata["source_rows"]
+        or digest.hexdigest() != metadata["source_sha256"]
+    ):
         raise ValueError("Source file does not match the recorded TPC-DS generation.")
-    chosen = set(random.Random(metadata["sample_seed"]).sample(range(total), metadata["sample_rows"]))
+    chosen = set(
+        random.Random(metadata["sample_seed"]).sample(
+            range(total), metadata["sample_rows"]
+        )
+    )
     output = io.StringIO(newline="")
     writer = csv.writer(output, lineterminator="\n")
     writer.writerow([column["name"] for column in metadata["columns"]])
@@ -47,12 +56,18 @@ def main():
                 continue
             fields = line.rstrip("\n").split("|")
             if len(fields) != 24 or fields[-1] != "":
-                raise ValueError("Expected 23 pipe-delimited fields and a trailing delimiter.")
+                raise ValueError(
+                    "Expected 23 pipe-delimited fields and a trailing delimiter."
+                )
             row = []
             for column in metadata["columns"]:
                 value = fields[column["source_position"] - 1]
                 if value:
-                    value = str(int(value)) if column["type"] == "INTEGER" else format(Decimal(value), ".2f")
+                    value = (
+                        str(int(value))
+                        if column["type"] == "INTEGER"
+                        else format(Decimal(value), ".2f")
+                    )
                 row.append(value)
             writer.writerow(row)
     data = output.getvalue().encode("utf-8")
