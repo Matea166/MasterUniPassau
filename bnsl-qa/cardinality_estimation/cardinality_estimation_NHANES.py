@@ -1,7 +1,9 @@
+import argparse
 import ast
 import os
 import sys
 import warnings
+from pathlib import Path
 
 import graphviz
 import networkx as nx
@@ -29,13 +31,14 @@ def estimate_cardinality(query_dict, inference, total_rows, graph_index):
 
 def main():
     warnings.simplefilter(action="ignore", category=FutureWarning)
-    if len(sys.argv) < 4:
-        print("Usage: python script.py '<matrix>' <output_dir> <graph_index>")
-        sys.exit(1)
-    sa_matrix_str = sys.argv[1]
-    output_dir = sys.argv[2]
-    graph_index = sys.argv[3]
-    sa_matrix = ast.literal_eval(sa_matrix_str)
+    parser = argparse.ArgumentParser()
+    parser.add_argument("matrix", type=ast.literal_eval)
+    parser.add_argument("output_dir", type=Path)
+    parser.add_argument("graph_index")
+    args = parser.parse_args()
+    sa_matrix = args.matrix
+    output_dir = args.output_dir
+    graph_index = args.graph_index
     os.makedirs(output_dir, exist_ok=True)
     dataset_path = os.environ.get(
         "CE_DATASET_CSV", "../bnsl/datasets/data/NHANES_age_prediction.csv"
