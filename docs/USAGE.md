@@ -861,7 +861,9 @@ PostgreSQL references use ordinary statistics after `ANALYZE`, with counts
 checked against the CSV and encoded data. Settings and checksums are
 recorded in each reference file.
 
-The Wetgrass, NHANES and Market Basket estimator runners still use the original six queries.
+All estimator runners read the 20-query workload files. Wetgrass, NHANES
+and Market Basket share a query loader that maps SQL values to each model's
+existing states and checks that the predicates select the same rows.
 
 ---
 

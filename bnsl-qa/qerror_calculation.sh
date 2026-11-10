@@ -192,26 +192,17 @@ for match in re.findall(r"Solution adjacency matrix:\n((?:\[.*?\]\n?)+)", data):
 
         if [[ -f "$CSV" ]]; then
 
-            mapfile -t queries_sql < <(python3 - <<EOF
-import ast
+            query_rows=$(python3 - "$CSV" <<'PY'
+import csv
+import sys
 
-with open("$CARD_SCRIPT") as f:
-    tree = ast.parse(f.read())
-
-for node in ast.walk(tree):
-    if isinstance(node, ast.Assign):
-        for target in node.targets:
-            if getattr(target, "id", None) == "queries_sql":
-                for elt in node.value.elts:
-                    print(elt.value)
-EOF
+with open(sys.argv[1], newline="") as handle:
+    for row in csv.DictReader(handle):
+        print(row["query_sql"], row["estimated_cardinality"], sep="\t")
+PY
 )
 
-            i=0
-
-            tail -n +2 "$CSV" | while IFS=, read -r _ est; do
-                sql="${queries_sql[$i]}"
-                i=$((i+1))
+            while IFS=$'\t' read -r sql est; do
 
                 # Execute the query, surfacing PostgreSQL's exact error if
                 # it fails — never record 0 as a real cardinality.
@@ -253,7 +244,7 @@ PYEOF
 )
 
                 echo "$METHOD,$matrix_index,\"$sql\",$est,$true_card,$qerr" >> "$RESULT_FILE"
-            done
+            done <<< "$query_rows"
 
             python3 - <<EOF
 import pandas as pd

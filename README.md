@@ -36,7 +36,8 @@ sample into PostgreSQL and generates its encoded solver input. See the
 [20-query workload](workloads/tpcds_store_sales.csv).
 
 The [workloads](workloads/) contain 20 queries per dataset, with PostgreSQL
-counts in [reference_results/](reference_results/).
+counts in [reference_results/](reference_results/). Both estimator pipelines
+read these files.
 See [workload details](docs/USAGE.md#19-shared-query-workloads).
 
 ## Requirements

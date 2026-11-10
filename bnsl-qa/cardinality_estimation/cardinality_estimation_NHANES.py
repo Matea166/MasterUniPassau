@@ -4,6 +4,7 @@ import os
 import graphviz
 import sys
 import ast
+from bnsl.workloads import load_queries
 import warnings
 import networkx as nx
 from pgmpy.models import DiscreteBayesianNetwork
@@ -119,59 +120,11 @@ def estimate_cardinality(query_dict):
 
     return est_prob * total_rows
 
-# Define NHANES Benchmark Queries
-queries = [
-    # Q1: SELECT * FROM nhanes_data WHERE DIQ010 = 2
-    {"DIQ010": 1},
+queries = load_queries("nhanes", df_raw, df_bn)
 
-    # Q2: SELECT * FROM nhanes_data
-    #     WHERE BMXBMI >= 30.0 AND DIQ010 = 1
-    {"BMXBMI": 3, "DIQ010": 0},
-
-    # Q3: SELECT * FROM nhanes_data
-    #     WHERE age_group = 'Senior'
-    #       AND BMXBMI >= 30.0
-    #       AND DIQ010 = 1
-    {"age_group": 1, "BMXBMI": 3, "DIQ010": 0},
-
-    # Q4: SELECT * FROM nhanes_data
-    #     WHERE age_group = 'Adult'
-    #       AND BMXBMI >= 18.5
-    #       AND BMXBMI < 25.0
-    #       AND DIQ010 = 2
-    {"age_group": 0, "BMXBMI": 1, "DIQ010": 1},
-
-    # Q5: SELECT * FROM nhanes_data
-    #     WHERE age_group = 'Adult'
-    #       AND BMXBMI >= 25.0
-    #       AND BMXBMI < 30.0
-    #       AND DIQ010 = 1
-    {"age_group": 0, "BMXBMI": 2, "DIQ010": 0},
-
-    # Q6: SELECT * FROM nhanes_data
-    #     WHERE age_group = 'Senior'
-    #       AND RIAGENDR = 1
-    #       AND BMXBMI >= 25.0
-    #       AND BMXBMI < 30.0
-    #       AND DIQ010 = 2
-    {"age_group": 1, "RIAGENDR": 0, "BMXBMI": 2, "DIQ010": 1},
-]
-
-queries_sql = [
-    "SELECT * FROM nhanes_data WHERE DIQ010 = 2",
-    "SELECT * FROM nhanes_data WHERE BMXBMI >= 30.0 AND DIQ010 = 1",
-    "SELECT * FROM nhanes_data WHERE age_group = 'Senior' AND BMXBMI >= 30.0 AND DIQ010 = 1",
-    "SELECT * FROM nhanes_data WHERE age_group = 'Adult' AND BMXBMI >= 18.5 AND BMXBMI < 25.0 AND DIQ010 = 2",
-    "SELECT * FROM nhanes_data WHERE age_group = 'Adult' AND BMXBMI >= 25.0 AND BMXBMI < 30.0 AND DIQ010 = 1",
-    "SELECT * FROM nhanes_data WHERE age_group = 'Senior' AND RIAGENDR = 1 AND BMXBMI >= 25.0 AND BMXBMI < 30.0 AND DIQ010 = 2"
-]
-
-# ==========================================
-# 6. GENERATE FINAL CSV OUTPUT
-# ==========================================
 results_data = []
 
-for q_dict, sql in zip(queries, queries_sql):
+for sql, q_dict in queries:
     est_card = estimate_cardinality(q_dict)
 
     results_data.append({

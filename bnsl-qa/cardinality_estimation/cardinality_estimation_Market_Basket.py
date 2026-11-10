@@ -4,6 +4,7 @@ import os
 import graphviz
 import sys
 import ast
+from bnsl.workloads import load_queries
 from pgmpy.models import DiscreteBayesianNetwork
 from pgmpy.estimators import MaximumLikelihoodEstimator
 from pgmpy.inference import VariableElimination
@@ -94,28 +95,11 @@ def estimate_cardinality(query_dict):
 # ==========================================
 # 6. BENCHMARK QUERIES & CSV EXPORT
 # ==========================================
-queries = [
-    ("Test A: ", {'Bread': 1}),
-    ("Test B: ", {'Beer': 1, 'Diapers': 1}),
-    ("Test C: ", {'Milk': 1, 'Diapers': 1}),
-    ("Test D: ", {'Eggs': 1, 'Milk': 0}),
-    ("Test E: ", {'Bread': 1, 'Diapers': 1, 'Milk': 1}),
-    ("Test F: ", {'Beer': 1, 'Bread': 0, 'Cola': 1, 'Diapers': 1, 'Eggs': 0, 'Milk': 1})
-]
-
-# SQL translations for the CSV output
-queries_sql = [
-    "SELECT * FROM transactions WHERE Bread = 1",
-    "SELECT * FROM transactions WHERE Beer = 1 AND Diapers = 1",
-    "SELECT * FROM transactions WHERE Milk = 1 AND Diapers = 1",
-    "SELECT * FROM transactions WHERE Eggs = 1 AND Milk = 0",
-    "SELECT * FROM transactions WHERE Bread = 1 AND Diapers = 1 AND Milk = 1",
-    "SELECT * FROM transactions WHERE Beer = 1 AND Bread = 0 AND Cola = 1 AND Diapers = 1 AND Eggs = 0 AND Milk = 1"
-]
+queries = load_queries("market_basket", df, df)
 
 results_data = []
 
-for (_, q_dict), sql in zip(queries, queries_sql):
+for sql, q_dict in queries:
     est_card = estimate_cardinality(q_dict)
     results_data.append({"query_sql": sql, "estimated_cardinality": f"{est_card:.5f}"})
 

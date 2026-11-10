@@ -4,6 +4,7 @@ from datetime import datetime
 from bnsl.tldks_2020.bn import BayesianNetwork
 from bnsl.tldks_2020.rel import Relation
 import graphviz
+from bnsl.workloads import load_queries
 
 # ==========================================
 # 1. CONFIGURATION
@@ -51,49 +52,12 @@ try:
 except Exception as e:
     print(f"[Graph] Warning: {e}")
 
-# ==========================================
-# 5. TRIPLE QUERY MAPPING
-# ==========================================
-sa_queries = [
-    "SELECT * FROM nhanes_data WHERE DIQ010 = 1",
-    "SELECT * FROM nhanes_data WHERE BMXBMI = 3 AND DIQ010 = 0",
-    "SELECT * FROM nhanes_data WHERE age_group = 1 AND BMXBMI = 3 AND DIQ010 = 0",
-    "SELECT * FROM nhanes_data WHERE age_group = 0 AND BMXBMI = 1 AND DIQ010 = 1",
-    "SELECT * FROM nhanes_data WHERE age_group = 0 AND BMXBMI = 2 AND DIQ010 = 0",
-    "SELECT * FROM nhanes_data WHERE age_group = 1 AND RIAGENDR = 0 AND BMXBMI = 2 AND DIQ010 = 1"
-]
+queries = load_queries("nhanes", df_raw, df[discrete_cols])
 
-pg_queries = [
-    "SELECT * FROM nhanes_data WHERE DIQ010 = 2",
-    "SELECT * FROM nhanes_data WHERE BMXBMI >= 30.0 AND DIQ010 = 1",
-    "SELECT * FROM nhanes_data WHERE age_group = 'Senior' AND BMXBMI >= 30.0 AND DIQ010 = 1",
-    "SELECT * FROM nhanes_data WHERE age_group = 'Adult' AND BMXBMI >= 18.5 AND BMXBMI < 25.0 AND DIQ010 = 2",
-    "SELECT * FROM nhanes_data WHERE age_group = 'Adult' AND BMXBMI >= 25.0 AND BMXBMI < 30.0 AND DIQ010 = 1",
-    "SELECT * FROM nhanes_data WHERE age_group = 'Senior' AND RIAGENDR = 1 AND BMXBMI >= 25.0 AND BMXBMI < 30.0 AND DIQ010 = 2"
-]
-
-# C. Translates to the string formats expected by the Bayesian Network
-bn_filters = [
-    {'DIQ010': '2.0'},
-    {'BMXBMI': '3', 'DIQ010': '1.0'},
-    {'age_group': 'Senior', 'BMXBMI': '3', 'DIQ010': '1.0'},
-    {'age_group': 'Adult', 'BMXBMI': '1', 'DIQ010': '2.0'},
-    {'age_group': 'Adult', 'BMXBMI': '2', 'DIQ010': '1.0'},
-    {'age_group': 'Senior', 'RIAGENDR': '1.0', 'BMXBMI': '2', 'DIQ010': '2.0'}
-]
-
-
-# ==========================================
-# 6. EXECUTION & LOGGING
-# ==========================================
 results_log = []
 
 print("\n--- Running Queries and Logging Results ---")
-for i in range(len(sa_queries)):
-    sa_sql = sa_queries[i]
-    pg_sql = pg_queries[i]
-    filters = bn_filters[i]
-    
+for sql, filters in queries:
     # Calculate True Cardinality using BN filters
     subset = df.copy()
     for col, val in filters.items():
@@ -104,10 +68,8 @@ for i in range(len(sa_queries)):
     est_prob = bn.p(**filters)
     est_card = est_prob * len(df)
 
-    # Export BOTH SA and PG queries to the CSV
     results_log.append({
-        "sa_query_sql": sa_sql,
-        "pg_query_sql": pg_sql,
+        "query_sql": sql,
         "true_cardinality": true_card,
         "bn_est_cardinality": round(est_card, 2),
         "est_selectivity": f"{est_prob:.10f}"

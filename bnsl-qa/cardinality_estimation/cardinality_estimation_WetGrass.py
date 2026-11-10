@@ -4,6 +4,7 @@ import os
 import graphviz
 import sys
 import ast
+from bnsl.workloads import load_queries
 from pgmpy.models import DiscreteBayesianNetwork
 from pgmpy.estimators import MaximumLikelihoodEstimator
 from pgmpy.inference import VariableElimination
@@ -92,26 +93,10 @@ def estimate_cardinality(query_dict):
 # ==========================================
 # 6. BENCHMARK QUERIES & CSV EXPORT
 # ==========================================
-queries = [
-    ("Test A", {'wetgrass': 'f'}),
-    ("Test B", {'cloud': 't', 'wetgrass': 't'}),
-    ("Test C", {'rain': 't', 'wetgrass': 't'}),
-    ("Test D", {'sprinkler': 'on', 'rain': 'f'}),
-    ("Test E", {'cloud': 't', 'sprinkler': 'on', 'rain': 'f'}),
-    ("Test F", {'cloud': 't', 'sprinkler': 'off', 'rain': 'f', 'wetgrass': 'f'})
-]
-
-queries_sql = [
-    "SELECT * FROM wetgrass_data WHERE wetgrass = 'f'",
-    "SELECT * FROM wetgrass_data WHERE cloud = 't' AND wetgrass = 't'",
-    "SELECT * FROM wetgrass_data WHERE rain = 't' AND wetgrass = 't'",
-    "SELECT * FROM wetgrass_data WHERE sprinkler = 'on' AND rain = 'f'",
-    "SELECT * FROM wetgrass_data WHERE cloud = 't' AND sprinkler = 'on' AND rain = 'f'",
-    "SELECT * FROM wetgrass_data WHERE cloud = 't' AND sprinkler = 'off' AND rain = 'f' AND wetgrass = 'f'"
-]
+queries = load_queries("wetgrass", df, df)
 
 results_data = []
-for (_, q_dict), sql in zip(queries, queries_sql):
+for sql, q_dict in queries:
     est_card = estimate_cardinality(q_dict)
     results_data.append({"query_sql": sql, "estimated_cardinality": f"{est_card:.5f}"})
 

@@ -4,6 +4,7 @@ from datetime import datetime
 from bnsl.tldks_2020.bn import BayesianNetwork
 from bnsl.tldks_2020.rel import Relation
 import graphviz
+from bnsl.workloads import load_queries
 
 # ==========================================
 # 1. CONFIGURATION
@@ -21,6 +22,7 @@ os.makedirs(RESULTS_DIR, exist_ok=True)
 # ==========================================
 print(f"--- Loading Data from {DATA_PATH} ---")
 df = pd.read_csv(DATA_PATH)
+df_raw = df.copy()
 
 # Ensure all data is treated as strings (categorical/binary)
 for col in df.columns:
@@ -55,43 +57,12 @@ except Exception as e:
 # ==========================================
 # 5. CSV EXPORT & ESTIMATION LOGIC
 # ==========================================
-def parse_sql_to_filter(sql, df_columns):
-    """
-    Parses SQL and matches columns to the DataFrame headers case-insensitively.
-    """
-    where_clause = sql.split("WHERE")[-1].strip()
-    conditions = [c.strip() for c in where_clause.split("AND")]
-    filters = {}
-    
-    col_map = {c.lower(): c for c in df_columns}
-    
-    for cond in conditions:
-        parts = cond.replace("'", "").split("=")
-        sql_col = parts[0].strip().lower()
-        val = parts[1].strip()
-        
-        if sql_col in col_map:
-            filters[col_map[sql_col]] = val
-        else:
-            print(f"Warning: Column '{sql_col}' not found in dataset.")
-            
-    return filters
-
-# SQL-style queries for the Market Basket data
-queries_sql = [
-    "SELECT * FROM transactions WHERE Bread = '1'",
-    "SELECT * FROM transactions WHERE Beer = '1' AND Diapers = '1'",
-    "SELECT * FROM transactions WHERE Milk = '1' AND Diapers = '1'",
-    "SELECT * FROM transactions WHERE Eggs = '1' AND Milk = '0'",
-    "SELECT * FROM transactions WHERE Bread = '1' AND Diapers = '1' AND Milk = '1'",
-    "SELECT * FROM transactions WHERE Beer = '1' AND Bread = '0' AND Cola = '1' AND Diapers = '1' AND Eggs = '0' AND Milk = '1'"
-]
+queries = load_queries("market_basket", df_raw, df)
 
 results_log = []
 
 print("\n--- Running Queries and Logging Results ---")
-for sql in queries_sql:
-    filters = parse_sql_to_filter(sql, df.columns)
+for sql, filters in queries:
     
     # 1. Calculate True Cardinality
     subset = df.copy()

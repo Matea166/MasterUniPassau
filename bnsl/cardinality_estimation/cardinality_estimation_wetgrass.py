@@ -4,6 +4,7 @@ from datetime import datetime
 from bnsl.tldks_2020.bn import BayesianNetwork
 from bnsl.tldks_2020.rel import Relation
 import graphviz
+from bnsl.workloads import load_queries
 
 # ==========================================
 # 1. CONFIGURATION
@@ -20,6 +21,7 @@ os.makedirs(RESULTS_DIR, exist_ok=True)
 # 2. LOAD DATA
 # ==========================================
 df = pd.read_csv(DATA_PATH)
+df_raw = df.copy()
 for col in df.columns:
     df[col] = df[col].astype(str)
 
@@ -49,44 +51,12 @@ except Exception as e:
 # ==========================================
 # 5. CSV EXPORT LOGIC
 # ==========================================
-def parse_sql_to_filter(sql, df_columns):
-    """
-    Parses SQL and matches columns to the DataFrame headers case-insensitively.
-    """
-    where_clause = sql.split("WHERE")[-1].strip()
-    conditions = [c.strip() for c in where_clause.split("AND")]
-    filters = {}
-    
-    # Create a map of lowercase names to actual CSV column names
-    col_map = {c.lower(): c for c in df_columns}
-    
-    for cond in conditions:
-        parts = cond.replace("'", "").split("=")
-        sql_col = parts[0].strip().lower()
-        val = parts[1].strip()
-        
-        if sql_col in col_map:
-            filters[col_map[sql_col]] = val
-        else:
-            print(f"Warning: Column '{sql_col}' not found in dataset.")
-            
-    return filters
-
-queries_sql = [
-    "SELECT * FROM wetgrass_data WHERE wetgrass = 'f'",
-    "SELECT * FROM wetgrass_data WHERE cloud = 't' AND wetgrass = 't'",
-    "SELECT * FROM wetgrass_data WHERE rain = 't' AND wetgrass = 't'",
-    "SELECT * FROM wetgrass_data WHERE sprinkler = 'on' AND rain = 'f'",
-    "SELECT * FROM wetgrass_data WHERE cloud = 't' AND sprinkler = 'on' AND rain = 'f'",
-    "SELECT * FROM wetgrass_data WHERE cloud = 't' AND sprinkler = 'off' AND rain = 'f' AND wetgrass = 'f'"
-]
+queries = load_queries("wetgrass", df_raw, df)
 
 results_log = []
 
 print("\n--- Running Queries and Logging Results ---")
-for sql in queries_sql:
-    # Pass df.columns to ensure we find the right keys
-    filters = parse_sql_to_filter(sql, df.columns)
+for sql, filters in queries:
     
     # 1. Calculate True Cardinality
     subset = df.copy()
