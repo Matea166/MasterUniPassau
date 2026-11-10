@@ -52,8 +52,6 @@ fi
 
 # 2. FIND PYTHON FILES
 
-# 2. FIND PYTHON FILES
-
 if [ -n "${BENCH_SCRIPT:-}" ]; then
 if [ ! -f "$BENCH_SCRIPT" ]; then
 echo "Error: BENCH_SCRIPT not found: $BENCH_SCRIPT"
