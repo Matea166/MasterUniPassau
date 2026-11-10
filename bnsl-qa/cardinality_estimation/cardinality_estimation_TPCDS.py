@@ -14,17 +14,34 @@ from pgmpy.models import DiscreteBayesianNetwork
 from bnsl.datasets.tpcds_encoding import (
     COLUMNS,
     DATA_PATH,
+    DOMAINS,
     STATE_NAMES,
     WORKLOAD_PATH,
     assignments,
-    encode,
     load_queries,
 )
 
 
 def load_data(path):
     raw = pd.read_csv(path)
-    return raw, encode(raw)
+    encoded = pd.DataFrame(index=raw.index)
+    for column, (scale, groups) in DOMAINS.items():
+        values = pd.to_numeric(raw[column], errors="raise")
+        scaled = values * scale
+        present = scaled.dropna().to_numpy(dtype=float)
+        if not np.isfinite(present).all() or not np.allclose(
+            present, np.rint(present), rtol=0, atol=1e-7
+        ):
+            raise ValueError(f"Invalid precision or nonfinite value in {column}.")
+        scaled = scaled.round()
+        codes = pd.Series(-1, index=raw.index, dtype=int)
+        for code, (lower, upper) in enumerate(groups):
+            codes.loc[scaled.between(lower, upper)] = code
+        codes.loc[values.isna()] = len(groups)
+        if (codes < 0).any():
+            raise ValueError(f"Value outside the encoding domain of {column}.")
+        encoded[column] = codes
+    return raw, encoded
 
 
 def fit_model(encoded, matrix):

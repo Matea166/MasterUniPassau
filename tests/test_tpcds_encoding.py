@@ -51,6 +51,11 @@ class TpcdsEncodingTests(unittest.TestCase):
         pd.testing.assert_series_equal(self.encoded.ss_net_profit.eq(0),
                                        self.raw.ss_net_profit.lt(0))
 
+    def test_annealing_loader_matches_solver_encoding(self):
+        raw, encoded = annealing.load_data(DATA_PATH)
+        pd.testing.assert_frame_equal(raw, self.raw)
+        pd.testing.assert_frame_equal(encoded, self.encoded)
+
     def test_boundaries_and_zero(self):
         cases = {
             "ss_quantity": ([1, 25, 26, 50, 51, 75, 76, 100, None], [0, 0, 1, 1, 2, 2, 3, 3, 4]),
