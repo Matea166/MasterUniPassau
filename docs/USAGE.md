@@ -1,747 +1,121 @@
-# AnnealBN-CE — Usage and Developer Guide
+# Usage guide
 
-This guide documents every script, dataset format, configuration variable,
-and output file in detail. **To simply reproduce the thesis experiments, you
-do not need this document** — see the [README](../README.md) and run
-`./reproduce_all.sh`.
+This guide covers the experiments being prepared for the BTW 2027 Student Program.
+See the [README](../README.md) for the project overview and full-run command.
+Commands below run from the repository root unless a container directory is given.
 
-The repository is organised around two main codebases:
+## Running experiments
 
-| Directory  | Purpose                                                                                                        |
-| ---------- | -------------------------------------------------------------------------------------------------------------- |
-| `bnsl-qa/` | AnnealBN-CE pipeline for QUBO-based Bayesian-network structure learning and downstream cardinality estimation. |
-| `bnsl/`    | Chow--Liu baseline, CSV/database preparation utilities, result merging, and visualisation scripts.             |
-| `docker/`  | Docker and PostgreSQL setup, including database schemas and import scripts.                                    |
-| `scripts/` | Non-interactive reproduction scripts (one per experiment), used by `reproduce_all.sh`.                         |
-| `config/`  | Frozen thesis experiment configurations (Table 6.2 grid), one `.env` file per experiment.                      |
+Start Docker Desktop, then choose a full run or a quick workflow check:
 
-The workflow is divided into four stages:
+| Platform | Full run | Quick check |
+|---|---|---|
+| macOS / Linux | `QUICK=0 ./reproduce_all.sh` | `QUICK=1 ./reproduce_all.sh` |
+| Windows PowerShell | `$env:QUICK=0; .\reproduce_all.bat` | `$env:QUICK=1; .\reproduce_all.bat` |
 
-1. preparing datasets;
-2. running cardinality estimates;
-3. optionally running random-structure robustness checks;
-4. calculating q-errors and creating visualisations.
+`FRESH=1` is the default and recreates the project's Docker database volume.
+To keep the volume, prefix the Unix command with `FRESH=0`, or set
+`$env:FRESH=0` in PowerShell. The experiment tables are reloaded in either case.
 
-## Contents
+The application image contains the code; only `results/` is shared with the host.
+Host edits do not affect a running experiment. Rebuild and recreate the app with
+`docker compose up -d --build` before running changed code.
 
-- [0. Interactive vs. scripted use](#0-interactive-vs-scripted-use)
-- [1. Preparing the Datasets](#1-preparing-the-datasets)
-- [2. Running Cardinality Estimates](#2-running-cardinality-estimates)
-- [3. Optional Random-Structure Robustness Check](#3-optional-random-structure-robustness-check)
-- [4. Visualisation and q-error Calculation](#4-visualisation-and-q-error-calculation)
+### Individual experiments
 
----
-
-## 0. Interactive vs. scripted use
-
-Every pipeline stage can be driven in two ways:
-
-1. **Interactive menus** — `dispatch.sh`, `cardinality_benchmarks.sh`,
-   `merge_results.sh`, `qerror_calculation.sh`, and `RNG_matrix.sh` show
-   selection menus when run without configuration. This is the exploratory
-   mode documented in the sections below.
-2. **Non-interactive environment variables** — the same scripts skip all
-   menus when their configuration is passed via environment variables
-   (documented in each script's header comment). The reproduction scripts in
-   `scripts/` use this mode exclusively, with the thesis parameters frozen in
-   `config/*.env`. Reproduction runs therefore never depend on keyboard
-   input, and each experiment writes to its own `results/<experiment>/`
-   folder.
-
-> **Docker note:** the application image is self-contained — the sources are
-> copied into the image at build time, and only `./results` is mounted from
-> the host. Editing files on the host has **no effect** on a running
-> container; run `docker compose build` after any code change. PostgreSQL is
-> not exposed on a host port; use pgweb at <http://localhost:8081> to
-> inspect the database.
-
----
-
-## 1. Preparing the Datasets
-
-| Representation            | Location                    | Purpose                                                                                                                                           |
-| ------------------------- | --------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Solver TXT representation | `bnsl-qa/qa-datasets/`      | Input format required by the `bnslqa` structure-learning solver. The values are finite integer states.                                            |
-| CSV tabular relation      | `bnsl/datasets/data/`       | Input used for cardinality estimation, PostgreSQL queries, Chow--Liu estimation, and Bayesian-network fitting after a structure has been learned. |
-| PostgreSQL table          | Docker PostgreSQL container | Required for executing the query workloads and obtaining PostgreSQL planner estimates.                                                            |
-
-This separation is important because the annealing-based structure-learning component works on integer-encoded finite-state data, while the cardinality-estimation components operate on tabular relation attributes and values.
-
-### 1.1. Clone the Repository and Start the Docker Environment
-
-Clone the repository and enter the project directory:
-
-```bash
-git clone https://github.com/Matea166/MasterUniPassau.git
-cd MasterUniPassau
-```
-
-Build and start the Docker environment:
+Prepare all datasets once:
 
 ```bash
 docker compose up -d --build
+docker compose exec -T app bash scripts/prepare_datasets.sh
 ```
 
-Enter the application container:
-
-```bash
-docker compose exec app bash
-```
-
-All commands below assume that they are executed inside the application container, where the repository sources are baked into the image at:
-
-```bash
-/workspace
-```
-
-The sources are copied into the image at build time, so the container does not see live edits made on the host — after changing any file, rebuild with `docker compose build`. Only `/workspace/results` is shared with the host (`./results`).
-
-The Docker setup starts a Python application container and a PostgreSQL container. PostgreSQL is required because the cardinality-estimation workflow compares the Bayesian-network-based estimates with PostgreSQL estimates and also uses database tables for the query workloads.
-
-> Note: PostgreSQL is not exposed on a host port; everything communicates inside the compose network. Use pgweb at <http://localhost:8081> to inspect the database from the host.
-
----
-
-## 1.2. Directory Overview for Dataset Preparation
-
-The dataset-preparation workflow uses the following directories and files:
-
-```text
-bnsl-qa/
-├── problems/                 # JSON problem definitions for synthetic BN data
-│   └── WetGrass.json
-├── qa-datasets/              # Solver TXT files used by bnslqa
-├── Market_Basket_synthetic_data_gen.py
-├── Nhanes_csv_to_txt.py
-└── Tpcds_csv_to_txt.py
-
-bnsl/
-└── datasets/
-    ├── data/                 # CSV relations used for CE and PostgreSQL import
-    ├── txt_to_csv_wetgrass.py
-    ├── csv_to_db.py
-    ├── csv_to_db_nhanes.py
-    ├── gen_synthetic_csv_market_basket.py
-    ├── gen_sample_csv_tpcds.py
-    ├── grouping_nhanes.py
-    └── grouping_tpcds.py
-
-docker/
-└── postgres/
-    ├── init/
-    │   └── 01-init-nhanes.sql
-    ├── wetgrass/
-    │   └── WetGrass.sql
-    └── MarketBasket/
-        └── MarketBasket.sql
-```
-
-The general rule is:
-
-1. Prepare or generate a CSV relation in `bnsl/datasets/data/`.
-2. Prepare or generate the corresponding solver TXT file in `bnsl-qa/qa-datasets/`.
-3. Load the CSV relation into PostgreSQL using an appropriate database schema.
-4. Ensure that all downstream scripts use the same dataset name, table name, and file paths.
-
----
-
-## 1.3. WetGrass Dataset
-
-WetGrass is the controlled synthetic Bayesian-network dataset. It is defined by the JSON file:
-
-```text
-bnsl-qa/problems/WetGrass.json
-```
-
-The JSON specification defines:
-
-* the variables: `Cloud`, `Sprinkler`, `Rain`, and `WetGrass`;
-* the states of each variable;
-* the parent sets;
-* the conditional probability tables;
-* the reference adjacency matrix;
-* the topological order used during generation.
-
-The WetGrass Bayesian network and conditional probability tables are also provided as a figure:
-
-```text
-bnsl-qa/images/WetGrass.pdf
-```
-
-For GitHub README display, it is recommended to export the PDF as a PNG and save it as:
-
-```text
-bnsl-qa/images/WetGrass.png
-```
-### 1.3.1. Generate the WetGrass Solver TXT File
-
-Enter the `bnsl-qa` directory:
-
-```bash
-cd /workspace/bnsl-qa
-```
-
-Generate an expected WetGrass dataset:
-
-```bash
-python -m bnslqa generate problems/WetGrass.json --size 100 --expected --name WetGrass
-```
-
-This creates:
-
-```text
-bnsl-qa/qa-datasets/WetGrass.txt
-```
-
-> Important: the default WetGrass converter expects the solver file to be named `bnsl-qa/qa-datasets/WetGrass.txt`. Therefore, the safest command is to keep `--name WetGrass`. If another name is used, for example `WetGrass_10000` or `WetGrass_sampled_100`, the `input_txt_file` variable in `bnsl/datasets/txt_to_csv_wetgrass.py` must be updated before converting the TXT file to CSV.
-
-The `--size` parameter controls the intended dataset size. For example, to generate a larger dataset:
-
-```bash
-python -m bnslqa generate problems/WetGrass.json --size 10000 --expected --name WetGrass_10000
-```
-
-The `--name` parameter controls the output file name. If `--name WetGrass` is used, the generated file is:
-
-```text
-qa-datasets/WetGrass.txt
-```
-
-If another name is used, the corresponding converter scripts must be updated to read that file. In particular, `bnsl/datasets/txt_to_csv_wetgrass.py` must point to the actual generated TXT file through its `input_txt_file` variable.
-
-### 1.3.2. Expected versus Non-Expected Generation
-
-With `--expected`, the generator creates a deterministic expected-value dataset. For each complete variable configuration, the probability is computed from the JSON conditional probability tables, multiplied by the requested dataset size, and rounded to obtain the number of generated rows for that configuration. This is useful for controlled variance-zero experiments.
-
-Because of rounding, the final number of generated rows may not be exactly equal to the requested `--size`.
-
-Without `--expected`, the generator samples rows randomly from the Bayesian network distribution. In that case, the dataset contains sampling variance, but the number of generated rows is exactly the requested size.
-
-Example without expected-value generation:
-
-```bash
-python -m bnslqa generate problems/WetGrass.json --size 100 --name WetGrass_sampled_100
-```
-
-This creates:
-
-```text
-bnsl-qa/qa-datasets/WetGrass_sampled_100.txt
-```
-
-### 1.3.3. Convert the WetGrass TXT File to CSV
-
-The solver TXT file is required for structure learning, but the cardinality-estimation workflow also needs a CSV relation. To convert the WetGrass TXT file to CSV, go to the `bnsl/datasets` directory:
-
-```bash
-cd /workspace/bnsl/datasets
-```
-
-Before running the converter, check the configuration at the top of:
-
-```text
-bnsl/datasets/txt_to_csv_wetgrass.py
-```
-
-For the default WetGrass setup, it should point to the generated TXT file and the desired CSV output:
-
-```python
-input_txt_file = "../../bnsl-qa/qa-datasets/WetGrass.txt"
-output_csv_file = "data/WetGrass_variance_zero.csv"
-
-columns = ["Cloud", "Sprinkler", "Rain", "WetGrass"]
-
-state_maps = {
-    "Cloud": {0: "t", 1: "f"},
-    "Sprinkler": {0: "on", 1: "off"},
-    "Rain": {0: "t", 1: "f"},
-    "WetGrass": {0: "t", 1: "f"}
-}
-```
-
-Run the converter:
-
-```bash
-python txt_to_csv_wetgrass.py
-```
-
-This writes the CSV relation to:
-
-```text
-bnsl/datasets/data/WetGrass_variance_zero.csv
-```
-
-If a different TXT file name was used during generation, update `input_txt_file`. If a different CSV name is desired, update `output_csv_file`.
-
-### 1.3.4. Create the WetGrass PostgreSQL Database and Table
-
-The suggested WetGrass schema is stored in:
-
-```text
-docker/postgres/wetgrass/WetGrass.sql
-```
-
-It creates a database named `wetgrass` and a table named `wetgrass_data`:
-
-```sql
-CREATE DATABASE wetgrass;
-
-\c wetgrass;
-
-CREATE TABLE wetgrass_data (
-    cloud CHAR(1),
-    sprinkler VARCHAR(3),
-    rain CHAR(1),
-    wetgrass CHAR(1)
-);
-```
-
-Create the database and table from the repository root:
-
-```bash
-cd /workspace
-PGPASSWORD=postgres psql -h postgres -U postgres -d postgres -f docker/postgres/wetgrass/WetGrass.sql
-```
-
-This schema is a suggested starting point. If you generate several WetGrass datasets, for example one with `N=100` and another with `N=10000`, you can either:
-
-* create separate databases, such as `wetgrass_100` and `wetgrass_10000`; or
-* create separate tables inside one database, such as `wetgrass_data_100` and `wetgrass_data_10000`.
-
-In either case, the Python import and cardinality-estimation scripts must use the same database and table names.
-
-### 1.3.5. Import the WetGrass CSV into PostgreSQL
-
-The CSV import script is:
-
-```text
-bnsl/datasets/csv_to_db.py
-```
-
-Before running it, check and update the configuration:
-
-```python
-DB_NAME = "wetgrass"
-DB_USER = "postgres"
-DB_PASSWORD = "postgres"
-DB_HOST = "postgres"
-DB_PORT = "5432"
-
-CSV_FILE = "data/WetGrass_variance_zero.csv"
-TABLE_NAME = "wetgrass_data"
-```
-
-> Important: the CSV file configured here must be the same file produced by `txt_to_csv_wetgrass.py`. For the expected WetGrass dataset used in the thesis, this is `data/WetGrass_variance_zero.csv` (the script's default). All of these values can also be overridden through the `DB_NAME`, `CSV_FILE`, and `TABLE_NAME` environment variables instead of editing the file.
-
-Also ensure that the `INSERT` statement matches the table columns:
-
-```python
-insert_query = f"""
-INSERT INTO {TABLE_NAME} (
-    cloud, sprinkler, rain, wetgrass
-)
-VALUES (%s, %s, %s, %s)
-"""
-```
-
-Then run:
-
-```bash
-cd /workspace/bnsl/datasets
-python csv_to_db.py
-```
-
-After this step, the WetGrass dataset is available in all three required forms:
-
-```text
-bnsl-qa/qa-datasets/WetGrass.txt
-bnsl/datasets/data/WetGrass_variance_zero.csv
-PostgreSQL: wetgrass.wetgrass_data
-```
-
----
-
-## 1.4. Adding a New JSON-Based Bayesian-Network Problem
-
-To add a new synthetic Bayesian-network problem, create a JSON file in:
-
-```text
-bnsl-qa/problems/
-```
+Then run the required script:
+
+| Experiment | Script under `scripts/` | Result directory under `results/` |
+|---|---|---|
+| WetGrass, 100 rows | `run_wetgrass_100.sh` | `wetgrass_100/` |
+| WetGrass, 10,000 rows | `run_wetgrass_10000.sh` | `wetgrass_10000/` |
+| NHANES | `run_nhanes.sh` | `nhanes/` |
+| Market Basket, 100 rows | `run_market_basket_100.sh` | `market_basket_100/` |
+| Market Basket, 10,000 rows | `run_market_basket_10000.sh` | `market_basket_10000/` |
+| Random structures | `run_random_control.sh` | `random_control/` |
+| TPC-DS sample | `run_tpcds_store_sales.sh` | `tpcds_store_sales/` |
 
 For example:
 
-```text
-bnsl-qa/problems/NewProblem.json
-```
-
-The JSON file should follow the same structure as `WetGrass.json`:
-
-```json
-{
-  "name": "NewProblem",
-  "variables": {
-    "A": {
-      "states": ["0", "1"],
-      "parents": [],
-      "cpt": [0.5]
-    },
-    "B": {
-      "states": ["0", "1"],
-      "parents": ["A"],
-      "cpt": [
-        [0.8],
-        [0.2]
-      ]
-    }
-  },
-  "solution": [
-    [0, 1],
-    [0, 0]
-  ],
-  "toporder": [
-    "A",
-    "B"
-  ]
-}
-```
-
-The main fields are:
-
-| Field       | Meaning                                                                                                               |
-| ----------- | --------------------------------------------------------------------------------------------------------------------- |
-| `name`      | Name of the problem written into the solver TXT file.                                                                 |
-| `variables` | Variable definitions, including states, parents, and CPTs.                                                            |
-| `states`    | Possible states of each variable.                                                                                     |
-| `parents`   | Parent variables in the Bayesian network.                                                                             |
-| `cpt`       | Conditional probability table. For binary variables, the probability of the last state is computed as the complement. |
-| `solution`  | Reference adjacency matrix. Entry `[i][j] = 1` means an edge from variable `i` to variable `j`.                       |
-| `toporder`  | Optional fixed topological order used during generation.                                                              |
-
-Generate the solver TXT file:
-
 ```bash
-cd /workspace/bnsl-qa
-python -m bnslqa generate problems/NewProblem.json --size 1000 --expected --name NewProblem
+docker compose exec -T app bash scripts/run_tpcds_store_sales.sh
+docker compose exec -T app bash scripts/make_report.sh
 ```
 
-This creates:
-
-```text
-bnsl-qa/qa-datasets/NewProblem.txt
-```
-
-To integrate the new problem into the full cardinality-estimation pipeline, also create or adapt:
-
-1. a TXT-to-CSV converter, based on `bnsl/datasets/txt_to_csv_wetgrass.py`;
-2. a CSV output file in `bnsl/datasets/data/`;
-3. a PostgreSQL schema file in `docker/postgres/`;
-4. a CSV-to-database import configuration;
-5. the corresponding cardinality-estimation script and query workload.
-
-The important requirement is that the TXT encoding, CSV values, database table columns, and query predicates all use a consistent variable order and state mapping.
-
----
-
-## 1.5. NHANES Dataset
-
-NHANES is a real health-survey dataset. The full CSV file is already available in:
-
-```text
-bnsl/datasets/data/NHANES_age_prediction.csv
-```
-
-The Docker initialisation file creates a PostgreSQL database named `nhanes`, a table named `nhanes_data`, imports the CSV, and runs `ANALYZE`.
-
-The relevant SQL file is:
-
-```text
-docker/postgres/init/01-init-nhanes.sql
-```
-
-The table contains the following columns:
-
-```text
-seqn, age_group, ridageyr, riagendr, paq605,
-bmxbmi, lbxglu, diq010, lbxglt, lbxin
-```
-
-### 1.5.1. Generate the NHANES Solver TXT File
-
-The solver TXT conversion script is:
-
-```text
-bnsl-qa/Nhanes_csv_to_txt.py
-```
-
-Run:
-
-```bash
-cd /workspace/bnsl-qa
-python Nhanes_csv_to_txt.py
-```
-
-The script reads:
-
-```text
-../bnsl/datasets/data/NHANES_age_prediction.csv
-```
-
-It keeps a selected subset of columns, bins `BMXBMI` into four medical categories, encodes categorical variables as integer states, and writes a solver TXT file to:
-
-```text
-bnsl-qa/qa-datasets/NHANES_Medical_4vars.txt
-```
-
-The script also writes mapping files to:
-
-```text
-bnsl-qa/qa-datasets/mappings/
-```
-
-These mapping files are important because they document how original categorical values were translated into solver-side integer states.
-
-Both NHANES estimators and the TXT converter use [grouping_nhanes.py](../bnsl/datasets/grouping_nhanes.py)
-for the BMI groups and category representations. The tree keeps original category
-labels; annealing uses integer codes.
-
-If reproducing an earlier thesis run, the repository may also contain:
-
-```text
-bnsl-qa/qa-datasets/NHANES_age_prediction_subset.txt
-```
-
-Use the TXT file that matches the selected dispatch run and the corresponding cardinality-estimation script. If regenerating the TXT file, make sure that the output file name in `Nhanes_csv_to_txt.py` matches the file expected by the solver dispatch and cardinality-estimation scripts.
-
-### 1.5.2. Import or Re-Import NHANES into PostgreSQL
-
-For a fresh Docker volume, NHANES is imported automatically during PostgreSQL initialisation.
-
-If the database already exists and the Docker volume was not recreated, the initialisation script will not run again automatically. In that case, either recreate the PostgreSQL volume or use:
-
-```text
-bnsl/datasets/csv_to_db_nhanes.py
-```
-
-Before running it, check:
-
-```python
-DB_NAME = "nhanes"
-CSV_FILE = "data/NHANES_age_prediction.csv"
-TABLE_NAME = "nhanes_data"
-```
-
-Then run:
-
-```bash
-cd /workspace/bnsl/datasets
-python csv_to_db_nhanes.py
-```
-
----
-
-## 1.6. Market Basket Dataset
-
-The Market Basket dataset is a synthetic binary transaction dataset. Each row represents a transaction, and each column indicates whether an item is present (`1`) or absent (`0`).
-
-The CSV generator is:
-
-```text
-bnsl/datasets/gen_synthetic_csv_market_basket.py
-```
-
-It uses the item columns:
-
-```text
-Beer, Bread, Cola, Diapers, Eggs, Milk
-```
-
-### 1.6.1. Generate the Market Basket CSV File
-
-Run:
-
-```bash
-cd /workspace/bnsl/datasets
-python gen_synthetic_csv_market_basket.py
-```
-
-By default, the script generates 100 rows and writes:
-
-```text
-bnsl/datasets/data/DataMining_MarketBasket_100.csv
-```
-
-To generate a different dataset size, edit:
-
-```python
-num_rows = 100
-csv_filename = "data/DataMining_MarketBasket_100.csv"
-```
-
-For example, for 10000 rows:
-
-```python
-num_rows = 10000
-csv_filename = "data/DataMining_MarketBasket_10000.csv"
-```
-
-### 1.6.2. Create the Market Basket PostgreSQL Database and Table
-
-The suggested schema is:
-
-```text
-docker/postgres/MarketBasket/MarketBasket.sql
-```
-
-It creates a database named `market_basket` and a table named `transactions`:
-
-```sql
-CREATE DATABASE market_basket;
-
-\c market_basket
-
-CREATE TABLE transactions (
-    beer INTEGER,
-    bread INTEGER,
-    cola INTEGER,
-    diapers INTEGER,
-    eggs INTEGER,
-    milk INTEGER
-);
-```
-
-Run the schema file from the repository root:
-
-```bash
-cd /workspace
-PGPASSWORD=postgres psql -h postgres -U postgres -d postgres -f docker/postgres/MarketBasket/MarketBasket.sql
-```
-
-### 1.6.3. Import the Market Basket CSV into PostgreSQL
-
-The general CSV import script is:
-
-```text
-bnsl/datasets/csv_to_db.py
-```
-
-For Market Basket, update its configuration:
-
-```python
-DB_NAME = "market_basket"
-CSV_FILE = "data/DataMining_MarketBasket_100.csv"
-TABLE_NAME = "transactions"
-```
-
-Update the `INSERT` statement so that it matches the Market Basket table:
-
-```python
-insert_query = f"""
-INSERT INTO {TABLE_NAME} (
-    beer, bread, cola, diapers, eggs, milk
-)
-VALUES (%s, %s, %s, %s, %s, %s)
-"""
-```
-
-Then run:
-
-```bash
-cd /workspace/bnsl/datasets
-python csv_to_db.py
-```
-
-If a different dataset size or file name is used, update `CSV_FILE` accordingly.
-
-### 1.6.4. Generate the Market Basket Solver TXT File
-
-The solver TXT generator is:
-
-```text
-bnsl-qa/Market_Basket_synthetic_data_gen.py
-```
-
-Run:
-
-```bash
-cd /workspace/bnsl-qa
-python Market_Basket_synthetic_data_gen.py
-```
-
-By default, it reads:
-
-```text
-../bnsl/datasets/data/DataMining_MarketBasket_100.csv
-```
-
-and writes:
-
-```text
-qa-datasets/MarketBasket100.txt
-```
-
-If you generate a different CSV file, update:
-
-```python
-csv_filename = "../bnsl/datasets/data/DataMining_MarketBasket_100.csv"
-output_file = "qa-datasets/MarketBasket100.txt"
-```
-
-For example, for 10000 rows:
-
-```python
-csv_filename = "../bnsl/datasets/data/DataMining_MarketBasket_10000.csv"
-output_file = "qa-datasets/MarketBasket10000.txt"
-```
-
----
-
-## 1.7. Checklist Before Running Cardinality Estimation
-
-Before moving to the cardinality-estimation step, check that the following files and database objects exist.
-
-### WetGrass
-
-```text
-bnsl-qa/qa-datasets/WetGrass.txt
-bnsl/datasets/data/WetGrass_variance_zero.csv
-PostgreSQL database: wetgrass
-PostgreSQL table: wetgrass_data
-```
+Set `-e QUICK=1` before `app` to use quick mode. Parameters are in
+[`config/`](../config/): reads are samples per solver run, and trials are
+independent runs. Quick mode uses the headline configuration for WetGrass,
+NHANES and Market Basket. TPC-DS always uses SA 20 × 100 and SQA 10 × 1,000
+(trials × reads).
+
+The random check evaluates up to 1,000 generated DAGs on Market Basket, 100 rows;
+quick mode requests 20. Graphs have at most two parents per node. Run the Market
+Basket experiment first to include its SA/SQA rows in the comparison report.
+
+## Repository layout
+
+| Directory | Purpose |
+|---|---|
+| `bnsl-qa/` | Annealing solvers, integer TXT converters and BN estimation |
+| `bnsl/` | Tree estimator, dataset utilities, PostgreSQL comparison and plotting |
+| `scripts/` | Automated experiments and report generation |
+| `config/` | Dataset paths, databases and solver budgets |
+| `workloads/` | Shared SQL queries with stable IDs |
+| `reference_results/` | Saved PostgreSQL measurements, settings and input hashes |
+| `tests/` | Maintained checks for scoring, grouping, queries and workflow behavior |
+| `docker/` | Container setup and database initialization |
+
+Generated solver inputs go in `bnsl-qa/qa-datasets/`. CSV relations are in
+`bnsl/datasets/data/`. The PostgreSQL tables are loaded from those CSVs.
+
+## Datasets
+
+### WetGrass and Market Basket
+
+WetGrass uses expected-value generation from
+[`WetGrass.json`](../bnsl-qa/problems/WetGrass.json), then decodes TXT integer
+states into readable CSV values. Market Basket uses a fixed-seed CSV generator
+and converts its binary values to solver TXT. Both run at 100 and 10,000 rows.
+
+| Task | Script |
+|---|---|
+| WetGrass TXT → CSV | [`txt_to_csv_wetgrass.py`](../bnsl/datasets/txt_to_csv_wetgrass.py) |
+| Market Basket CSV generation | [`gen_synthetic_csv_market_basket.py`](../bnsl/datasets/gen_synthetic_csv_market_basket.py) |
+| Market Basket CSV → TXT | [`Market_Basket_synthetic_data_gen.py`](../bnsl-qa/Market_Basket_synthetic_data_gen.py) |
+
+Dataset preparation supplies the filenames and sizes automatically. There is no
+need to edit these scripts for the configured experiments.
 
 ### NHANES
 
-```text
-bnsl/datasets/data/NHANES_age_prediction.csv
-bnsl-qa/qa-datasets/NHANES_Medical_4vars.txt
-PostgreSQL database: nhanes
-PostgreSQL table: nhanes_data
-```
+The included CSV has 2,278 rows. The modeled columns are `age_group`, `BMXBMI`,
+`RIAGENDR` and `DIQ010`; none has missing values in this file.
 
-### Market Basket
+[`grouping_nhanes.py`](../bnsl/datasets/grouping_nhanes.py) defines the shared
+BMI groups: [0,18.5), [18.5,25), [25,30), [30,150). The tree keeps original
+category labels; annealing uses integer category codes.
+[`Nhanes_csv_to_txt.py`](../bnsl-qa/Nhanes_csv_to_txt.py) writes the solver TXT
+and category mappings under `bnsl-qa/qa-datasets/`.
 
-```text
-bnsl/datasets/data/DataMining_MarketBasket_100.csv
-bnsl-qa/qa-datasets/MarketBasket100.txt
-PostgreSQL database: market_basket
-PostgreSQL table: transactions
-```
+The solver column order is `age_group, BMXBMI, RIAGENDR, DIQ010`; the tree's
+existing order is `age_group, RIAGENDR, DIQ010, BMXBMI`. Matrix interpretation
+must follow the solver order.
 
-The file names used here should match the names expected by the solver dispatch scripts and the cardinality-estimation scripts. If a dataset name, CSV file name, TXT file name, database name, or table name is changed, update the corresponding configuration variables in the relevant Python scripts before running the next stage.
+### TPC-DS sample
 
----
-
-## 1.8. TPC-DS Store Sales Sample
-
-The [CSV sample](../bnsl/datasets/data/TPCDS_store_sales_10000.csv) contains
-10,000 sales-line-item rows from TPC-DS `store_sales`, generated with
+The [CSV](../bnsl/datasets/data/TPCDS_store_sales_10000.csv) contains 10,000
+`store_sales` rows, sampled without replacement using seed 2027 from all
+2,880,404 rows generated at scale factor 1. It uses
 [`tpcds-kit` v2.10.0](https://github.com/gregrahn/tpcds-kit/tree/5a3a81796992b725c2a8b216767e142609966752).
-Sampling uses seed 2027 without replacement across all 2,880,404 rows at
-scale factor 1 and retains source order. The
-[metadata](../bnsl/datasets/data/TPCDS_store_sales_10000.json) records the
-generation settings, column positions and checksums.
-
-Selected columns from the [source schema](https://github.com/gregrahn/tpcds-kit/blob/5a3a81796992b725c2a8b216767e142609966752/tools/tpcds.sql#L561-L587):
+The [metadata](../bnsl/datasets/data/TPCDS_store_sales_10000.json) records the
+source commit, seeds, column positions, missing counts and checksums.
 
 | Column | Meaning | PostgreSQL type |
 |---|---|---|
@@ -752,39 +126,20 @@ Selected columns from the [source schema](https://github.com/gregrahn/tpcds-kit/
 | `ss_wholesale_cost` | Wholesale cost per unit | `NUMERIC(7,2)` |
 | `ss_net_paid` | Amount paid after coupons | `NUMERIC(7,2)` |
 | `ss_list_price` | List price per unit | `NUMERIC(7,2)` |
-| `ss_store_sk` | Store key, treated as a category | `INTEGER` |
+| `ss_store_sk` | Categorical store identifier | `INTEGER` |
 
-Empty CSV fields become SQL `NULL`. The CSV and PostgreSQL retain the raw
-rows without binning, imputation or deduplication. The [generator](https://github.com/gregrahn/tpcds-kit/blob/5a3a81796992b725c2a8b216767e142609966752/tools/pricing.c#L140-L199)
-sets `net_profit = net_paid - quantity * wholesale_cost`.
+The [source schema](https://github.com/gregrahn/tpcds-kit/blob/5a3a81796992b725c2a8b216767e142609966752/tools/tpcds.sql#L561-L587)
+and [pricing code](https://github.com/gregrahn/tpcds-kit/blob/5a3a81796992b725c2a8b216767e142609966752/tools/pricing.c#L140-L199)
+define these fields. Net profit is net paid minus quantity × wholesale cost,
+so negative values are expected. Raw CSV values are preserved in PostgreSQL;
+empty fields become SQL `NULL`.
 
-E0 verifies the CSV checksum, reloads `tpcds.public.store_sales` using
-transactional `COPY`, and runs `ANALYZE`:
+#### Grouping
 
-```bash
-docker compose up -d --build
-docker compose exec -T app bash scripts/prepare_datasets.sh
-docker compose exec -T postgres psql -U postgres -d tpcds -c "SELECT * FROM store_sales LIMIT 20;"
-```
-
-The [20-query workload](../workloads/tpcds_store_sales.csv) records stable
-IDs Q01–Q20, SQL and a short reason for each query. It covers common and rare
-combinations, weak and strong dependencies, and one query using all eight
-attributes.
-
-The [PostgreSQL reference](../reference_results/tpcds_store_sales_postgres.json)
-records estimates and true cardinalities measured with PostgreSQL 16.15,
-ordinary statistics, `ANALYZE store_sales`, then
-`EXPLAIN (ANALYZE, FORMAT JSON, TIMING OFF)`. Every true count was checked
-against `COUNT(*)` and the CSV. Dataset and workload checksums identify the
-inputs used.
-
-### Model encoding
-
-Both estimators use the [same encoding](../bnsl/datasets/grouping_tpcds.py).
-Codes start at zero in the order below; the last code in each column means
-missing. All 10,000 rows are retained. The tree uses categorical strings,
-including `MISSING`; annealing uses integer states.
+Both models use [`grouping_tpcds.py`](../bnsl/datasets/grouping_tpcds.py).
+Codes start at zero in the table order below. The final code is a separate
+missing state; the tree represents it as `MISSING` and annealing as an integer.
+All 10,000 rows are retained, including 856 with at least one missing value.
 
 | Column | Nonmissing groups, in code order | Missing code |
 |---|---|---|
@@ -797,79 +152,27 @@ including `MISSING`; annealing uses integer states.
 | `ss_list_price` | [0,50); [50,100); ≥100 | 3 |
 | `ss_store_sk` | 1; 2; 4; 7; 8; 10 | 6 |
 
-The groups preserve the 20 workload predicates. Coupon zero remains separate,
-and negative net profit forms its own group. Counts in group order, excluding missing:
+These groups match the workload predicates and keep conditional tables small.
+For example, coupon groups contain 7,674 zero values, 1,322 values between zero
+and 1,000, and 562 values at least 1,000; another 442 are missing. Grouping and
+TPC-DS solver budgets were selected in exploratory tests on this sample.
 
-| Column | Rows per group |
-|---|---|
-| `ss_coupon_amt` | 7674; 1322; 562 |
-| `ss_net_profit` | 7052; 1835; 701 |
-| `ss_net_paid` | 5090; 2556; 1920 |
+Numeric predicates exclude missing states. Unfiltered columns include them
+through marginalization, so missingness can affect learning and estimates.
+Predicates that cut through a group are rejected. Changing groups requires
+regenerating solver input and retraining both models.
 
-These groups were selected after comparing eight encodings on this sample.
-With at most two parents, the largest conditional table has 175 cells.
-Some category combinations remain rare or absent.
-Missing states do not match numeric filters and are included when a column
-is unfiltered. Queries cutting through a group are rejected instead of
-approximated. Regenerate solver input and rerun models after changing groups;
-estimates from the previous encoding must be kept separate.
-
-E0 generates `bnsl-qa/qa-datasets/TPCDS_store_sales_10000.txt`. To generate it
-separately and run the tree inside the app container:
+[`Tpcds_csv_to_txt.py`](../bnsl-qa/Tpcds_csv_to_txt.py) produces the integer
+solver input. To inspect the raw PostgreSQL data after dataset preparation:
 
 ```bash
-python bnsl-qa/Tpcds_csv_to_txt.py
-(cd bnsl && python cardinality_estimation/cardinality_estimation_tpcds.py)
+docker compose exec -T postgres psql -U postgres -d tpcds -c "SELECT * FROM store_sales LIMIT 20;"
 ```
 
-To add PostgreSQL estimates, run from `bnsl/`:
+#### Regenerating the sample
 
-```bash
-BENCH_DB=tpcds BENCH_SCRIPT=cardinality_estimation/cardinality_estimation_tpcds.py bash cardinality_benchmarks.sh
-```
-
-For SA/SQA, use `qa-datasets/TPCDS_store_sales_10000.txt` and
-`cardinality_estimation/cardinality_estimation_TPCDS.py` in `bnsl-qa/dispatch.sh`.
-Both TPC-DS estimators read `workloads/tpcds_store_sales.csv`.
-The tree keeps normalized mutual information and its existing fitting and
-inference; SA/SQA keep maximum-likelihood fitting and variable elimination.
-
-Run the fixed TPC-DS comparison:
-
-```bash
-docker compose exec -T app bash scripts/run_tpcds_store_sales.sh
-```
-
-The [configuration](../config/tpcds_store_sales.env) uses SA with 20 trials ×
-100 reads and SQA with 10 trials × 1,000 reads. These settings apply only to
-TPC-DS. The script reloads the raw PostgreSQL table, runs `ANALYZE`, regenerates
-the solver input, and saves estimates, q-errors and the combined comparison
-under `results/tpcds_store_sales/`.
-
-TPC-DS uses the same `run_ce_experiment` runner as the other datasets.
-Tree exports use `query_sql,true_cardinality,bn_est_cardinality,est_selectivity`;
-annealing exports use `query_sql,estimated_cardinality`. Estimates retain
-full precision for every dataset. The TPC-DS tree also exports its graph,
-and its result filename follows the same timestamp convention.
-
-The one-button entry points run this as E7, followed by report generation
-as E8. `QUICK=1` keeps the same TPC-DS settings. The report includes
-per-query estimates and clamped q-errors, a summary across all 20 queries,
-and the solver settings. CSVs in `reproduced_tables/` retain full precision
-and workload IDs; the HTML rounds numbers for display. SA/SQA use the same
-stable-estimate aggregation as the other datasets: the most frequent
-two-decimal group, with the upper median used to resolve ties and select
-an original value within that group.
-
-Run the encoding and model checks from the repository root:
-
-```bash
-python -m unittest discover -s tests -p 'test_grouping_tpcds.py'
-```
-
-### Optional regeneration from the source
-
-Run inside the application container:
+A normal run verifies and uses the committed CSV. To regenerate it, enter the app
+container with `docker compose exec app bash`, then run:
 
 ```bash
 git clone https://github.com/gregrahn/tpcds-kit.git /tmp/tpcds-kit
@@ -881,979 +184,126 @@ mkdir -p /tmp/tpcds-data
 python /workspace/bnsl/datasets/gen_sample_csv_tpcds.py /tmp/tpcds-data/store_sales.dat --output /tmp/TPCDS_store_sales_10000.csv
 ```
 
-Verify the committed CSV:
+To verify the committed sample independently:
 
 ```bash
-python /workspace/bnsl/datasets/gen_sample_csv_tpcds.py --check
+docker compose exec -T app python bnsl/datasets/gen_sample_csv_tpcds.py --check
 ```
 
-## 1.9. Shared Query Workloads
+This is a TPC-DS-derived single-table experiment with custom queries, not an
+official TPC-DS benchmark result. See [NOTICE.md](../NOTICE.md) for attribution.
 
-Each CSV stores `query_id,sql,reason`. Q01–Q06 retain the original queries
-for Wetgrass, NHANES and Market Basket. Both synthetic dataset sizes use
-the same queries.
+## Workloads
 
-| Dataset | Workload | PostgreSQL reference |
-|---|---|---|
-| Wetgrass | [20 queries](../workloads/wetgrass.csv) | [100 rows](../reference_results/wetgrass_100_postgres.json), [10,000 rows](../reference_results/wetgrass_10000_postgres.json) |
-| NHANES | [20 queries](../workloads/nhanes.csv) | [2,278 rows](../reference_results/nhanes_postgres.json) |
-| Market Basket | [20 queries](../workloads/market_basket.csv) | [100 rows](../reference_results/market_basket_100_postgres.json), [10,000 rows](../reference_results/market_basket_10000_postgres.json) |
-| TPC-DS | [20 queries](../workloads/tpcds_store_sales.csv) | [10,000 rows](../reference_results/tpcds_store_sales_postgres.json) |
+Each file in [`workloads/`](../workloads/) contains `query_id,sql,reason`, with
+20 queries covering common and rare combinations, dependencies and full-attribute
+selections. Both sizes of each synthetic dataset share a workload. Q01–Q06 retain
+the original WetGrass, NHANES and Market Basket queries.
 
-Market Basket contains five distinct baskets. Q20 tests a combination with
-no matches: `Eggs = 1 AND Milk = 1`.
+Queries use one table and `AND` predicates. WetGrass and Market Basket support
+equality filters; NHANES additionally supports one complete BMI group. TPC-DS
+supports comparisons and `IS NULL` / `IS NOT NULL` over complete groups. Joins,
+`OR` and partial-group ranges are outside the configured workload.
 
-PostgreSQL references use ordinary statistics after `ANALYZE`, with counts
-checked against the CSV and encoded data. Settings and checksums are
-recorded in each reference file.
+For exploratory workloads, edit the relevant CSV, retain unique nonempty query
+IDs, rebuild the app and rerun the affected experiments. The saved PostgreSQL
+references identify their original data and workloads by checksum.
 
-All estimator runners read the 20-query workload files. Wetgrass, NHANES
-and Market Basket share a query loader that maps SQL values to each model's
-existing states and checks that the predicates select the same rows.
+## Estimators and PostgreSQL
 
----
+SA/SQA learn graph structures with at most two parents. Cyclic structures are
+discarded rather than repaired. The resulting networks use pgmpy maximum-likelihood
+parameter fitting and variable elimination. Inference failures stop the run.
 
-## 2. Running Cardinality Estimates
+The tree retains the normalized-MI structure learning and fitting/inference from
+the adapted [tldks-2020](https://github.com/MaxHalford/tldks-2020) implementation.
+The comparison therefore evaluates the complete estimators.
 
-After the datasets have been prepared, the repository supports two cardinality-estimation pipelines:
+PostgreSQL 16.15 is pinned by image digest. After loading each table, the workflow
+runs `ANALYZE`, then `EXPLAIN (ANALYZE, FORMAT JSON, TIMING OFF)` for each query.
+It uses ordinary statistics with the default statistics target of 100, without
+extended statistics. Estimates and actual row counts come from the scan plan,
+using the same data and predicates as the models.
 
-1. **AnnealBN-CE**, which uses adjacency matrices learned by simulated annealing or simulated quantum annealing.
-2. **Chow--Liu baseline**, implemented in the `bnsl` directory and used as the classical Bayesian-network benchmark.
+[`reference_results/`](../reference_results/) contains saved estimates, true counts,
+settings and hashes. Each experiment obtains fresh PostgreSQL measurements.
 
-Both pipelines assume that the relevant CSV relation has already been created in `bnsl/datasets/data/` and that the corresponding PostgreSQL table has already been imported.
+## Metrics
 
----
-
-## 2.1. AnnealBN-CE Cardinality Estimates
-
-The AnnealBN-CE pipeline is executed from the `bnsl-qa` directory. It starts from a solver TXT file, learns one or more Bayesian-network structures through annealing, fits each learned structure on the corresponding CSV relation, and writes query-level cardinality estimates.
-
-Enter the `bnsl-qa` directory:
-
-```bash
-cd /workspace/bnsl-qa
-```
-
-Run the interactive dispatch script:
-
-```bash
-bash dispatch.sh
-```
-
-The script guides the execution interactively. On a first run, select:
+For estimate `E` and true count `C`, clamped q-error is:
 
 ```text
-Run solver now
-```
-
-Then select:
-
-1. the solver TXT dataset from `bnsl-qa/qa-datasets/`;
-2. the annealing solver, either `SA` or `SQA`;
-3. the number of trials;
-4. the number of annealing reads;
-5. the cardinality-estimation script matching the selected dataset.
-
-The available cardinality-estimation scripts are stored in:
-
-```text
-bnsl-qa/cardinality_estimation/
-```
-
-Use the script that corresponds to the selected dataset:
-
-| Dataset       | Cardinality-estimation script                                    |
-| ------------- | ---------------------------------------------------------------- |
-| WetGrass      | `cardinality_estimation/cardinality_estimation_WetGrass.py`      |
-| NHANES        | `cardinality_estimation/cardinality_estimation_NHANES.py`        |
-| Market Basket | `cardinality_estimation/cardinality_estimation_Market_Basket.py` |
-
-Before running a dataset, check that the selected cardinality-estimation script reads the correct CSV file. The solver TXT file is used for structure learning, but the cardinality-estimation script separately loads the CSV relation with `pd.read_csv(...)` or `pd.read_csv(dataset_path)`. Therefore, the CSV path in the selected script must match the dataset prepared in `bnsl/datasets/data/`.
-
-For example, the WetGrass script should load:
-
-```python
-df = pd.read_csv("../bnsl/datasets/data/WetGrass_variance_zero.csv")
-```
-
-The Market Basket script should load the intended Market Basket CSV file, for example:
-
-```python
-df = pd.read_csv("../bnsl/datasets/data/DataMining_MarketBasket_100.csv")
-```
-
-If the dataset size or file name was changed during dataset preparation, update this path before running the dispatch pipeline.
-
-### 2.1.1. Trials and Reads
-
-The dispatch script asks for two solver parameters:
-
-| Parameter | Meaning                                                                                                                                                                                        |
-| --------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Trials    | Number of independent solver executions for the selected dataset, solver, and read setting. Trials are used to observe whether repeated runs produce the same or different learned structures. |
-| Reads     | Number of annealing reads passed to the solver in each trial. A read is one solver attempt to sample a candidate binary assignment for the QUBO problem.                                       |
-
-For example, if `trials = 5` and `reads = 100`, the script runs the selected solver five independent times, and each solver execution uses 100 annealing reads.
-
-The selected solver returns binary assignments for the QUBO formulation. These assignments are decoded into adjacency matrices. Each unique adjacency matrix represents one learned Bayesian-network structure.
-
-On `btw2027`, cyclic solver results are discarded before saving or evaluation, without repairing edges or retrying the solver. Accuracy results therefore cover valid graphs only. If no valid graphs remain, the pipeline stops without producing estimates.
-
-If both `SA` and `SQA` should be evaluated, run `dispatch.sh` once for `SA` and then run it again for `SQA`.
-
----
-
-## 2.2. Reusing Previous Unique Matrices
-
-After at least one solver run has been completed, `dispatch.sh` can also reuse previously generated unique matrices. In that case, select:
-
-```text
-Use previous unique matrices
-```
-
-This mode is useful when the solver has already been run and only the cardinality-estimation step should be repeated. The script asks for a previous `unique_adjacency_matrix.txt` file and then applies the selected cardinality-estimation script to the stored matrices.
-
-This avoids rerunning the annealing solver and makes it possible to regenerate graph visualisations or cardinality CSV files from existing learned structures.
-
----
-
-## 2.3. AnnealBN-CE Output Structure
-
-The dispatch pipeline writes all AnnealBN-CE outputs to:
-
-```text
-bnsl-qa/dispatch_output/
-```
-
-This directory contains three main output areas:
-
-```text
-dispatch_output/
-├── cardinality_estimation_outputs/
-├── results/
-└── solver_outputs/
-```
-
-### 2.3.1. Per-Graph Cardinality Outputs
-
-Per-graph cardinality outputs are stored in:
-
-```text
-dispatch_output/cardinality_estimation_outputs/
-```
-
-The outputs are separated by solver:
-
-```text
-dispatch_output/cardinality_estimation_outputs/
-├── SA-results/
-└── SQA-results/
-```
-
-Each run creates a timestamped folder. For example:
-
-```text
-dispatch_output/cardinality_estimation_outputs/SA-results/
-└── SA-results_WetGrass_2_2026-06-27_15-37-18/
-    ├── Graph_1.png
-    └── graph_1_cardinality.csv
-```
-
-For SQA, if two unique adjacency matrices are found, the output may look like:
-
-```text
-dispatch_output/cardinality_estimation_outputs/SQA-results/
-└── SQA-results_WetGrass_1_2026-06-27_15-42-10/
-    ├── Graph_1.png
-    ├── graph_1_cardinality.csv
-    ├── Graph_2.png
-    └── graph_2_cardinality.csv
-```
-
-The folder name has the following form:
-
-```text
-<SOLVER>-results_<DATASET>_<READS>_<TIMESTAMP>
-```
-
-For example:
-
-```text
-SA-results_WetGrass_2_2026-06-27_15-37-18
-```
-
-means:
-
-| Part                  | Meaning                                          |
-| --------------------- | ------------------------------------------------ |
-| `SA-results`          | Simulated annealing cardinality outputs          |
-| `WetGrass`            | Dataset name inferred from the selected TXT file |
-| `2`                   | Number of annealing reads                        |
-| `2026-06-27_15-37-18` | Timestamp in `YYYY-MM-DD_HH-MM-SS` format        |
-
-Each `Graph_<id>.png` file visualises one learned Bayesian-network structure. Each `graph_<id>_cardinality.csv` file contains the cardinality estimates produced by that specific graph.
-
-The per-graph CSV files have the format:
-
-```text
-query_sql,estimated_cardinality
-```
-
-For example:
-
-```text
-query_sql,estimated_cardinality
-SELECT * FROM wetgrass_data WHERE wetgrass = 'f',17.46000
-SELECT * FROM wetgrass_data WHERE cloud = 't' AND wetgrass = 't',21.36000
-```
-
-These files are useful for inspecting the estimates of each learned Bayesian network separately.
-
-### 2.3.2. Final Combined AnnealBN-CE Results
-
-The combined AnnealBN-CE result files are stored in:
-
-```text
-dispatch_output/results/
-```
-
-For example:
-
-```text
-dispatch_output/results/
-├── final_queriescardinality_SA_WetGrass_2_2026-06-27_15-37-18.csv
-└── final_queriescardinality_SQA_WetGrass_1_2026-06-27_15-42-10.csv
-```
-
-Each final CSV merges the per-graph cardinality estimates into one file. The first column contains the query, and each following column contains the estimates of one learned graph:
-
-```text
-query_sql,Graph_1.png,Graph_2.png
-```
-
-For example:
-
-```text
-SELECT * FROM wetgrass_data WHERE wetgrass = 'f',18.0,20.862
-SELECT * FROM wetgrass_data WHERE cloud = 't' AND wetgrass = 't',21.0,16.824
-```
-
-The graph columns correspond to the graph visualisations in `cardinality_estimation_outputs/`. For example, `Graph_1.png` in the final CSV corresponds to the file `Graph_1.png` in the matching run folder.
-
-This final file is the main AnnealBN-CE output used for comparing the cardinality estimates produced by the unique learned Bayesian-network structures.
-
-### 2.3.3. Solver Outputs and Diagnostics
-
-Solver outputs are stored in:
-
-```text
-dispatch_output/solver_outputs/
-```
-
-The outputs are separated by solver:
-
-```text
-dispatch_output/solver_outputs/
-├── SA/
-└── SQA/
-```
-
-Each solver run creates a timestamped folder. For example:
-
-```text
-dispatch_output/solver_outputs/SA/
-└── SA_Matrix_WetGrass_2_2_2026-06-27_15-37-18/
-    ├── adjacency_matrix.txt
-    └── unique_adjacency_matrix.txt
-```
-
-The folder name has the following form:
-
-```text
-<SOLVER>_Matrix_<DATASET>_<TRIALS>_<READS>_<TIMESTAMP>
-```
-
-For example:
-
-```text
-SA_Matrix_WetGrass_2_2_2026-06-27_15-37-18
-```
-
-means:
-
-| Part                  | Meaning                                   |
-| --------------------- | ----------------------------------------- |
-| `SA_Matrix`           | Solver output from simulated annealing    |
-| `WetGrass`            | Dataset name                              |
-| `2`                   | Number of trials                          |
-| `2`                   | Number of reads                           |
-| `2026-06-27_15-37-18` | Timestamp in `YYYY-MM-DD_HH-MM-SS` format |
-
-The file:
-
-```text
-adjacency_matrix.txt
-```
-
-stores the complete solver-side output for all trials. This file is intended for transparency and debugging. It may include duplicate solution matrices if the solver returns the same structure more than once.
-
-Depending on the dataset and solver run, `adjacency_matrix.txt` may contain:
-
-```text
-QUBO Matrix
-Expected adjacency matrix
-Solution adjacency matrix
-Expected solution
-expY
-expX
-Minimum found
-minY
-minX
-minY/expY
-Method
-Number of reads
-Occurrences of minX
-Found minX at read
-QUBO formulation time
-Annealing/Execution time
-```
-
-The file:
-
-```text
-unique_adjacency_matrix.txt
-```
-
-contains only the deduplicated adjacency matrices extracted from `adjacency_matrix.txt`. Each line represents one unique learned Bayesian-network structure. This is the file used by the cardinality-estimation step, so identical structures are not evaluated repeatedly.
-
----
-
-## 2.4. Chow--Liu Baseline Cardinality Estimates
-
-The Chow--Liu baseline is executed from the `bnsl` directory. This pipeline learns a tree-structured Bayesian network from the selected CSV relation and compares its cardinality estimates with the true cardinalities and PostgreSQL planner estimates.
-
-Enter the `bnsl` directory:
-
-```bash
-cd /workspace/bnsl
-```
-
-Run the benchmark script:
-
-```bash
-bash cardinality_benchmarks.sh
-```
-
-The script is interactive. It first lists the available PostgreSQL databases and asks which database should be used for the comparison. Then it asks which Python cardinality-estimation script should be executed.
-
-The Chow--Liu cardinality-estimation scripts are stored in:
-
-```text
-bnsl/cardinality_estimation/
-```
-
-The relevant scripts are:
-
-| Dataset       | Chow--Liu script                                                 |
-| ------------- | ---------------------------------------------------------------- |
-| WetGrass      | `cardinality_estimation/cardinality_estimation_wetgrass.py`      |
-| NHANES        | `cardinality_estimation/cardinality_estimation_NHANES_robust.py` |
-| Market Basket | `cardinality_estimation/cardinality_estimation_market_basket.py` |
-
-Before running a script, check that its CSV configuration matches the prepared dataset. In most scripts, the CSV file is selected through variables such as:
-
-```python
-CSV_FILE = "WetGrass_variance_zero"
-DATA_PATH = f"datasets/data/{CSV_FILE}.csv"
-```
-
-The file name must match a CSV file in:
-
-```text
-bnsl/datasets/data/
-```
-
-For example, if the prepared CSV file is:
-
-```text
-bnsl/datasets/data/WetGrass_variance_zero.csv
-```
-
-then the script should use:
-
-```python
-CSV_FILE = "WetGrass_variance_zero"
-```
-
-If a different dataset size or file name is used, update `CSV_FILE` before running the benchmark.
-
-The selected PostgreSQL database must also match the SQL queries inside the selected cardinality-estimation script. For example:
-
-| Dataset       | Expected PostgreSQL database | Expected table  |
-| ------------- | ---------------------------- | --------------- |
-| WetGrass      | `wetgrass`                   | `wetgrass_data` |
-| NHANES        | `nhanes`                     | `nhanes_data`   |
-| Market Basket | `market_basket`              | `transactions`  |
-
----
-
-## 2.5. Chow--Liu Output Files
-
-The Chow--Liu benchmark writes its results to:
-
-```text
-bnsl/card_results/
-```
-
-For each run, two CSV files are produced:
-
-```text
-result_<DATASET>_<TIMESTAMP>.csv
-result_<DATASET>_<TIMESTAMP>_final.csv
-```
-
-For example:
-
-```text
-card_results/
-├── result_WetGrass_variance_zero_20260627_163617.csv
-└── result_WetGrass_variance_zero_20260627_163617_final.csv
-```
-
-The non-final CSV is the raw output of the selected Chow--Liu cardinality-estimation script. It contains the query, the true cardinality, the Chow--Liu estimate, and the Bayesian-network selectivity.
-
-For the standard scripts, the raw file has the structure:
-
-```text
-query_sql,true_cardinality,bn_est_cardinality,est_selectivity
-```
-
-The meaning of the columns is:
-
-| Column               | Meaning                                                             |
-| -------------------- | ------------------------------------------------------------------- |
-| `query_sql`          | Query workload entry                                                |
-| `true_cardinality`   | Cardinality obtained directly from the CSV relation                 |
-| `bn_est_cardinality` | Chow--Liu Bayesian-network cardinality estimate                     |
-| `est_selectivity`    | Selectivity/probability estimated by the Chow--Liu Bayesian network |
-
-The `_final.csv` file is created by `cardinality_benchmarks.sh`. For each query, it runs `EXPLAIN (ANALYZE, FORMAT JSON, TIMING OFF)` against the selected PostgreSQL database. It reads `Plan Rows` and `Actual Rows` from the top-level `Plan` object for the PostgreSQL estimate and true cardinality. The intermediate CSV's count is replaced by the measured PostgreSQL count in this final file.
-
-The existing data-loading workflow runs `ANALYZE` after importing the table. This refreshes ordinary table statistics; no multicolumn extended statistics are added. There is no need to repeat `ANALYZE` before each query while the data remains unchanged. `EXPLAIN ANALYZE` executes each query, and `TIMING OFF` disables per-node timing while retaining row counts. The q-error script uses the same command and reads the top-level `Actual Rows`. A failed query or unreadable row count stops the calculation instead of becoming a zero estimate.
-
-The final file has the structure:
-
-```text
-query_sql,true_cardinality,bn_est_cardinality,pg_est_cardinality
-```
-
-The meaning of the columns is:
-
-| Column               | Meaning                                 |
-| -------------------- | --------------------------------------- |
-| `query_sql`          | Query workload entry                    |
-| `true_cardinality`   | Actual rows measured by PostgreSQL      |
-| `bn_est_cardinality` | Chow--Liu cardinality estimate          |
-| `pg_est_cardinality` | PostgreSQL planner cardinality estimate |
-
-The `_final.csv` file is the main Chow--Liu baseline output used for comparison with PostgreSQL and AnnealBN-CE.
-
----
-
-## 2.6. Checklist Before Running Cardinality Estimation
-
-Before running either pipeline, check the following:
-
-1. The required CSV file exists in `bnsl/datasets/data/`.
-2. The required solver TXT file exists in `bnsl-qa/qa-datasets/` if AnnealBN-CE is being run.
-3. The PostgreSQL database and table have been created and populated.
-4. The selected cardinality-estimation script loads the correct CSV file.
-5. The SQL queries inside the selected script use the correct PostgreSQL table name.
-6. The selected dataset, solver output, and cardinality-estimation script refer to the same variable order and state mapping.
-
-For AnnealBN-CE, also check that the selected adjacency matrix has the same number of variables as the selected cardinality-estimation script expects. For example, a WetGrass matrix has four variables and must be used with the WetGrass cardinality-estimation script, not with the Market Basket or NHANES scripts.
-
-For Chow--Liu, check that the selected PostgreSQL database corresponds to the selected script. For example, if `cardinality_estimation_wetgrass.py` is selected, the PostgreSQL database should be `wetgrass`, and the table referenced in the script should be `wetgrass_data`.
-
----
-
-## 3. Optional Random-Structure Robustness Check
-
-This section is optional and is mainly intended for validation. It is not part of the standard dataset-preparation or cardinality-estimation routine. The purpose is to compare the AnnealBN-CE estimates against a random-structure control.
-
-The q-error evaluation shows how accurate the cardinality estimates of the annealing-learned structures are, but it does not show by itself whether this accuracy is specific to the structure-learning step. The random-structure robustness check is therefore used as a negative control. It tests whether randomly generated admissible Bayesian-network structures can produce similar cardinality estimates.
-
-In this repository, the random-structure check is implemented in:
-
-```text
-bnsl-qa/RNG_matrix.sh
-```
-
-The script generates random acyclic adjacency matrices and evaluates them with the same cardinality-estimation scripts used by AnnealBN-CE. The only intended difference is the origin of the structure:
-
-| Structure type           | Origin                                                |
-| ------------------------ | ----------------------------------------------------- |
-| AnnealBN-CE structure    | Learned from the QUBO formulation using `SA` or `SQA` |
-| Random-control structure | Randomly generated acyclic adjacency matrix           |
-
-The random matrices are generated with the same maximum-parent restriction used in the thesis experiments. Each generated matrix represents a candidate Bayesian-network structure. The cardinality-estimation script then fits the parameters on the same tabular relation and evaluates the same query workload.
-
----
-
-### 3.1. Run the Random-Structure Pipeline
-
-Enter the `bnsl-qa` directory:
-
-```bash
-cd /workspace/bnsl-qa
-```
-
-Run the random-structure pipeline:
-
-```bash
-bash RNG_matrix.sh
-```
-
-The script displays the following menu:
-
-```text
-==== RNG MATRIX PIPELINE ====
-1) Generate matrices
-2) Run cardinality estimation
-3) Exit
-```
-
-On a first run, choose:
-
-```text
-1) Generate matrices
-```
-
-The script then asks for:
-
-```text
-Number of variables:
-Number of matrices:
-```
-
-The number of variables must match the number of variables in the dataset being checked. This is the number of columns used by the corresponding solver TXT representation and the corresponding cardinality-estimation script.
-
-For example:
-
-| Dataset                          | Number of variables |
-| -------------------------------- | ------------------: |
-| WetGrass                         |                   4 |
-| NHANES medical representation    |                   4 |
-| Market Basket                    |                   6 |
-
-For any new or modified dataset, check the first number in the solver TXT file header or the number of attributes used in the corresponding cardinality-estimation script. Do not use the number of rows as the number of variables.
-
-The number of matrices controls how many random DAG candidates should be generated. For example, choosing `4` variables and `10` matrices creates a file named:
-
-```text
-bnsl-qa/RNG_Matrix/matrices/RNG_matrix_10_4.txt
-```
-
-The file name has the form:
-
-```text
-RNG_matrix_<number_of_requested_matrices>_<number_of_variables>.txt
-```
-
-The generator deduplicates the matrices, so the number of unique matrices written to the file may be smaller than the number requested.
-
----
-
-### 3.2. Run Cardinality Estimation on the Random Matrices
-
-After generating the random matrices, run the same script again if needed:
-
-```bash
-bash RNG_matrix.sh
-```
-
-Then choose:
-
-```text
-2) Run cardinality estimation
-```
-
-The script first asks you to select a cardinality-estimation script from:
-
-```text
-bnsl-qa/cardinality_estimation/
-```
-
-Choose the script that matches the dataset you want to evaluate:
-
-| Dataset       | Cardinality-estimation script                                    |
-| ------------- | ---------------------------------------------------------------- |
-| WetGrass      | `cardinality_estimation/cardinality_estimation_WetGrass.py`      |
-| NHANES        | `cardinality_estimation/cardinality_estimation_NHANES.py`        |
-| Market Basket | `cardinality_estimation/cardinality_estimation_Market_Basket.py` |
-
-Then select the random matrix file from:
-
-```text
-bnsl-qa/RNG_Matrix/matrices/
-```
-
-For example:
-
-```text
-RNG_matrix_10_4.txt
-```
-
-The script then evaluates every matrix in the selected file with the selected cardinality-estimation script.
-
-Before running this step, check that the selected cardinality-estimation script loads the correct CSV relation and uses the correct database table names in its query workload. This is the same consistency requirement as in the AnnealBN-CE pipeline.
-
-For example, a WetGrass random-structure check should use:
-
-```text
-Dataset: WetGrass
-Number of variables: 4
-Cardinality script: cardinality_estimation/cardinality_estimation_WetGrass.py
-CSV relation: ../bnsl/datasets/data/WetGrass_variance_zero.csv
-Database table in queries: wetgrass_data
-```
-
-A random matrix generated for one dataset must not be evaluated with another dataset's cardinality-estimation script. For example, a 4-variable WetGrass matrix should not be used with the 6-variable Market Basket script.
-
----
-
-### 3.3. Random-Structure Output Files
-
-The random-structure robustness check writes its outputs to:
-
-```text
-bnsl-qa/RNG_Matrix/
-```
-
-The generated random matrices are stored in:
-
-```text
-bnsl-qa/RNG_Matrix/matrices/
-```
-
-For example:
-
-```text
-bnsl-qa/RNG_Matrix/matrices/RNG_matrix_10_4.txt
-```
-
-The cardinality-estimation outputs are stored in timestamped run folders under:
-
-```text
-bnsl-qa/RNG_Matrix/results/
-```
-
-For example:
-
-```text
-bnsl-qa/RNG_Matrix/results/run_2026-06-27_17-00-03/
-```
-
-A run folder may contain files such as:
-
-```text
-graph_1_cardinality.csv
-Graph_1.png
-graph_2_cardinality.csv
-Graph_2.png
-...
-final_queries_cardinality.csv
-```
-
-Each `graph_<id>_cardinality.csv` file contains the cardinality estimates produced by one random adjacency matrix.
-
-Each `Graph_<id>.png` file visualises the corresponding random Bayesian-network structure, if graph generation is enabled by the selected cardinality-estimation script.
-
-The file:
-
-```text
-final_queries_cardinality.csv
-```
-
-combines the per-matrix cardinality estimates into one CSV file. Its structure is:
-
-```text
-query_sql,matrix_1,matrix_2,...
-```
-
-The first column contains the query workload entry. Each following column contains the estimated cardinalities produced by one random matrix.
-
----
-
-### 3.4. How to Interpret the Random-Structure Check
-
-The random-structure robustness check should be interpreted as a negative control.
-
-If the random structures produce cardinality estimates and q-errors similar to the AnnealBN-CE structures, then the observed estimation quality cannot be attributed confidently to the annealing-based structure-learning step.
-
-If the AnnealBN-CE structures produce lower median and maximum q-errors than the random structures, this supports the interpretation that the annealing solver finds structures that are useful for the cardinality-estimation task.
-
-The comparison should be made under the same conditions:
-
-1. same tabular relation;
-2. same query workload;
-3. same cardinality-estimation script;
-4. same true cardinalities;
-5. same q-error calculation procedure;
-6. same number of variables;
-7. same maximum-parent restriction.
-
-This ensures that the structure source is the main difference between the AnnealBN-CE result and the random-control result.
-
----
-
-### 3.5. Checklist for the Robustness Check
-
-Before running the random-structure robustness check, verify the following:
-
-1. The dataset has already been prepared as described in the dataset-preparation section.
-2. The CSV relation exists in `bnsl/datasets/data/`.
-3. The selected cardinality-estimation script reads the correct CSV file.
-4. The SQL queries inside the selected script use the correct table name.
-5. The number of variables entered into `RNG_matrix.sh` matches the dataset.
-6. The selected random matrix file matches the dataset's number of variables.
-7. The selected cardinality-estimation script corresponds to the same dataset.
-8. The output file `final_queries_cardinality.csv` is created under `bnsl-qa/RNG_Matrix/results/run_<timestamp>/`.
-
-The random-structure robustness check produces validation outputs only. The generated random matrices should not be treated as learned AnnealBN-CE structures.
-
----
-
-## 4. Visualisation and q-error Calculation
-
-This section describes two final evaluation utilities:
-
-1. result visualisation with grouped bar charts;
-2. q-error calculation for AnnealBN-CE solver outputs.
-
-These steps assume that the dataset-preparation and cardinality-estimation steps have already been completed.
-
----
-
-## 4.1. Cardinality-Estimate Visualisation
-
-The visualisation step creates grouped bar charts that compare:
-
-* true cardinalities;
-* AnnealBN-CE estimates from `SA`;
-* AnnealBN-CE estimates from `SQA`;
-* Chow--Liu baseline estimates;
-* PostgreSQL planner estimates;
-* optionally, random-control estimates from the robustness-check step.
-
-The visualisation is useful for query-level comparison because each query appears as one group of bars. This makes it possible to inspect where AnnealBN-CE, Chow--Liu, PostgreSQL, and optionally random structures overestimate or underestimate the true cardinality.
-
-### 4.1.1. Prerequisites
-
-Before running the visualisation script, make sure that the following files have already been generated for the same dataset:
-
-| Required file                  | Produced by                      | Location                                      |
-| ------------------------------ | -------------------------------- | --------------------------------------------- |
-| SA final cardinality CSV       | `bnsl-qa/dispatch.sh`            | `bnsl-qa/dispatch_output/results/`            |
-| SQA final cardinality CSV      | `bnsl-qa/dispatch.sh`            | `bnsl-qa/dispatch_output/results/`            |
-| Chow--Liu/PostgreSQL final CSV | `bnsl/cardinality_benchmarks.sh` | `bnsl/card_results/`                          |
-| Random-control CSV, optional   | `bnsl-qa/RNG_matrix.sh`          | `bnsl-qa/RNG_Matrix/results/run_<timestamp>/` |
-
-The SA, SQA, Chow--Liu, PostgreSQL, and optional random-control results should all refer to the same dataset and the same query workload. For example, WetGrass SA and SQA files should be merged only with the WetGrass Chow--Liu/PostgreSQL result file.
-
-### 4.1.2. Run the Visualisation Script
-
-Enter the `bnsl` directory:
-
-```bash
-cd /workspace/bnsl
-```
-
-Run the merge and visualisation script:
-
-```bash
-bash merge_results.sh
-```
-
-The script asks for:
-
-1. the SA result file from `../bnsl-qa/dispatch_output/results/`;
-2. the SQA result file from `../bnsl-qa/dispatch_output/results/`;
-3. the Chow--Liu/PostgreSQL `_final.csv` file from `bnsl/card_results/`;
-4. whether to include random-control results from `../bnsl-qa/RNG_Matrix/results/`.
-
-If the random-structure robustness check was not run, choose `n` when the script asks whether to add random matrix results.
-
-### 4.1.3. Visualisation Outputs
-
-The script creates two files in the current `bnsl` directory:
-
-```text
-combined_results_<DATASET>_<TIMESTAMP>.csv
-combined_results_<DATASET>_<TIMESTAMP>.png
-```
-
-For example:
-
-```text
-combined_results_WetGrass_variance_zero_20260627_174723.csv
-combined_results_WetGrass_variance_zero_20260627_174723.png
-```
-
-The CSV file contains the merged numerical results. It includes the query, the AnnealBN-CE SA estimates, the AnnealBN-CE SQA estimates, the Chow--Liu estimate, the true cardinality, the PostgreSQL estimate, and optionally the random-control estimates.
-
-The PNG file is the grouped bar chart. It compares the estimates per query. If there are many SA, SQA, or random-control graph columns, the script groups them by average and shows the standard error of the mean. This keeps the chart readable when many learned or random structures are compared.
-
-The generated CSV currently labels the Chow--Liu baseline column as `BNSL`. In the interpretation of this repository, this column corresponds to the Chow--Liu Bayesian-network baseline from the `bnsl` pipeline.
-
----
-
-## 4.2. q-error Calculation
-
-New evaluations on `btw2027` use **clamped q-error** consistently for SA, SQA, the tree, PostgreSQL, and random structures. For a query with true cardinality `C` and estimated cardinality `C_hat`:
-
-```text
+E_eval = max(E, 1)
 C_eval = max(C, 1)
-C_hat_eval = max(C_hat, 1)
-q_error = max(C_hat_eval / C_eval, C_eval / C_hat_eval)
+q_error = max(E_eval / C_eval, C_eval / E_eval)
 ```
 
-This floors counts below one for scoring only; the recorded estimates and true counts remain unchanged. Counts must be finite and non-negative. Scores are always at least one, and the ordinary q-error formula is unchanged when both counts are at least one.
+Counts must be finite and nonnegative. Clamping affects scoring only; the recorded
+counts remain unchanged. Q-error 1 does not imply an exact prediction when counts
+are below one. Exact matches use the original counts with absolute tolerance `1e-9`.
 
-For example, `(estimate, truth)` pairs `(0, 0)`, `(0.2, 0)`, and `(0, 1)` all have clamped q-error 1; `(10, 0)` has score 10. Therefore, score 1 does not necessarily mean an exact prediction. The `exact_queries` and `exact_estimates` percentages compare the original counts with absolute tolerance `1e-9`, independently of clamping and display rounding.
+Reports include per-query estimates, median, 95th-percentile and maximum q-error,
+plus exact-match percentages. CSVs retain full precision; HTML rounds for display.
 
-Estimator CSVs retain full precision for all datasets. The stable SA/SQA selection retains its existing two-decimal modal grouping and upper-median tie rule; within the selected group, it uses the upper-median original estimate for scoring. The same report function produces per-query estimates, q-errors and minimum/median/95th-percentile/maximum summaries for every dataset. HTML tables round numbers for display; CSVs retain precision. Diversity counts retain their existing two-decimal grouping.
+For each query, SA/SQA stable estimates use the most frequent two-decimal group.
+Ties are resolved by the upper median of the tied group values; the upper-median
+original estimate within the chosen group is used for scoring. Read/trial and
+random-structure summaries evaluate the per-structure estimates.
 
-Each run records its solver budgets in `results/<experiment>/configurations.csv`. Report generation excludes other configurations left by older runs. A `.running` marker blocks reporting if an experiment was interrupted; rerunning that experiment successfully clears it. PostgreSQL is pinned to the recorded 16.15 image; the baseline still uses ordinary `ANALYZE` statistics.
+## Outputs
 
-Older result CSVs must be recomputed to use this convention; scores, exact-match percentages and rankings may differ.
+Open `results/index.html` after report generation. Each experiment writes to
+`results/<experiment>/`:
 
-The q-error script is:
+| Path | Contents |
+|---|---|
+| `estimates/` | Per-structure SA/SQA estimates, named by solver, trials and reads |
+| `qerrors/` | Per-structure query estimates, true counts and q-errors |
+| `chowliu_pg_final.csv` | Tree and PostgreSQL estimates with true counts |
+| `combined_results.csv` and `.png` | Headline comparison |
+| `reproduced_tables/` | Summary tables with query IDs and full-precision estimates |
+| `configurations.csv` | Solver configurations executed in the run |
+| `logs/` | Execution logs |
 
-```text
-bnsl-qa/qerror_calculation.sh
-```
+The random check writes `final_queries_cardinality.csv`, `random_matrices.txt`
+and logs. Report generation also uses the corresponding Market Basket outputs.
+Summary filenames for the original datasets retain thesis table numbers; TPC-DS
+uses `cardinality_estimates.csv`, `qerror_summary.csv` and `solver_settings.csv`.
 
-It recomputes cardinality estimates from stored solver matrices, obtains true cardinalities from PostgreSQL, and writes query-level q-errors.
+Only configurations listed for the current run are summarized. A `.running`
+marker blocks reporting after an interrupted experiment; rerun that experiment
+successfully before refreshing the report.
 
-### 4.2.1. Prerequisites
+## Interactive tools
 
-Before running q-error calculation, make sure that:
+Enter the app container with `docker compose exec app bash`. The original menus
+remain available for exploratory runs:
 
-1. the relevant CSV relation exists in `bnsl/datasets/data/`;
-2. the corresponding PostgreSQL database and table have been created and populated;
-3. at least one AnnealBN-CE solver run has already produced `adjacency_matrix.txt`;
-4. the selected cardinality-estimation script matches the dataset;
-5. the SQL queries inside the selected script use the correct table name.
+| Container directory | Command | Purpose |
+|---|---|---|
+| `/workspace/bnsl-qa` | `bash dispatch.sh` | Learn structures and estimate cardinalities |
+| `/workspace/bnsl-qa` | `bash qerror_calculation.sh` | Evaluate stored solver matrices |
+| `/workspace/bnsl-qa` | `bash RNG_matrix.sh` | Generate or evaluate random DAGs |
+| `/workspace/bnsl` | `bash cardinality_benchmarks.sh` | Run tree and PostgreSQL comparisons |
+| `/workspace/bnsl` | `bash merge_results.sh` | Merge estimates and plot comparisons |
 
-The q-error script reads adjacency matrix folders from:
+Choose the dataset, script and database consistently. Interactive outputs stay
+inside the container unless saved under `/workspace/results/`.
 
-```text
-bnsl-qa/dispatch_output/solver_outputs/
-```
+## Verification
 
-For example:
-
-```text
-bnsl-qa/dispatch_output/solver_outputs/SA/SA_Matrix_WetGrass_2_2_2026-06-27_15-37-18/
-bnsl-qa/dispatch_output/solver_outputs/SQA/SQA_Matrix_WetGrass_2_1_2026-06-27_15-42-10/
-```
-
-### 4.2.2. Run q-error Calculation
-
-Enter the `bnsl-qa` directory:
+Run the maintained suite without starting experiments:
 
 ```bash
-cd /workspace/bnsl-qa
+docker compose run --build --rm --no-deps app python -m unittest discover -s tests -v
 ```
 
-Run:
-
-```bash
-bash qerror_calculation.sh
-```
-
-The script asks for:
-
-1. the cardinality-estimation script from `bnsl-qa/cardinality_estimation/`;
-2. the CSV dataset from `bnsl/datasets/data/`;
-3. the adjacency-matrix folder from `dispatch_output/solver_outputs/`;
-4. the PostgreSQL database to use for true-cardinality calculation.
-
-Choose the cardinality-estimation script and database that match the dataset. For example:
-
-| Dataset       | Cardinality script                                               | PostgreSQL database |
-| ------------- | ---------------------------------------------------------------- | ------------------- |
-| WetGrass      | `cardinality_estimation/cardinality_estimation_WetGrass.py`      | `wetgrass`          |
-| NHANES        | `cardinality_estimation/cardinality_estimation_NHANES.py`        | `nhanes`            |
-| Market Basket | `cardinality_estimation/cardinality_estimation_Market_Basket.py` | `market_basket`     |
-
-To calculate q-errors for both SA and SQA, run the script twice: once selecting the SA solver-output folder and once selecting the SQA solver-output folder.
-
-### 4.2.3. q-error Output Files
-
-The q-error results are written to:
-
-```text
-bnsl-qa/q-error_output/
-```
-
-The script names the output file using the selected CSV dataset, solver method, values parsed from the selected solver-output folder, and a timestamp. For example:
-
-```text
-results_WetGrass_variance_zero_SA_2_2_2026-06-27_17-49-46.csv
-```
-
-The output CSV contains the following columns:
-
-```text
-method,graph_index,query_sql,estimated_cardinality,true_cardinality,q_error
-```
-
-The columns mean:
-
-| Column                  | Meaning                                       |
-| ----------------------- | --------------------------------------------- |
-| `method`                | Solver method, usually `SA` or `SQA`          |
-| `graph_index`           | Index of the evaluated adjacency matrix       |
-| `query_sql`             | Query workload entry                          |
-| `estimated_cardinality` | AnnealBN-CE estimate for that graph and query |
-| `true_cardinality`      | True cardinality obtained from PostgreSQL     |
-| `q_error`               | Clamped q-error for that graph and query      |
-
-The q-error CSV is the main file used for numerical accuracy analysis and for comparing solver configurations across reads, trials, SA, and SQA.
-
----
-
-## 4.3. Final Evaluation Checklist
-
-Before using the visualisation or q-error outputs in an evaluation, check that:
-
-1. all selected result files belong to the same dataset;
-2. the SA and SQA files correspond to the intended read--trial configuration;
-3. the Chow--Liu/PostgreSQL file is the `_final.csv` file, not the raw CSV;
-4. optional random-control results come from the same dataset and query workload;
-5. the selected PostgreSQL database matches the selected cardinality-estimation script;
-6. the query workload is consistent across AnnealBN-CE, Chow--Liu, PostgreSQL, and random-control results.
-
-The bar-chart visualisation is mainly for query-level inspection. The q-error CSV files are the main source for numerical accuracy analysis.
-
-[1]: https://raw.githubusercontent.com/Matea166/MasterUniPassau/master/bnsl-qa/dispatch.sh "raw.githubusercontent.com"
+The suite checks mixed-domain scores, grouping, SQL/model row alignment, reporting
+and workflow failures. Copied upstream tests in `bnsl/tldks_2020/tests/` target the
+older `phd` package and are separate. Joins and hardware backends are outside this
+experiment workflow. Full end-to-end validation of the expanded workflow is pending.
 
 ## Licence
 
-This repository is a mixed-licence academic reproducibility repository.
-
-It contains original project code together with material adapted from third-party
-open-source repositories. In particular, it includes material derived from
-`BNSL-QA-PYTHON`, licensed under the GNU General Public License, Version 2, and
-material derived from `tldks-2020`, licensed under the Apache License, Version 2.0.
-
-Full licence and attribution information is provided in:
-
-```text
-LICENSE.md
-NOTICE.md
-THIRD_PARTY_LICENSES/GPL-2.0.txt
-THIRD_PARTY_LICENSES/Apache-2.0.txt
-```
+See [LICENSE.md](../LICENSE.md), [NOTICE.md](../NOTICE.md) and
+[THIRD_PARTY_LICENSES/](../THIRD_PARTY_LICENSES/) for licences and source attribution.
