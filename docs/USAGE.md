@@ -814,7 +814,7 @@ separately and run the tree inside the app container:
 
 ```bash
 python bnsl-qa/Tpcds_csv_to_txt.py
-python -m bnsl.cardinality_estimation.cardinality_estimation_tpcds
+(cd bnsl && python cardinality_estimation/cardinality_estimation_tpcds.py)
 ```
 
 To add PostgreSQL estimates, run from `bnsl/`:

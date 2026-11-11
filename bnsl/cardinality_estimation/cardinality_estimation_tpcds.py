@@ -1,82 +1,77 @@
-import argparse
 import os
 from datetime import datetime
-from pathlib import Path
 
 import graphviz
 import pandas as pd
 
 from bnsl.datasets.categorical_encoding_tpcds import (
-    DATA_PATH,
-    ROOT,
-    WORKLOAD_PATH,
     assignments,
     encode,
-    load_queries,
-    matching_rows,
     tree_data,
     tree_state,
 )
 from bnsl.tldks_2020.bn import BayesianNetwork
 from bnsl.tldks_2020.rel import Relation
-
-
-def fit_model(encoded):
-    return BayesianNetwork(cl_max_rows=30000).fit(Relation(tree_data(encoded)))
-
-
-def estimate_probability(model, filters):
-    return sum(
-        model.p(**{column: tree_state(column, code) for column, code in query.items()})
-        for query in assignments(filters)
-    )
+from bnsl.workloads import load_queries
 
 
 def main():
-    parser = argparse.ArgumentParser()
-    csv_name = os.environ.get("CSV_FILE", DATA_PATH.stem)
-    parser.add_argument(
-        "--input",
-        type=Path,
-        default=os.environ.get(
-            "CE_DATASET_CSV", DATA_PATH.with_name(csv_name + ".csv")
-        ),
-    )
-    parser.add_argument("--workload", type=Path, default=WORKLOAD_PATH)
-    parser.add_argument("--output", type=Path)
-    args = parser.parse_args()
-    encoded = encode(pd.read_csv(args.input))
-    queries = load_queries(args.workload)
-    model = fit_model(encoded)
-    output_dir = ROOT / "output_bn"
+    csv_file = os.environ.get("CSV_FILE", "TPCDS_store_sales_10000")
+    data_path = f"datasets/data/{csv_file}.csv"
+    output_dir = "../output_bn"
+    results_dir = "card_results"
+    os.makedirs(output_dir, exist_ok=True)
+    os.makedirs(results_dir, exist_ok=True)
+    print(f"--- Loading Data from {data_path} ---")
+    df_raw = pd.read_csv(data_path)
+    encoded = encode(df_raw)
+    df = tree_data(encoded)
+    print(f"Total rows in dataset: {len(df)}")
+    print(f"Columns: {df.columns.tolist()}")
+    print("\n--- Training Bayesian Network ---")
+    relation = Relation(df)
+    bn = BayesianNetwork(cl_max_rows=30000).fit(relation)
+    bn.update(relation)
+    print("Bayesian Network training complete.")
+    print("\n--- Generating Graph ---")
     try:
-        output_dir.mkdir(parents=True, exist_ok=True)
-        dot_file = output_dir / f"{args.input.stem}_bn.dot"
-        dot_file.write_text(str(model.to_dot()))
-        graphviz.render(
-            "dot", "png", str(dot_file), outfile=str(dot_file.with_suffix(".png"))
+        dot_file = os.path.join(output_dir, f"{csv_file}_bn.dot")
+        png_file = os.path.join(output_dir, f"{csv_file}_bn.png")
+        with open(dot_file, "w") as f:
+            f.write(str(bn.to_dot()))
+        graphviz.render("dot", "png", dot_file, outfile=png_file)
+        print(f"[Graph] Saved to: {png_file}")
+    except Exception as e:
+        print(f"[Graph] Warning: {e}")
+    queries = load_queries("tpcds_store_sales", df_raw, encoded)
+    results_log = []
+    print("\n--- Running Queries and Logging Results ---")
+    for sql, filters in queries:
+        subset = encoded.copy()
+        for col, states in filters.items():
+            subset = subset[subset[col].isin(states)]
+        true_card = len(subset)
+        est_prob = sum(
+            bn.p(**{col: tree_state(col, code) for col, code in query.items()})
+            for query in assignments(filters)
         )
-    except Exception as exc:
-        print(f"[Graph] Warning: {exc}")
-    results = []
-    for query, filters in queries:
-        probability = estimate_probability(model, filters)
-        results.append(
+        est_card = est_prob * len(df)
+        results_log.append(
             {
-                "query_sql": query["sql"],
-                "true_cardinality": int(matching_rows(encoded, filters).sum()),
-                "bn_est_cardinality": probability * len(encoded),
-                "est_selectivity": probability,
+                "query_sql": sql,
+                "true_cardinality": true_card,
+                "bn_est_cardinality": est_card,
+                "est_selectivity": est_prob,
             }
         )
+        print(f"Query: {sql}")
+        print(f" -> True: {true_card} | Est: {est_card:.2f} (Prob: {est_prob:.6f})")
     timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-    output = (
-        args.output
-        or ROOT / "bnsl/card_results" / f"result_{args.input.stem}_{timestamp}.csv"
-    )
-    output.parent.mkdir(parents=True, exist_ok=True)
-    pd.DataFrame(results).to_csv(output, index=False)
-    print(f"Results saved to: {output}")
+    output_filename = f"result_{csv_file}_{timestamp}.csv"
+    output_path = os.path.join(results_dir, output_filename)
+    results_df = pd.DataFrame(results_log)
+    results_df.to_csv(output_path, index=False)
+    print(f"\nProcessing Complete. Results saved to: {output_path}")
 
 
 if __name__ == "__main__":

@@ -1,5 +1,6 @@
 import importlib.util
 import json
+import os
 import sqlite3
 import tempfile
 import unittest
@@ -37,6 +38,37 @@ class TpcdsEncodingTests(unittest.TestCase):
         cls.raw = pd.read_csv(DATA_PATH)
         cls.encoded = encode(cls.raw)
         cls.queries = load_queries()
+
+    def run_tree(self, raw, sql_queries=None):
+        with tempfile.TemporaryDirectory() as folder:
+            root = Path(folder)
+            data_dir = root / "bnsl/datasets/data"
+            data_dir.mkdir(parents=True)
+            raw.to_csv(data_dir / "TPCDS_test.csv", index=False)
+            if sql_queries is None:
+                sql_queries = [row["sql"] for row, _ in self.queries]
+            workload = root / "queries.csv"
+            pd.DataFrame({
+                "query_id": [f"Q{i}" for i in range(len(sql_queries))],
+                "sql": sql_queries,
+            }).to_csv(workload, index=False)
+
+            def load_test_queries(dataset, raw, modeled):
+                return load_workload_queries(dataset, raw, modeled, path=workload)
+
+            previous_dir = Path.cwd()
+            try:
+                os.chdir(root / "bnsl")
+                with patch.dict(os.environ, {"CSV_FILE": "TPCDS_test"}), patch.object(
+                    tree, "load_queries", side_effect=load_test_queries
+                ):
+                    tree.main()
+            finally:
+                os.chdir(previous_dir)
+            outputs = list((root / "bnsl/card_results").glob("result_TPCDS_test_*.csv"))
+            self.assertEqual(len(outputs), 1)
+            graph = root / "output_bn/TPCDS_test_bn.png"
+            return pd.read_csv(outputs[0]), graph.read_bytes()
 
     def test_rows_and_missing_states(self):
         self.assertEqual(self.encoded.shape, (10000, 8))
@@ -182,22 +214,30 @@ class TpcdsEncodingTests(unittest.TestCase):
         encoded = encode(raw)
         model = BayesianNetwork([("ss_store_sk", "ss_net_profit")])
         model.update(Relation(tree_data(encoded[["ss_store_sk", "ss_net_profit"]])))
-        self.assertAlmostEqual(tree.estimate_probability(model, {"ss_net_profit": [0]}), 0.5)
-        self.assertAlmostEqual(tree.estimate_probability(model, {"ss_net_profit": [1, 2]}), 0.5)
+        self.assertAlmostEqual(model.p(ss_net_profit="0"), 0.5)
+        self.assertAlmostEqual(sum(model.p(ss_net_profit=str(code)) for code in [1, 2]), 0.5)
 
     def test_tree_matches_independent_mle_inference(self):
-        model = tree.fit_model(self.encoded)
+        model = BayesianNetwork(cl_max_rows=30000).fit(Relation(tree_data(self.encoded)))
         matrix = np.zeros((8, 8), dtype=int)
         for parent, child in model.edges():
             matrix[COLUMNS.index(parent), COLUMNS.index(child)] = 1
         mle = annealing.fit_model(self.encoded, matrix)
         inference = VariableElimination(mle)
-        filters = [item[1] for item in self.queries]
-        filters += [{column: [STATE_NAMES[column][-1]]} for column in COLUMNS]
-        filters += [{"ss_quantity": [1, 2, 3]}]
-        for query in filters + list(reversed(filters)):
+        queries = [row["sql"] for row, _ in self.queries]
+        queries += [f"SELECT * FROM store_sales WHERE {column} IS NULL;" for column in COLUMNS]
+        queries += ["SELECT * FROM store_sales WHERE ss_quantity > 25;",
+                    "SELECT * FROM store_sales WHERE ss_coupon_amt IS NOT NULL;",
+                    "SELECT * FROM store_sales WHERE ss_coupon_amt IS NULL AND ss_coupon_amt = 0;"]
+        queries += list(reversed(queries))
+        result, _ = self.run_tree(self.raw, queries)
+        self.assertEqual(result.query_sql.tolist(), queries)
+        for sql, (_, row) in zip(queries, result.iterrows()):
+            query = query_filters(sql)
             expected = annealing.estimate_probability(inference, query)
-            self.assertAlmostEqual(tree.estimate_probability(model, query), expected, places=12)
+            self.assertAlmostEqual(row.est_selectivity, expected, places=12)
+            self.assertAlmostEqual(row.bn_est_cardinality, expected * len(self.raw), places=9)
+            self.assertEqual(row.true_cardinality, int(matching_rows(self.encoded, query).sum()))
         matrix[3, :] = 0
         matrix[:, 3] = 0
         matrix[0, 3] = matrix[1, 3] = 1
@@ -207,22 +247,13 @@ class TpcdsEncodingTests(unittest.TestCase):
             probability = annealing.estimate_probability(two_parent_inference, query)
             self.assertTrue(np.isfinite(probability) and 0 <= probability <= 1)
 
-    def test_tree_cli_exports_standard_csv_and_graph(self):
-        with tempfile.TemporaryDirectory() as folder:
-            root = Path(folder)
-            output = root / "result.csv"
-            with patch.object(tree, "ROOT", root), patch("sys.argv", [
-                "estimate", "--input", str(DATA_PATH), "--output", str(output),
-            ]):
-                tree.main()
-            result = pd.read_csv(output)
-            self.assertEqual(result.columns.tolist(), [
-                "query_sql", "true_cardinality", "bn_est_cardinality", "est_selectivity",
-            ])
-            self.assertEqual(len(result), len(self.queries))
-            graph = root / "output_bn" / (DATA_PATH.stem + "_bn.png")
-            self.assertTrue(graph.is_file())
-            self.assertGreater(graph.stat().st_size, 0)
+    def test_tree_exports_standard_csv_and_graph(self):
+        result, graph = self.run_tree(self.raw)
+        self.assertEqual(result.columns.tolist(), [
+            "query_sql", "true_cardinality", "bn_est_cardinality", "est_selectivity",
+        ])
+        self.assertEqual(len(result), len(self.queries))
+        self.assertTrue(graph.startswith(b"\x89PNG\r\n\x1a\n"))
 
 
 if __name__ == "__main__":
