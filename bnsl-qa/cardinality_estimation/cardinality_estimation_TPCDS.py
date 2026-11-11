@@ -12,26 +12,14 @@ from pgmpy.estimators import MaximumLikelihoodEstimator
 from pgmpy.inference import VariableElimination
 from pgmpy.models import DiscreteBayesianNetwork
 
+from bnsl.datasets.tpcds_encoding import COLUMNS, DATA_PATH, DOMAINS, STATE_NAMES
 from bnsl.workloads import load_queries
 
 
 def load_data(path):
     raw = pd.read_csv(path)
-    domains = {
-        "ss_quantity": (1, [(1, 25), (26, 50), (51, 75), (76, 100)]),
-        "ss_sales_price": (100, [(0, 2499), (2500, 4999), (5000, 9999), (10000, np.inf)]),
-        "ss_coupon_amt": (100, [(0, 0), (1, 99999), (100000, np.inf)]),
-        "ss_net_profit": (100, [(-np.inf, -1), (0, 99999), (100000, np.inf)]),
-        "ss_wholesale_cost": (
-            100,
-            [(0, 2499), (2500, 4999), (5000, 7499), (7500, np.inf)],
-        ),
-        "ss_net_paid": (100, [(0, 99999), (100000, 299999), (300000, np.inf)]),
-        "ss_list_price": (100, [(0, 4999), (5000, 9999), (10000, np.inf)]),
-        "ss_store_sk": (1, [(1, 1), (2, 2), (4, 4), (7, 7), (8, 8), (10, 10)]),
-    }
     encoded = pd.DataFrame(index=raw.index)
-    for column, (scale, groups) in domains.items():
+    for column, (scale, groups) in DOMAINS.items():
         values = pd.to_numeric(raw[column], errors="raise")
         scaled = values * scale
         present = scaled.dropna().to_numpy(dtype=float)
@@ -51,16 +39,7 @@ def load_data(path):
 
 
 def fit_model(encoded, matrix):
-    columns = [
-        "ss_quantity",
-        "ss_sales_price",
-        "ss_coupon_amt",
-        "ss_net_profit",
-        "ss_wholesale_cost",
-        "ss_net_paid",
-        "ss_list_price",
-        "ss_store_sk",
-    ]
+    columns = COLUMNS
     matrix = np.asarray(matrix)
     size = len(columns)
     if matrix.shape != (size, size) or not np.isin(matrix, [0, 1]).all():
@@ -73,11 +52,7 @@ def fit_model(encoded, matrix):
         raise ValueError("Cannot estimate a cyclic graph.")
     if any(degree > 2 for _, degree in model.in_degree()):
         raise ValueError("Expected at most two parents per variable.")
-    state_names = {
-        column: list(range(size))
-        for column, size in zip(columns, [5, 5, 4, 4, 5, 4, 4, 7])
-    }
-    model.fit(encoded, estimator=MaximumLikelihoodEstimator, state_names=state_names)
+    model.fit(encoded, estimator=MaximumLikelihoodEstimator, state_names=STATE_NAMES)
     model.check_model()
     return model
 
@@ -114,11 +89,7 @@ def main():
     parser.add_argument("output_dir", type=Path)
     parser.add_argument("graph_index")
     parser.add_argument(
-        "--input",
-        type=Path,
-        default=os.environ.get(
-            "CE_DATASET_CSV", "../bnsl/datasets/data/TPCDS_store_sales_10000.csv"
-        ),
+        "--input", type=Path, default=os.environ.get("CE_DATASET_CSV", DATA_PATH)
     )
     parser.add_argument("--workload", type=Path)
     args = parser.parse_args()
