@@ -78,7 +78,7 @@ build_config_pairs() {
 }
 
 prepare_tpcds() {
-    python3 "$REPO_ROOT/bnsl/datasets/gen_tpcds_sample.py" --check
+    python3 "$REPO_ROOT/bnsl/datasets/gen_sample_csv_tpcds.py" --check
     (cd "$REPO_ROOT/bnsl-qa" && python3 Tpcds_csv_to_txt.py)
     ensure_database "$DB_NAME"
     psql_db "$DB_NAME" --single-transaction \

@@ -118,10 +118,12 @@ bnsl-qa/
 bnsl/
 └── datasets/
     ├── data/                 # CSV relations used for CE and PostgreSQL import
-    ├── txt_to_csv.py          # Converts WetGrass TXT solver data to CSV
-    ├── csv_to_db.py           # Imports CSV data into PostgreSQL
-    ├── csv_to_db_NHANES.py    # Imports NHANES CSV data into PostgreSQL
-    └── gen_synthetic_csv_market_basket.py
+    ├── txt_to_csv_wetgrass.py
+    ├── csv_to_db.py
+    ├── csv_to_db_nhanes.py
+    ├── gen_synthetic_csv_market_basket.py
+    ├── gen_sample_csv_tpcds.py
+    └── categorical_encoding_tpcds.py
 
 docker/
 └── postgres/
@@ -190,7 +192,7 @@ This creates:
 bnsl-qa/qa-datasets/WetGrass.txt
 ```
 
-> Important: the default WetGrass converter expects the solver file to be named `bnsl-qa/qa-datasets/WetGrass.txt`. Therefore, the safest command is to keep `--name WetGrass`. If another name is used, for example `WetGrass_10000` or `WetGrass_sampled_100`, the `input_txt_file` variable in `bnsl/datasets/txt_to_csv.py` must be updated before converting the TXT file to CSV.
+> Important: the default WetGrass converter expects the solver file to be named `bnsl-qa/qa-datasets/WetGrass.txt`. Therefore, the safest command is to keep `--name WetGrass`. If another name is used, for example `WetGrass_10000` or `WetGrass_sampled_100`, the `input_txt_file` variable in `bnsl/datasets/txt_to_csv_wetgrass.py` must be updated before converting the TXT file to CSV.
 
 The `--size` parameter controls the intended dataset size. For example, to generate a larger dataset:
 
@@ -204,7 +206,7 @@ The `--name` parameter controls the output file name. If `--name WetGrass` is us
 qa-datasets/WetGrass.txt
 ```
 
-If another name is used, the corresponding converter scripts must be updated to read that file. In particular, `bnsl/datasets/txt_to_csv.py` must point to the actual generated TXT file through its `input_txt_file` variable.
+If another name is used, the corresponding converter scripts must be updated to read that file. In particular, `bnsl/datasets/txt_to_csv_wetgrass.py` must point to the actual generated TXT file through its `input_txt_file` variable.
 
 ### 1.3.2. Expected versus Non-Expected Generation
 
@@ -237,7 +239,7 @@ cd /workspace/bnsl/datasets
 Before running the converter, check the configuration at the top of:
 
 ```text
-bnsl/datasets/txt_to_csv.py
+bnsl/datasets/txt_to_csv_wetgrass.py
 ```
 
 For the default WetGrass setup, it should point to the generated TXT file and the desired CSV output:
@@ -259,7 +261,7 @@ state_maps = {
 Run the converter:
 
 ```bash
-python txt_to_csv.py
+python txt_to_csv_wetgrass.py
 ```
 
 This writes the CSV relation to:
@@ -328,7 +330,7 @@ CSV_FILE = "data/WetGrass_variance_zero.csv"
 TABLE_NAME = "wetgrass_data"
 ```
 
-> Important: the CSV file configured here must be the same file produced by `txt_to_csv.py`. For the expected WetGrass dataset used in the thesis, this is `data/WetGrass_variance_zero.csv` (the script's default). All of these values can also be overridden through the `DB_NAME`, `CSV_FILE`, and `TABLE_NAME` environment variables instead of editing the file.
+> Important: the CSV file configured here must be the same file produced by `txt_to_csv_wetgrass.py`. For the expected WetGrass dataset used in the thesis, this is `data/WetGrass_variance_zero.csv` (the script's default). All of these values can also be overridden through the `DB_NAME`, `CSV_FILE`, and `TABLE_NAME` environment variables instead of editing the file.
 
 Also ensure that the `INSERT` statement matches the table columns:
 
@@ -430,7 +432,7 @@ bnsl-qa/qa-datasets/NewProblem.txt
 
 To integrate the new problem into the full cardinality-estimation pipeline, also create or adapt:
 
-1. a TXT-to-CSV converter, based on `bnsl/datasets/txt_to_csv.py`;
+1. a TXT-to-CSV converter, based on `bnsl/datasets/txt_to_csv_wetgrass.py`;
 2. a CSV output file in `bnsl/datasets/data/`;
 3. a PostgreSQL schema file in `docker/postgres/`;
 4. a CSV-to-database import configuration;
@@ -513,7 +515,7 @@ For a fresh Docker volume, NHANES is imported automatically during PostgreSQL in
 If the database already exists and the Docker volume was not recreated, the initialisation script will not run again automatically. In that case, either recreate the PostgreSQL volume or use:
 
 ```text
-bnsl/datasets/csv_to_db_NHANES.py
+bnsl/datasets/csv_to_db_nhanes.py
 ```
 
 Before running it, check:
@@ -528,7 +530,7 @@ Then run:
 
 ```bash
 cd /workspace/bnsl/datasets
-python csv_to_db_NHANES.py
+python csv_to_db_nhanes.py
 ```
 
 ---
@@ -774,7 +776,7 @@ inputs used.
 
 ### Model encoding
 
-Both estimators use the [same encoding](../bnsl/datasets/tpcds_encoding.py).
+Both estimators use the [same encoding](../bnsl/datasets/categorical_encoding_tpcds.py).
 Codes start at zero in the order below; the last code in each column means
 missing. All 10,000 rows are retained. The tree uses categorical strings,
 including `MISSING`; annealing uses integer states.
@@ -857,7 +859,7 @@ an original value within that group.
 Run the encoding and model checks from the repository root:
 
 ```bash
-python -m unittest discover -s tests -p 'test_tpcds_encoding.py'
+python -m unittest discover -s tests -p 'test_categorical_encoding_tpcds.py'
 ```
 
 ### Optional regeneration from the source
@@ -871,13 +873,13 @@ cd /tmp/tpcds-kit/tools
 make OS=LINUX LINUX_CFLAGS="-g -Wall -fcommon -Wno-error=implicit-int -Wno-error=implicit-function-declaration" dsdgen tpcds.idx
 mkdir -p /tmp/tpcds-data
 ./dsdgen -SCALE 1 -TABLE store_sales -RNGSEED 19620718 -DIR /tmp/tpcds-data
-python /workspace/bnsl/datasets/gen_tpcds_sample.py /tmp/tpcds-data/store_sales.dat --output /tmp/TPCDS_store_sales_10000.csv
+python /workspace/bnsl/datasets/gen_sample_csv_tpcds.py /tmp/tpcds-data/store_sales.dat --output /tmp/TPCDS_store_sales_10000.csv
 ```
 
 Verify the committed CSV:
 
 ```bash
-python /workspace/bnsl/datasets/gen_tpcds_sample.py --check
+python /workspace/bnsl/datasets/gen_sample_csv_tpcds.py --check
 ```
 
 ## 1.9. Shared Query Workloads

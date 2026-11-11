@@ -5,7 +5,7 @@ import operator
 import re
 from pathlib import Path
 
-from bnsl.datasets.tpcds_encoding import query_filters as tpcds_query_filters
+from bnsl.datasets.categorical_encoding_tpcds import query_filters as tpcds_query_filters
 
 
 TABLES = {"wetgrass": "wetgrass_data", "market_basket": "transactions", "nhanes": "nhanes_data"}

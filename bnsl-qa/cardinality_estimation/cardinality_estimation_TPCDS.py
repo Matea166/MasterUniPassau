@@ -12,7 +12,12 @@ from pgmpy.estimators import MaximumLikelihoodEstimator
 from pgmpy.inference import VariableElimination
 from pgmpy.models import DiscreteBayesianNetwork
 
-from bnsl.datasets.tpcds_encoding import COLUMNS, DATA_PATH, DOMAINS, STATE_NAMES
+from bnsl.datasets.categorical_encoding_tpcds import (
+    COLUMNS,
+    DATA_PATH,
+    DOMAINS,
+    STATE_NAMES,
+)
 from bnsl.workloads import load_queries
 
 

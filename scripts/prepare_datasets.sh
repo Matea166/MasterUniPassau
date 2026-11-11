@@ -20,9 +20,9 @@ log "WetGrass: generating solver TXT files"
 log "WetGrass: converting TXT to CSV relations"
 (cd "$REPO_ROOT/bnsl/datasets" &&
     INPUT_TXT_FILE=../../bnsl-qa/qa-datasets/WetGrass.txt \
-    OUTPUT_CSV_FILE=data/WetGrass_variance_zero.csv python3 txt_to_csv.py &&
+    OUTPUT_CSV_FILE=data/WetGrass_variance_zero.csv python3 txt_to_csv_wetgrass.py &&
     INPUT_TXT_FILE=../../bnsl-qa/qa-datasets/WetGrass_10000.txt \
-    OUTPUT_CSV_FILE=data/WetGrass_10000.csv python3 txt_to_csv.py)
+    OUTPUT_CSV_FILE=data/WetGrass_10000.csv python3 txt_to_csv_wetgrass.py)
 
 log "WetGrass: creating database and table"
 ensure_database wetgrass
@@ -64,7 +64,7 @@ psql_db nhanes -c "CREATE TABLE IF NOT EXISTS nhanes_data (
     bmxbmi DOUBLE PRECISION, lbxglu DOUBLE PRECISION,
     diq010 DOUBLE PRECISION, lbxglt DOUBLE PRECISION,
     lbxin DOUBLE PRECISION);"
-(cd "$REPO_ROOT/bnsl/datasets" && python3 csv_to_db_NHANES.py)
+(cd "$REPO_ROOT/bnsl/datasets" && python3 csv_to_db_nhanes.py)
 psql_db nhanes -c "ANALYZE nhanes_data;"
 
 log "TPC-DS: checking the fixed sample and importing CSV"

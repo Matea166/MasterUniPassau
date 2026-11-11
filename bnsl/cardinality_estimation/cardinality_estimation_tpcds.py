@@ -6,7 +6,7 @@ from pathlib import Path
 import graphviz
 import pandas as pd
 
-from bnsl.datasets.tpcds_encoding import (
+from bnsl.datasets.categorical_encoding_tpcds import (
     DATA_PATH,
     ROOT,
     WORKLOAD_PATH,
