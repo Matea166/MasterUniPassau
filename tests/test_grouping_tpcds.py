@@ -12,7 +12,7 @@ import pandas as pd
 from pgmpy.inference import VariableElimination
 
 from bnsl.cardinality_estimation import cardinality_estimation_tpcds as tree
-from bnsl.datasets.categorical_encoding_tpcds import (
+from bnsl.datasets.grouping_tpcds import (
     COLUMNS, DATA_PATH, ROOT, STATE_NAMES, encode, load_queries,
     matching_rows, query_filters, tree_data, write_solver_input,
 )

@@ -123,7 +123,8 @@ bnsl/
     ├── csv_to_db_nhanes.py
     ├── gen_synthetic_csv_market_basket.py
     ├── gen_sample_csv_tpcds.py
-    └── categorical_encoding_tpcds.py
+    ├── grouping_nhanes.py
+    └── grouping_tpcds.py
 
 docker/
 └── postgres/
@@ -500,6 +501,10 @@ bnsl-qa/qa-datasets/mappings/
 
 These mapping files are important because they document how original categorical values were translated into solver-side integer states.
 
+Both NHANES estimators and the TXT converter use [grouping_nhanes.py](../bnsl/datasets/grouping_nhanes.py)
+for the BMI groups and category representations. The tree keeps original category
+labels; annealing uses integer codes.
+
 If reproducing an earlier thesis run, the repository may also contain:
 
 ```text
@@ -776,7 +781,7 @@ inputs used.
 
 ### Model encoding
 
-Both estimators use the [same encoding](../bnsl/datasets/categorical_encoding_tpcds.py).
+Both estimators use the [same encoding](../bnsl/datasets/grouping_tpcds.py).
 Codes start at zero in the order below; the last code in each column means
 missing. All 10,000 rows are retained. The tree uses categorical strings,
 including `MISSING`; annealing uses integer states.
@@ -859,7 +864,7 @@ an original value within that group.
 Run the encoding and model checks from the repository root:
 
 ```bash
-python -m unittest discover -s tests -p 'test_categorical_encoding_tpcds.py'
+python -m unittest discover -s tests -p 'test_grouping_tpcds.py'
 ```
 
 ### Optional regeneration from the source

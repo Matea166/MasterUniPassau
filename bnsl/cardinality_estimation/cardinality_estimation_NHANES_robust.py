@@ -4,6 +4,7 @@ from datetime import datetime
 import graphviz
 import pandas as pd
 
+from bnsl.datasets.grouping_nhanes import tree_data
 from bnsl.tldks_2020.bn import BayesianNetwork
 from bnsl.tldks_2020.rel import Relation
 from bnsl.workloads import load_queries
@@ -18,18 +19,9 @@ def main():
     os.makedirs(results_dir, exist_ok=True)
     print(f"--- Loading Data from {data_path} ---")
     df_raw = pd.read_csv(data_path)
-    df = df_raw.copy()
-    categorical_cols = ["age_group", "RIAGENDR", "DIQ010"]
-    for col in categorical_cols:
-        df[col] = df[col].astype(str)
-    bins = [0, 18.5, 25.0, 30.0, 150.0]
-    labels = [0, 1, 2, 3]
-    df["BMXBMI"] = pd.cut(df["BMXBMI"], bins=bins, labels=labels, right=False).astype(
-        str
-    )
+    df = tree_data(df_raw)
     print("\n--- Training Bayesian Network ---")
-    discrete_cols = ["age_group", "RIAGENDR", "DIQ010", "BMXBMI"]
-    relation_discrete = Relation(df[discrete_cols])
+    relation_discrete = Relation(df)
     bn = BayesianNetwork(cl_max_rows=30000).fit(relation_discrete)
     bn.update(relation_discrete)
     print("\n--- Generating Graph ---")
@@ -42,7 +34,7 @@ def main():
         print(f"[Graph] Saved to: {png_file}")
     except Exception as e:
         print(f"[Graph] Warning: {e}")
-    queries = load_queries("nhanes", df_raw, df[discrete_cols])
+    queries = load_queries("nhanes", df_raw, df)
     results_log = []
     print("\n--- Running Queries and Logging Results ---")
     for sql, filters in queries:

@@ -1,32 +1,27 @@
 import os
+import sys
+from pathlib import Path
 
 import pandas as pd
+
+sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
+
+from bnsl.datasets.grouping_nhanes import category_mappings, encode
 
 
 def main():
     csv_file = "../bnsl/datasets/data/NHANES_age_prediction.csv"
     df_full = pd.read_csv(csv_file)
-    keep_cols = ["age_group", "BMXBMI", "RIAGENDR", "DIQ010"]
-    df = df_full[keep_cols].copy()
-    bins = [0, 18.5, 25.0, 30.0, 150.0]
-    labels = [0, 1, 2, 3]
-    df["BMXBMI"] = pd.cut(df["BMXBMI"], bins=bins, labels=labels, right=False).astype(
-        int
-    )
+    df = encode(df_full)
     mapping_dir = "qa-datasets/mappings"
     os.makedirs(mapping_dir, exist_ok=True)
-    for col in ["age_group", "RIAGENDR", "DIQ010"]:
-        categories = df[col].astype("category").cat.categories
-        mapping = dict(enumerate(categories))
+    for col, mapping in category_mappings(df_full).items():
         pd.DataFrame(
             [
                 {"code": code, "category": category}
                 for (code, category) in mapping.items()
             ]
         ).to_csv(os.path.join(mapping_dir, f"NHANES_{col}_mapping.csv"), index=False)
-    df["age_group"] = df["age_group"].astype("category").cat.codes
-    df["RIAGENDR"] = df["RIAGENDR"].astype("category").cat.codes
-    df["DIQ010"] = df["DIQ010"].astype("category").cat.codes
     print("First 5 rows of encoded NHANES solver input:")
     print(df.head())
     num_vars = len(df.columns)

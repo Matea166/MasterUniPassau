@@ -4,7 +4,7 @@ from datetime import datetime
 import graphviz
 import pandas as pd
 
-from bnsl.datasets.categorical_encoding_tpcds import (
+from bnsl.datasets.grouping_tpcds import (
     assignments,
     encode,
     tree_data,

@@ -11,22 +11,13 @@ from pgmpy.estimators import MaximumLikelihoodEstimator
 from pgmpy.inference import VariableElimination
 from pgmpy.models import DiscreteBayesianNetwork
 
+from bnsl.datasets.grouping_nhanes import encode
 from bnsl.workloads import load_queries
 
 
 def load_data(path):
     raw = pd.read_csv(path)
-    columns = ["age_group", "BMXBMI", "RIAGENDR", "DIQ010"]
-    encoded = raw[columns].copy()
-    encoded["BMXBMI"] = pd.cut(
-        encoded["BMXBMI"],
-        bins=[0, 18.5, 25.0, 30.0, 150.0],
-        labels=[0, 1, 2, 3],
-        right=False,
-    ).astype(int)
-    for column in ["age_group", "RIAGENDR", "DIQ010"]:
-        encoded[column] = encoded[column].astype("category").cat.codes
-    return raw, encoded
+    return raw, encode(raw)
 
 
 def fit_model(encoded, matrix):

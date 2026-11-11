@@ -5,11 +5,11 @@ import operator
 import re
 from pathlib import Path
 
-from bnsl.datasets.categorical_encoding_tpcds import query_filters as tpcds_query_filters
+from bnsl.datasets.grouping_nhanes import BMI_BINS
+from bnsl.datasets.grouping_tpcds import query_filters as tpcds_query_filters
 
 
 TABLES = {"wetgrass": "wetgrass_data", "market_basket": "transactions", "nhanes": "nhanes_data"}
-BMI_BINS = [(0, 18.5), (18.5, 25), (25, 30), (30, 150)]
 OPERATORS = {"=": operator.eq, ">=": operator.ge, "<": operator.lt}
 
 
@@ -54,7 +54,7 @@ def query_filters(sql, dataset, raw, modeled):
                 raise ValueError("BMI predicates must select a complete BMI group.")
             lower = max((value for comparison, value in predicates if comparison == ">="), default=-math.inf)
             upper = min((value for comparison, value in predicates if comparison == "<"), default=math.inf)
-            overlapping = [(left, right) for left, right in BMI_BINS if max(left, lower) < min(right, upper)]
+            overlapping = [(left, right) for left, right in zip(BMI_BINS, BMI_BINS[1:]) if max(left, lower) < min(right, upper)]
             if len(overlapping) != 1 or lower > overlapping[0][0] or upper < overlapping[0][1]:
                 raise ValueError("BMI predicates must select one complete BMI group.")
         elif any(comparison != "=" for comparison, _ in predicates):
