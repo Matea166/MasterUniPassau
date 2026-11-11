@@ -1,5 +1,0 @@
-estimator,min_qerror,median_qerror,max_qerror,exact_queries
-SA,1.000,1.000,1.000,100.0%
-SQA,1.000,1.000,1.000,100.0%
-Classical baseline,1.000,1.199,1.319,33.3%
-PostgreSQL,1.000,1.185,7.140,16.7%

@@ -1,7 +1,0 @@
-query,true_cardinality,sa_estimate,sqa_estimate,classical_baseline,postgresql
-Q1,18,17.46,17.46,18.00,18
-Q2,21,21.36,21.36,18.63,25
-Q3,39,39.00,39.00,39.00,32
-Q4,41,41.60,41.60,32.51,38
-Q5,2,2.40,2.40,3.15,11
-Q6,9,8.64,8.64,11.37,1

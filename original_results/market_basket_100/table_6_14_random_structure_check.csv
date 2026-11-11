@@ -1,4 +1,0 @@
-structure_source,structures,distinct_ce_vectors,median_qerror,max_qerror,exact_estimates
-"SA, R = 250, T = 30",11,1,1.04,1.16,33.33%
-"SQA, R = 100, T = 30",18,1,1.04,1.16,33.33%
-Random structures,960,838,1.14,18.21,25.28%

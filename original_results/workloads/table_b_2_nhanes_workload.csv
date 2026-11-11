@@ -1,7 +1,0 @@
-query,sql_selection_predicate
-Q1,DIQ010 = 2
-Q2,BMXBMI >= 30.0 AND DIQ010 = 1
-Q3,age_group = 'Senior' AND BMXBMI >= 30.0 AND DIQ010 = 1
-Q4,age_group = 'Adult' AND BMXBMI >= 18.5 AND BMXBMI < 25.0 AND DIQ010 = 2
-Q5,age_group = 'Adult' AND BMXBMI >= 25.0 AND BMXBMI < 30.0 AND DIQ010 = 1
-Q6,age_group = 'Senior' AND RIAGENDR = 1 AND BMXBMI >= 25.0 AND BMXBMI < 30.0 AND DIQ010 = 2

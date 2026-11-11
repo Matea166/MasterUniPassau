@@ -1,7 +1,0 @@
-query,sql_selection_predicate
-Q1,Bread = 1
-Q2,Beer = 1 AND Diapers = 1
-Q3,Milk = 1 AND Diapers = 1
-Q4,Eggs = 1 AND Milk = 0
-Q5,Bread = 1 AND Diapers = 1 AND Milk = 1
-Q6,Beer = 1 AND Bread = 0 AND Cola = 1 AND Diapers = 1 AND Eggs = 0 AND Milk = 1

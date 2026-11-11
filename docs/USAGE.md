@@ -1726,7 +1726,7 @@ Estimator CSVs retain full precision for all datasets. The stable SA/SQA selecti
 
 Each run records its solver budgets in `results/<experiment>/configurations.csv`. Report generation excludes other configurations left by older runs. A `.running` marker blocks reporting if an experiment was interrupted; rerunning that experiment successfully clears it. PostgreSQL is pinned to the recorded 16.15 image; the baseline still uses ordinary `ANALYZE` statistics.
 
-Frozen thesis tables in `original_results/` keep their historical values and metric convention. New scores, exact-match percentages, and rankings can differ; old result CSVs must be recomputed to use this convention.
+Older result CSVs must be recomputed to use this convention; scores, exact-match percentages and rankings may differ.
 
 The q-error script is:
 

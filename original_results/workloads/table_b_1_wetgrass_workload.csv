@@ -1,7 +1,0 @@
-query,sql_selection_predicate
-Q1,wetgrass = 'f'
-Q2,cloud = 't' AND wetgrass = 't'
-Q3,rain = 't' AND wetgrass = 't'
-Q4,sprinkler = 'on' AND rain = 'f'
-Q5,cloud = 't' AND sprinkler = 'on' AND rain = 'f'
-Q6,cloud = 't' AND sprinkler = 'off' AND rain = 'f' AND wetgrass = 'f'

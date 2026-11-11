@@ -1,4 +1,0 @@
-dataset,data_setting,number_of_rows,main_characteristics
-WetGrass BN,Synthetic BN data,100 and 10000,Controlled binary Bayesian-network data with known variables and dependency structure
-NHANES subset,Real health-survey data,2278,Real tabular data with categorical and discretised health-related attributes
-Market Basket,Synthetic transaction data,100 and 10000,Binary item-presence data over a fixed set of transaction attributes

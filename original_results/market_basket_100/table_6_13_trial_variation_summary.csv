@@ -1,9 +1,0 @@
-method,trials,unique_matrices,max_distinct_per_query,median_qerror,exact_estimates
-SA,5,4,1,1.038,33.3%
-SA,10,8,1,1.038,33.3%
-SA,20,13,1,1.038,33.3%
-SA,50,22,2,1.038,36.4%
-SQA,5,5,1,1.038,33.3%
-SQA,10,9,1,1.038,33.3%
-SQA,20,17,2,1.038,37.3%
-SQA,50,28,1,1.038,33.3%

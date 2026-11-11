@@ -35,4 +35,4 @@ if errorlevel 1 exit /b 1
 
 echo.
 echo Done. All outputs are in .\results\.
-echo Open .\results\index.html for the side-by-side comparison with the thesis.
+echo Open .\results\index.html for the experiment report.

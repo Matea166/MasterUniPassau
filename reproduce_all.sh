@@ -32,4 +32,4 @@ docker compose exec -T -e QUICK="$QUICK" app bash scripts/run_all.sh
 
 echo ""
 echo "Done. All outputs are in ./results/."
-echo "Open ./results/index.html for the side-by-side comparison with the thesis."
+echo "Open ./results/index.html for the experiment report."

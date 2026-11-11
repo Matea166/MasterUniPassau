@@ -1,5 +1,0 @@
-estimator,min_qerror,median_qerror,max_qerror,exact_queries
-SA stable,1.0000,1.0002,1.0007,33.3%
-SQA stable,1.0000,1.0002,1.0007,33.3%
-Classical baseline,1.0000,1.0000,2.0299,66.7%
-PostgreSQL,1.0000,1.2692,8.3750,16.7%

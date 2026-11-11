@@ -1,5 +1,0 @@
-attribute,prepared_states_and_solver_encoding
-age_group,"Adult, Senior -> 0, 1"
-BMXBMI,"BMI bins: < 18.5, [18.5, 25), [25, 30), >= 30 -> 0, 1, 2, 3"
-RIAGENDR,"1.0, 2.0 -> 0, 1"
-DIQ010,"1.0, 2.0, 3.0 -> 0, 1, 2"
