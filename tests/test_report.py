@@ -35,10 +35,16 @@ class ReportTests(unittest.TestCase):
                       "tpcds_store_sales/combined_results.png"]
             for image in images:
                 (results / image).write_bytes(b"png")
-            with patch.object(report, "RESULTS_ROOT", str(results)):
+            with patch.object(report, "RESULTS_ROOT", str(results)), \
+                    patch.object(report, "REPO_ROOT", str(Path(__file__).resolve().parents[1])):
                 report.main()
             rendered = (results / "index.html").read_text()
-            self.assertEqual(rendered.count("<table "), len(experiments))
+            self.assertEqual(rendered.count("<table "), len(experiments) + 4)
+            self.assertEqual(rendered.count("<details>"), 4)
+            self.assertIn('id="queries"', rendered)
+            for workload in (Path(report.__file__).resolve().parents[1] / "workloads").glob("*.csv"):
+                for query in pd.read_csv(workload).itertuples():
+                    self.assertIn(report.html.escape(query.sql, quote=False), rendered)
             for path, content in sources.items():
                 self.assertIn(f'href="{path.relative_to(results)}"', rendered)
                 self.assertEqual(path.read_bytes(), content)

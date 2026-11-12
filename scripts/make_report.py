@@ -34,6 +34,11 @@ img.fig-medium { max-width: 620px; display: block; }
 .missing { color: #c0392b; font-style: italic; }
 .note { background: #fdf6e3; border-left: 4px solid #f1c40f; padding: .6rem 1rem;
         margin: 1rem 0; font-size: .9rem; }
+details { margin: 1rem 0; }
+summary { cursor: pointer; font-weight: 600; }
+.queries { margin-top: .5rem; }
+.queries th, .queries td { text-align: left; vertical-align: top; }
+.queries td:nth-child(2) { font-family: monospace; white-space: pre-wrap; overflow-wrap: anywhere; }
 """
 
 
@@ -118,10 +123,33 @@ def tpcds_section():
     return "\n".join(parts)
 
 
+def query_appendix():
+    parts = []
+    for dataset, title in [("wetgrass", "WetGrass (100 and 10,000 rows)"),
+                           ("nhanes", "NHANES"),
+                           ("market_basket", "Market Basket (100 and 10,000 rows; random control)"),
+                           ("tpcds_store_sales", "TPC-DS Store Sales")]:
+        path = os.path.join(REPO_ROOT, "workloads", dataset + ".csv")
+        if not os.path.isfile(path):
+            continue
+        queries = pd.read_csv(path)[["query_id", "sql"]]
+        queries.columns = ["Query ID", "SQL"]
+        parts.append(
+            f"<details><summary>{html.escape(title)} — {len(queries)} queries</summary>"
+            f'<div class="pane queries">{queries.to_html(index=False, border=0)}</div>'
+            "</details>")
+    if not parts:
+        return ""
+    return ('<h2 id="queries">Appendix: query workloads</h2>'
+            '<p>Expand a dataset to see its fixed SQL workload. Query IDs match '
+            'the result tables within each dataset.</p>' + "\n".join(parts))
+
+
 def main():
     stamp = datetime.datetime.now().strftime("%Y-%m-%d %H:%M")
     sections = [experiment_section(*e) for e in EXPERIMENTS]
     sections.append(tpcds_section())
+    appendix = query_appendix()
 
     body = f"""<meta charset="utf-8">
 <title>AnnealBN-CE Reproduction Report</title>
@@ -129,6 +157,7 @@ def main():
 <h1>AnnealBN-CE Reproduction Report</h1>
 <p class="meta">Generated {stamp}. Tables and figures show the results of this run.
 Tables include only configurations executed in this run.</p>
+{'<p><a href="#queries">Query appendix</a></p>' if appendix else ''}
 <div class="note">
 <p><strong>Metric convention for this run: clamped q-error.</strong>
 For scoring only, both the estimate and true count are floored at 1 before
@@ -142,6 +171,7 @@ the selected group.</p>
 between runs.</p>
 </div>
 {''.join(sections)}
+{appendix}
 """
 
     out = os.path.join(RESULTS_ROOT, "index.html")
