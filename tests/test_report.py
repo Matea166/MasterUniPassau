@@ -44,7 +44,10 @@ class ReportTests(unittest.TestCase):
             self.assertIn('id="queries"', rendered)
             for workload in (Path(report.__file__).resolve().parents[1] / "workloads").glob("*.csv"):
                 for query in pd.read_csv(workload).itertuples():
-                    self.assertIn(report.html.escape(query.sql, quote=False), rendered)
+                    condition = query.sql.split(" WHERE ", 1)[1].rstrip(";")
+                    self.assertIn(report.html.escape(condition, quote=False), rendered)
+            self.assertIn("<th>Condition</th>", rendered)
+            self.assertNotIn("SELECT * FROM", rendered)
             for path, content in sources.items():
                 self.assertIn(f'href="{path.relative_to(results)}"', rendered)
                 self.assertEqual(path.read_bytes(), content)

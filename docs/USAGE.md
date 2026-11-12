@@ -21,7 +21,7 @@ The application image contains the code; only `results/` is shared with the host
 Host edits do not affect a running experiment. Rebuild and recreate the app with
 `docker compose up -d --build` before running changed code.
 
-The HTML report ends with an expandable appendix containing each dataset's query IDs and SQL.
+The HTML report ends with an expandable appendix containing each dataset's query IDs and conditions.
 
 ### Individual experiments
 

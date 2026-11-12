@@ -133,7 +133,9 @@ def query_appendix():
         if not os.path.isfile(path):
             continue
         queries = pd.read_csv(path)[["query_id", "sql"]]
-        queries.columns = ["Query ID", "SQL"]
+        queries["sql"] = queries["sql"].str.replace(
+            r"(?is)^.*?\bWHERE\s+", "", regex=True).str.rstrip("; \t\r\n")
+        queries.columns = ["Query ID", "Condition"]
         parts.append(
             f"<details><summary>{html.escape(title)} — {len(queries)} queries</summary>"
             f'<div class="pane queries">{queries.to_html(index=False, border=0)}</div>'
@@ -141,7 +143,7 @@ def query_appendix():
     if not parts:
         return ""
     return ('<h2 id="queries">Appendix: query workloads</h2>'
-            '<p>Expand a dataset to see its fixed SQL workload. Query IDs match '
+            '<p>Expand a dataset to see its query conditions. Query IDs match '
             'the result tables within each dataset.</p>' + "\n".join(parts))
 
 
