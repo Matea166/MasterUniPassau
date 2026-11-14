@@ -83,7 +83,7 @@ if [ "$mode" = "Run solver now" ]; then
 
         echo ""
         echo "Select Solver:"
-        select solver in "SA" "SQA"; do
+        select solver in "SA" "SQA" "QAOA"; do
             if [ -n "$solver" ]; then break; else echo "Invalid option."; fi
         done
 
@@ -103,7 +103,15 @@ if [ "$mode" = "Run solver now" ]; then
     progress_bar 0 $executions $start_time
 
     for i in $(seq 1 $executions); do
-        if ! python3 -m bnslqa solve "$dataset_path" "$solver" --reads "$reads" >> "$matrix_file" 2>&1; then
+        solver_args=(--reads "$reads")
+        if [ "$solver" = "QAOA" ]; then
+            qaoa_output="${QAOA_RESULTS_DIR:-../results/qaoa/${dataset_name}_${timestamp}}"
+            solver_args=(--shots "${QAOA_SHOTS:-$reads}" --reps "${QAOA_REPS:-1}"
+                         --maxiter "${QAOA_MAXITER:-30}" --seed "$(( ${QAOA_SEED:-42} + i - 1 ))"
+                         --max-qubits "${QAOA_MAX_QUBITS:-20}"
+                         --qaoa-output "$qaoa_output/trial_${i}.json")
+        fi
+        if ! python3 -m bnslqa solve "$dataset_path" "$solver" "${solver_args[@]}" >> "$matrix_file" 2>&1; then
             echo "Error: $solver failed on trial $i; see $matrix_file" >&2
             exit 1
         fi

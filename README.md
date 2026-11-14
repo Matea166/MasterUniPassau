@@ -10,6 +10,9 @@ Structure learning uses simulated annealing (SA) and simulated quantum annealing
 [tldks-2020](https://github.com/MaxHalford/tldks-2020). PostgreSQL uses ordinary
 statistics after `ANALYZE`.
 
+Optional [QAOA experiments](docs/QUANTUM.md) use Qiskit Aer, with a separate
+IBM hardware sampling path. They are not part of the default reproduction run.
+
 ## Run the experiments
 
 Install and start Docker Desktop. Python and PostgreSQL run inside Docker.
