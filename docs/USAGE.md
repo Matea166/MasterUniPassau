@@ -61,11 +61,51 @@ The random check evaluates up to 1,000 generated DAGs on Market Basket, 100 rows
 quick mode requests 20. Graphs have at most two parents per node. Run the Market
 Basket experiment first to include its SA/SQA rows in the comparison report.
 
+### QAOA
+
+QAOA uses the same structure-learning QUBO. Aer and COBYLA optimize circuit
+parameters; final sampling runs on Aer or IBM hardware. IBM execution has not
+yet been validated. The full-run script currently runs SA/SQA.
+
+After dataset preparation, inspect resources and run WetGrass on Aer:
+
+```bash
+docker compose exec -T -w /workspace/bnsl-qa app python -m bnslqa solve qa-datasets/WetGrass.txt QAOA --dry-run
+docker compose exec -T -w /workspace/bnsl-qa app python -m bnslqa solve qa-datasets/WetGrass.txt QAOA --max-qubits 26
+```
+
+Defaults are one layer, 1,024 shots per evaluation and final sample, 30 optimizer
+evaluations and seed 42. Set `--reps`, `--shots`, `--maxiter` and `--seed` to change
+them. JSON results are saved under `results/qaoa/`.
+
+Use `--shots 1024 --final-shots 4096` to train with 1,024 shots per evaluation
+and sample the final circuit with 4,096 shots on Aer or IBM. Without
+`--final-shots`, final sampling uses `--shots`. For `dispatch.sh`, set
+`QAOA_SHOTS` and `QAOA_FINAL_SHOTS`.
+
+Aer is ideal by default. Add `--aer-noise depolarizing` for noisy optimization
+and final Aer sampling. This synthetic model applies depolarizing errors of
+0.1% to SX/X gates and 1% to CX gates, plus a 2% symmetric readout error; RZ
+gates are noiseless. It is not calibrated to an IBM device. Noise settings are
+saved in the result JSON. For `dispatch.sh`, set `QAOA_AER_NOISE=depolarizing`.
+
+For IBM sampling, configure a saved Qiskit Runtime account in the container and
+add `--qaoa-backend ibm --ibm-backend BACKEND_NAME` to the run command. This submits
+a hardware job using Aer-trained parameters.
+
+Four, six and eight attributes require 26, 57 and 100 qubits. The default Aer
+limit is 20; WetGrass requires raising it to 26, whose statevector alone needs
+1 GiB. Local simulation is also required for the current IBM path.
+
+References: [IBM QAOA tutorial](https://quantum.cloud.ibm.com/docs/en/tutorials/quantum-approximate-optimization-algorithm)
+and [Aer SamplerV2](https://qiskit.github.io/qiskit-aer/stubs/qiskit_aer.primitives.SamplerV2.html).
+Noise follows the [Aer noise model API](https://qiskit.github.io/qiskit-aer/stubs/qiskit_aer.noise.NoiseModel.html).
+
 ## Repository layout
 
 | Directory | Purpose |
 |---|---|
-| `bnsl-qa/` | Annealing solvers, integer TXT converters and BN estimation |
+| `bnsl-qa/` | Structure-learning solvers, integer TXT converters and BN estimation |
 | `bnsl/` | Tree estimator, dataset utilities, PostgreSQL comparison and plotting |
 | `scripts/` | Automated experiments and report generation |
 | `config/` | Dataset paths, databases and solver budgets |

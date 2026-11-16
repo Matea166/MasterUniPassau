@@ -10,8 +10,8 @@ Structure learning uses simulated annealing (SA) and simulated quantum annealing
 [tldks-2020](https://github.com/MaxHalford/tldks-2020). PostgreSQL uses ordinary
 statistics after `ANALYZE`.
 
-Optional [QAOA experiments](docs/QUANTUM.md) use Qiskit Aer, with a separate
-IBM hardware sampling path. They are not part of the default reproduction run.
+QAOA supports Qiskit Aer and IBM hardware sampling; see the
+[usage guide](docs/USAGE.md#qaoa).
 
 ## Run the experiments
 

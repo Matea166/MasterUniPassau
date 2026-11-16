@@ -1,19 +1,6 @@
 #!/bin/bash
 
-# AnnealBN-CE pipeline dispatcher: solver runs -> unique matrices ->
-# cardinality estimation -> merged final CSV.
-#
-# Non-interactive mode (used by scripts/run_*.sh): set all of
-#   DATASET_TXT  solver TXT file, e.g. qa-datasets/WetGrass.txt
-#   SOLVER       SA or SQA
-#   TRIALS       number of independent solver executions
-#   READS        annealing reads per execution
-#   CE_SCRIPT    cardinality_estimation/cardinality_estimation_<Dataset>.py
-# and the full solve pipeline runs without menus. Leave them unset for the
-# interactive menus. The last lines of output are machine-readable
-# DISPATCH_* paths for orchestration scripts.
 
-# --- PROGRESS BAR FUNCTION ---
 progress_bar() {
     local current=$1
     local total=$2
@@ -38,7 +25,6 @@ if [ -n "${DATASET_TXT:-}" ] && [ -n "${SOLVER:-}" ] && [ -n "${TRIALS:-}" ] && 
     NONINTERACTIVE=1
 fi
 
-# --- 1. SELECTION MENU ---
 echo "=== BNSL-QA-PYTHON AUTOMATION PIPELINE ==="
 
 if [ "$NONINTERACTIVE" = "1" ]; then
@@ -92,7 +78,6 @@ if [ "$mode" = "Run solver now" ]; then
         read -p "Enter number of annealing reads: " reads
     fi
 
-    # --- 2. SOLVER EXECUTION ---
     solver_out_base="dispatch_output/solver_outputs/${solver}"
     solver_run_dir="${solver_out_base}/${solver}_Matrix_${dataset_name}_${executions}_${reads}_${timestamp}"
     mkdir -p "$solver_run_dir"
@@ -107,8 +92,10 @@ if [ "$mode" = "Run solver now" ]; then
         if [ "$solver" = "QAOA" ]; then
             qaoa_output="${QAOA_RESULTS_DIR:-../results/qaoa/${dataset_name}_${timestamp}}"
             solver_args=(--shots "${QAOA_SHOTS:-$reads}" --reps "${QAOA_REPS:-1}"
+                         --final-shots "${QAOA_FINAL_SHOTS:-${QAOA_SHOTS:-$reads}}"
                          --maxiter "${QAOA_MAXITER:-30}" --seed "$(( ${QAOA_SEED:-42} + i - 1 ))"
                          --max-qubits "${QAOA_MAX_QUBITS:-20}"
+                         --aer-noise "${QAOA_AER_NOISE:-none}"
                          --qaoa-output "$qaoa_output/trial_${i}.json")
         fi
         if ! python3 -m bnslqa solve "$dataset_path" "$solver" "${solver_args[@]}" >> "$matrix_file" 2>&1; then
@@ -119,13 +106,11 @@ if [ "$mode" = "Run solver now" ]; then
     done
     echo -e "\nOutputs saved to: $matrix_file"
 
-    # --- 3. EXTRACT UNIQUE MATRICES ---
     unique_matrix_file="${solver_run_dir}/unique_adjacency_matrix.txt"
     python -c "
 import re
 with open('$matrix_file', 'r') as f: data = f.read()
 
-# Pattern to find 'Solution adjacency matrix:' followed by the bracketed lines
 pattern = r'Solution adjacency matrix:\n((?:\[.*?\]\n?)+)'
 matches = re.findall(pattern, data)
 
@@ -170,9 +155,6 @@ else
     echo "Using previous unique matrices from:"
     echo "$unique_matrix_file"
 
-    # Try to infer dataset name and reads from the old folder name.
-    # Example folder:
-    # SA_Matrix_WetGrass_10_100_2026-05-17_12-30-00
     if [[ "$run_folder" =~ ^${solver}_Matrix_(.*)_([0-9]+)_([0-9]+)_([0-9]{4}-[0-9]{2}-[0-9]{2}_[0-9]{2}-[0-9]{2}-[0-9]{2})$ ]]; then
         dataset_name="${BASH_REMATCH[1]}"
         executions="${BASH_REMATCH[2]}"
@@ -210,7 +192,6 @@ fi
 num_matrices=$(wc -l < "$unique_matrix_file")
 echo "Found $num_matrices unique matrices."
 
-# --- 4. SELECT ESTIMATION SCRIPT ---
 if [ "$NONINTERACTIVE" = "1" ]; then
     py_script="$CE_SCRIPT"
     if [ ! -f "$py_script" ]; then
@@ -224,7 +205,6 @@ else
     done
 fi
 
-# --- 5. RUN CARDINALITY ESTIMATION ---
 card_out_dir="dispatch_output/cardinality_estimation_outputs/${solver}-results/${solver}-results_${dataset_name}_${reads}_${timestamp}"
 mkdir -p "$card_out_dir"
 
@@ -234,7 +214,6 @@ progress_bar 0 $num_matrices $start_time
 
 counter=1
 while IFS= read -r matrix; do
-    # Passing matrix string, output directory, and graph ID
     graph_log="$card_out_dir/graph_${counter}_inference.log"
     if ! python3 "$py_script" "$matrix" "$card_out_dir" "$counter" > "$graph_log" 2>&1; then
         echo -e "\nError: cardinality estimation failed for graph $counter. See $graph_log" >&2
@@ -246,7 +225,6 @@ while IFS= read -r matrix; do
 done < "$unique_matrix_file"
 echo -e "\nGraphs and intermediate CSVs saved to: $card_out_dir"
 
-# --- 6. FINAL RESULTS MERGE ---
 results_dir="dispatch_output/results"
 mkdir -p "$results_dir"
 final_csv="${results_dir}/final_queriescardinality_${solver}_${dataset_name}_${reads}_${timestamp}.csv"
@@ -267,12 +245,9 @@ def read_estimates(file):
         raise ValueError(f'Invalid cardinalities in {file}')
     return frame
 
-# Sort files numerically by the graph index extracted from the filename
 csv_files.sort(key=lambda x: int(re.search(r'graph_(\d+)', x).group(1)))
 
-# Start with the first available file
 df_final = read_estimates(csv_files[0])
-# Rename cardinality column to the name of the first found graph
 first_id = re.search(r'graph_(\d+)', csv_files[0]).group(1)
 df_final = df_final.rename(columns={'estimated_cardinality': f'Graph_{first_id}.png'})
 
@@ -287,7 +262,6 @@ df_final.to_csv('$final_csv', index=False)
 " || exit 1
 echo "Process complete! Final report: $final_csv"
 
-# Machine-readable result paths for orchestration scripts
 echo "DISPATCH_SOLVER_DIR=$solver_run_dir"
 echo "DISPATCH_CARD_DIR=$card_out_dir"
 echo "DISPATCH_FINAL_CSV=$final_csv"

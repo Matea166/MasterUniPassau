@@ -55,6 +55,26 @@ def write_result(path, result):
     path.write_text(json.dumps(result, indent=2) + "\n")
 
 
+def aer_noise_model(mode):
+    if mode == "none":
+        return None, {"model": "none"}
+    if mode != "depolarizing":
+        raise ValueError("Aer noise must be none or depolarizing.")
+    from qiskit_aer.noise import NoiseModel, ReadoutError, depolarizing_error
+
+    settings = {"model": "depolarizing", "one_qubit_error": 0.001,
+                "two_qubit_error": 0.01, "readout_error": 0.02,
+                "basis_gates": ["rz", "sx", "x", "cx"], "device_calibrated": False}
+    model = NoiseModel(basis_gates=settings["basis_gates"])
+    model.add_all_qubit_quantum_error(depolarizing_error(settings["one_qubit_error"], 1),
+                                      ["sx", "x"])
+    model.add_all_qubit_quantum_error(depolarizing_error(settings["two_qubit_error"], 2), ["cx"])
+    p = settings["readout_error"]
+    model.add_all_qubit_readout_error(ReadoutError([[1 - p, p], [p, 1 - p]]))
+    settings["noiseless_gates"] = ["rz"]
+    return model, settings
+
+
 def sample_ibm(circuit, backend_name, shots, seed, on_submit):
     from qiskit.transpiler.preset_passmanagers import generate_preset_pass_manager
     from qiskit_ibm_runtime import QiskitRuntimeService, SamplerV2
@@ -76,24 +96,30 @@ def sample_ibm(circuit, backend_name, shots, seed, on_submit):
 
 
 def solve(Q, reps=1, shots=1024, maxiter=30, seed=42, max_qubits=20,
-          accept_sample=None, ibm_backend=None, on_submit=None):
+          accept_sample=None, ibm_backend=None, on_submit=None, aer_noise="none", final_shots=None):
     from qiskit import transpile
     from qiskit_aer import AerSimulator
     from qiskit_aer.primitives import SamplerV2
     from scipy.optimize import minimize
 
     Q = np.asarray(Q, dtype=float)
-    if min(reps, shots, maxiter, max_qubits) < 1:
+    final_shots = shots if final_shots is None else final_shots
+    if min(reps, shots, final_shots, maxiter, max_qubits) < 1:
         raise ValueError("Repetitions, shots, evaluations and qubit limit must be positive.")
     if maxiter < 2 * reps + 2:
         raise ValueError("COBYLA needs at least 2 * reps + 2 evaluations.")
     if len(Q) > max_qubits:
         raise ValueError(f"This QUBO needs {len(Q)} qubits; the simulator limit is {max_qubits}.")
     circuit, angles, scale, offset = build_circuit(Q, reps)
-    simulator = AerSimulator(method="statevector")
+    noise_model, noise_settings = aer_noise_model(aer_noise)
+    training = "ideal Aer simulation" if noise_model is None else "noisy Aer simulation"
+    backend_options = {"method": "statevector"}
+    if noise_model is not None:
+        backend_options.update(noise_model=noise_model, basis_gates=noise_settings["basis_gates"])
+    simulator = AerSimulator(**backend_options)
     compiled = transpile(circuit, simulator, optimization_level=1, seed_transpiler=seed)
     sampler = SamplerV2(default_shots=shots, seed=seed,
-                        options={"backend_options": {"method": "statevector"}})
+                        options={"backend_options": backend_options})
     history = []
     best = {"value": float("inf"), "angles": None}
     started = perf_counter()
@@ -121,11 +147,13 @@ def solve(Q, reps=1, shots=1024, maxiter=30, seed=42, max_qubits=20,
             if on_submit:
                 on_submit({"execution": job, "angles": best["angles"].tolist(),
                            "parameter_order": [parameter.name for parameter in angles],
-                           "seed": seed, "reps": reps, "shots": shots,
-                           "history": history, "parameter_training": "ideal Aer simulation"})
-        counts, backend_info = sample_ibm(logical, ibm_backend, shots, seed, submitted)
+                           "seed": seed, "reps": reps, "shots_per_evaluation": shots,
+                           "training_shots": shots * len(history), "final_shots": final_shots,
+                           "history": history, "parameter_training": training,
+                           "aer_noise": noise_settings})
+        counts, backend_info = sample_ibm(logical, ibm_backend, final_shots, seed, submitted)
     else:
-        counts = sampler.run([bound], shots=shots).result()[0].data.meas.get_counts()
+        counts = sampler.run([bound], shots=final_shots).result()[0].data.meas.get_counts()
     candidates = []
     for bitstring, count in counts.items():
         bits = sample_bits(bitstring, len(Q))
@@ -136,7 +164,7 @@ def solve(Q, reps=1, shots=1024, maxiter=30, seed=42, max_qubits=20,
     if ibm_backend:
         packages.append("qiskit-ibm-runtime")
     return {"status": "completed" if selected else "no_valid_graph", "method": "QAOA",
-            "parameter_training": "ideal Aer simulation", "execution": backend_info,
+            "parameter_training": training, "aer_noise": noise_settings, "execution": backend_info,
             "qubits": len(Q), "reps": reps, "shots_per_evaluation": shots,
             "training_shots": shots * len(history), "final_shots": sum(counts.values()),
             "seed": seed, "max_evaluations": maxiter,
@@ -158,9 +186,13 @@ def main(args):
 
     examples, n, states, name, _ = getData(args.dataset)
     width = n * (n - 1) + 2 * n + n * (n - 1) // 2
+    _, noise_settings = aer_noise_model(args.aer_noise)
     plan = {"dataset": name, "attributes": n, "qubits": width,
             "statevector_gib": 16 * 2 ** width / 1024 ** 3,
-            "parameter_training": "ideal Aer simulation", "backend": args.qaoa_backend}
+            "shots_per_evaluation": args.shots,
+            "final_shots": args.shots if args.final_shots is None else args.final_shots,
+            "parameter_training": "ideal Aer simulation" if args.aer_noise == "none" else "noisy Aer simulation",
+            "aer_noise": noise_settings, "backend": args.qaoa_backend}
     if args.dry_run:
         print(json.dumps(plan, indent=2))
         return
@@ -188,7 +220,7 @@ def main(args):
                    seed=args.seed, max_qubits=args.max_qubits,
                    accept_sample=lambda bits: graph_is_valid(bits, indices, n),
                    ibm_backend=args.ibm_backend if args.qaoa_backend == "ibm" else None,
-                   on_submit=on_submit)
+                   on_submit=on_submit, aer_noise=args.aer_noise, final_shots=args.final_shots)
     result.update(metadata)
     write_result(output, result)
     print(f"QAOA result: {output}")

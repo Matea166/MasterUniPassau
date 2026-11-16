@@ -15,17 +15,20 @@ def main():
                                         each with an annealing time of 99 microseconds''')
   solver_parser.add_argument('dataset', type=str, help='dataset path')
   solver_parser.add_argument('strategy', type=str, choices=['ES','SA','QA','SQA','QAOA'],
-                             help='strategy: exhaustive search, SA, quantum annealing, SQA or gate-based QAOA')
+                             help='solver strategy')
   solver_parser.add_argument('-r','--reads', type=int, metavar='NUM', default=10**4,
                              help='number of reads for annealing strategies, SA has no limits, QA can have at most 10000 [default: 10000]')
   solver_parser.add_argument('-a','--anneal', type=int, metavar='T', default=99,
                              help='annealing time in microseconds for each read (only for QA), up to 2000 [default: 99]')
-  solver_parser.add_argument('--shots', type=int, default=1024, help='QAOA shots per evaluation and final sample')
+  solver_parser.add_argument('--shots', type=int, default=1024, help='QAOA training shots per evaluation')
+  solver_parser.add_argument('--final-shots', type=int, help='QAOA final sampling shots [default: same as --shots]')
   solver_parser.add_argument('--reps', type=int, default=1, help='QAOA circuit layers')
   solver_parser.add_argument('--maxiter', type=int, default=30, help='QAOA optimizer evaluation budget')
   solver_parser.add_argument('--seed', type=int, default=42, help='QAOA simulator and optimizer seed')
   solver_parser.add_argument('--max-qubits', type=int, default=20, help='QAOA local simulation qubit limit')
   solver_parser.add_argument('--qaoa-backend', choices=['aer','ibm'], default='aer')
+  solver_parser.add_argument('--aer-noise', choices=['none','depolarizing'], default='none',
+                             help='QAOA Aer noise model for optimization and Aer final sampling')
   solver_parser.add_argument('--ibm-backend', help='explicit IBM backend name; parameters are trained on Aer')
   solver_parser.add_argument('--qaoa-output', help='QAOA result JSON path')
   solver_parser.add_argument('--dry-run', action='store_true', help='report QAOA resources without execution')
