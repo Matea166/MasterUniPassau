@@ -84,7 +84,10 @@ def calcAlphaijSum(alpha, parentSet, i, j, states):
   return sum
 
 def calcJthState(j, parentSet, states):
-  return divmod(j, states[parentSet[1]])
+  p0 = parentSet[0]
+  sp0 = j//states[p0]
+  sp1 = j%states[p0]
+  return sp0, sp1
 
 def calcNijk(examples, parentSet, i, j, k, states):
   count = 0
