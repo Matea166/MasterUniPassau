@@ -1,4 +1,11 @@
 __pycache__/
+secrets/
+.secrets/
+*.key
+ibm_api_key.txt
+.qiskit/
+qiskit-ibm.json
+.env
 .python-version
 
 bnslqa/problems/test

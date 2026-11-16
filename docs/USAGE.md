@@ -101,6 +101,28 @@ References: [IBM QAOA tutorial](https://quantum.cloud.ibm.com/docs/en/tutorials/
 and [Aer SamplerV2](https://qiskit.github.io/qiskit-aer/stubs/qiskit_aer.primitives.SamplerV2.html).
 Noise follows the [Aer noise model API](https://qiskit.github.io/qiskit-aer/stubs/qiskit_aer.noise.NoiseModel.html).
 
+### IBM smoke test
+
+Put the API key in a plain-text file outside the repository. From the repository
+root, run:
+
+```bash
+IBM_API_KEY_FILE=/absolute/path/ibm_api_key.txt \
+IBM_BACKEND=BACKEND_NAME IBM_INSTANCE=INSTANCE_CRN \
+docker compose -f docker-compose.quantum.yml run --build --rm quantum
+```
+
+This uses only Rain and WetGrass from the existing 100-row expected-value
+generator: 7 qubits, one layer, COBYLA, 30 evaluations and 1,024 training shots.
+It submits one IBM job with 256 final shots and a 60-second
+[execution limit](https://quantum.cloud.ibm.com/docs/en/ibm-quantum-compute/max-execution-time).
+The limit applies to QPU usage, not queue time. Larger experiments do not start automatically.
+
+Send back the ZIP under `results/ibm/`. It contains the input, results, settings,
+code hashes and log, including a job ID if submission succeeded. Runtime failures
+also produce a ZIP; check it before submitting another job. The key is mounted
+read-only and excluded from the archive. No account is saved.
+
 ## Repository layout
 
 | Directory | Purpose |

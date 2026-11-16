@@ -75,18 +75,29 @@ def aer_noise_model(mode):
     return model, settings
 
 
-def sample_ibm(circuit, backend_name, shots, seed, on_submit):
+def sample_ibm(circuit, backend_name, shots, seed, on_submit,
+               api_key_file=None, instance=None, max_execution_time=None):
     from qiskit.transpiler.preset_passmanagers import generate_preset_pass_manager
     from qiskit_ibm_runtime import QiskitRuntimeService, SamplerV2
 
-    backend = QiskitRuntimeService().backend(backend_name)
+    if max_execution_time is not None and max_execution_time < 1:
+        raise ValueError("IBM maximum execution time must be positive.")
+    account = {"instance": instance} if instance else {}
+    if api_key_file:
+        token = Path(api_key_file).read_text().strip()
+        if not token:
+            raise ValueError("The IBM API key file is empty.")
+        account.update(channel="ibm_quantum_platform", token=token)
+    backend = QiskitRuntimeService(**account).backend(backend_name)
     if circuit.num_qubits > backend.num_qubits:
         raise ValueError("The selected IBM backend has too few qubits.")
     manager = generate_preset_pass_manager(backend=backend, optimization_level=3,
                                            seed_transpiler=seed)
     compiled = manager.run(circuit)
-    job = SamplerV2(mode=backend).run([compiled], shots=shots)
+    options = {"max_execution_time": max_execution_time} if max_execution_time is not None else {}
+    job = SamplerV2(mode=backend, options=options).run([compiled], shots=shots)
     metadata = {"backend": backend.name, "job_id": job.job_id(),
+                "max_execution_time": max_execution_time,
                 "compiled_qubits": compiled.num_qubits, "depth": compiled.depth(),
                 "two_qubit_gates": sum(item.operation.num_qubits == 2 for item in compiled.data)}
     if on_submit:
@@ -96,7 +107,8 @@ def sample_ibm(circuit, backend_name, shots, seed, on_submit):
 
 
 def solve(Q, reps=1, shots=1024, maxiter=30, seed=42, max_qubits=20,
-          accept_sample=None, ibm_backend=None, on_submit=None, aer_noise="none", final_shots=None):
+          accept_sample=None, ibm_backend=None, on_submit=None, aer_noise="none", final_shots=None,
+          ibm_api_key_file=None, ibm_instance=None, ibm_max_execution_time=None):
     from qiskit import transpile
     from qiskit_aer import AerSimulator
     from qiskit_aer.primitives import SamplerV2
@@ -151,7 +163,9 @@ def solve(Q, reps=1, shots=1024, maxiter=30, seed=42, max_qubits=20,
                            "training_shots": shots * len(history), "final_shots": final_shots,
                            "history": history, "parameter_training": training,
                            "aer_noise": noise_settings})
-        counts, backend_info = sample_ibm(logical, ibm_backend, final_shots, seed, submitted)
+        counts, backend_info = sample_ibm(logical, ibm_backend, final_shots, seed, submitted,
+                                          api_key_file=ibm_api_key_file, instance=ibm_instance,
+                                          max_execution_time=ibm_max_execution_time)
     else:
         counts = sampler.run([bound], shots=final_shots).result()[0].data.meas.get_counts()
     candidates = []
@@ -193,6 +207,9 @@ def main(args):
             "final_shots": args.shots if args.final_shots is None else args.final_shots,
             "parameter_training": "ideal Aer simulation" if args.aer_noise == "none" else "noisy Aer simulation",
             "aer_noise": noise_settings, "backend": args.qaoa_backend}
+    if args.qaoa_backend == "ibm":
+        plan["ibm_backend"] = args.ibm_backend
+        plan["ibm_max_execution_time"] = args.ibm_max_execution_time
     if args.dry_run:
         print(json.dumps(plan, indent=2))
         return
@@ -203,6 +220,10 @@ def main(args):
         raise ValueError("IBM execution requires an explicit --ibm-backend name.")
     if args.qaoa_backend == "aer" and args.ibm_backend:
         raise ValueError("--ibm-backend requires --qaoa-backend ibm.")
+    if args.qaoa_backend == "aer" and (args.ibm_api_key_file or args.ibm_instance or args.ibm_max_execution_time is not None):
+        raise ValueError("IBM account and execution options require --qaoa-backend ibm.")
+    if args.ibm_max_execution_time is not None and args.ibm_max_execution_time < 1:
+        raise ValueError("IBM maximum execution time must be positive.")
     Q, indices, _ = calcQUBOMatrix(examples, n, states)
     matrix = torch.tensor(Q)
     Q = matrix.numpy().astype(float)
@@ -220,7 +241,9 @@ def main(args):
                    seed=args.seed, max_qubits=args.max_qubits,
                    accept_sample=lambda bits: graph_is_valid(bits, indices, n),
                    ibm_backend=args.ibm_backend if args.qaoa_backend == "ibm" else None,
-                   on_submit=on_submit, aer_noise=args.aer_noise, final_shots=args.final_shots)
+                   on_submit=on_submit, aer_noise=args.aer_noise, final_shots=args.final_shots,
+                   ibm_api_key_file=args.ibm_api_key_file, ibm_instance=args.ibm_instance,
+                   ibm_max_execution_time=args.ibm_max_execution_time)
     result.update(metadata)
     write_result(output, result)
     print(f"QAOA result: {output}")

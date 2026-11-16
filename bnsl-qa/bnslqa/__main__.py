@@ -30,6 +30,9 @@ def main():
   solver_parser.add_argument('--aer-noise', choices=['none','depolarizing'], default='none',
                              help='QAOA Aer noise model for optimization and Aer final sampling')
   solver_parser.add_argument('--ibm-backend', help='explicit IBM backend name; parameters are trained on Aer')
+  solver_parser.add_argument('--ibm-api-key-file', type=str, help='file containing the IBM API key')
+  solver_parser.add_argument('--ibm-instance', help='IBM Quantum compute instance CRN')
+  solver_parser.add_argument('--ibm-max-execution-time', type=int, help='IBM job execution limit in seconds')
   solver_parser.add_argument('--qaoa-output', help='QAOA result JSON path')
   solver_parser.add_argument('--dry-run', action='store_true', help='report QAOA resources without execution')
 

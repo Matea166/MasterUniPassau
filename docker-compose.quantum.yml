@@ -1,0 +1,21 @@
+services:
+  quantum:
+    build:
+      context: .
+      dockerfile: docker/app/Dockerfile
+    working_dir: /workspace
+    entrypoint: ["python", "scripts/run_ibm_smoke.py"]
+    environment:
+      PYTHONPATH: /workspace:/workspace/bnsl-qa:/workspace/bnsl
+      IBM_BACKEND: ${IBM_BACKEND:-}
+      IBM_INSTANCE: ${IBM_INSTANCE:-}
+      OMP_NUM_THREADS: "1"
+      OPENBLAS_NUM_THREADS: "1"
+    volumes:
+      - ./results/ibm:/workspace/results/ibm
+    secrets:
+      - ibm_api_key
+
+secrets:
+  ibm_api_key:
+    file: ${IBM_API_KEY_FILE:?Set IBM_API_KEY_FILE to a key file outside the repository}
