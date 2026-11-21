@@ -23,7 +23,6 @@ def main():
     print("\n--- Training Bayesian Network ---")
     relation_discrete = Relation(df)
     bn = BayesianNetwork(cl_max_rows=30000).fit(relation_discrete)
-    bn.update(relation_discrete)
     print("\n--- Generating Graph ---")
     try:
         dot_file = os.path.join(output_dir, f"{csv_file}_bn.dot")
