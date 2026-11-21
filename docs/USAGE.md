@@ -54,8 +54,8 @@ docker compose exec -T app bash scripts/make_report.sh
 Set `-e QUICK=1` before `app` to use quick mode. Parameters are in
 [`config/`](../config/): reads are samples per solver run, and trials are
 independent runs. Quick mode uses the headline configuration for WetGrass,
-NHANES and Market Basket. TPC-DS always uses SA 20 × 100 and SQA 10 × 1,000
-(trials × reads).
+NHANES and Market Basket. TPC-DS always uses 5 trials × 500 reads for
+both SA and SQA.
 
 The random check evaluates up to 1,000 generated DAGs on Market Basket, 100 rows;
 quick mode requests 20. Graphs have at most two parents per node. Run the Market

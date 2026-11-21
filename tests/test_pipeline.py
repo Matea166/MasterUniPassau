@@ -35,7 +35,7 @@ class PipelineTests(unittest.TestCase):
                         run = subprocess.run(["bash", "-c", command], env=env, capture_output=True, text=True)
                         self.assertEqual(run.returncode, 0, run.stderr)
                         if dataset == "tpcds_store_sales":
-                            wanted = ["20:100" if solver == "SA" else "10:1000"]
+                            wanted = ["5:500"]
                         else:
                             full, headline = expected[dataset]
                             wanted = full if quick == "0" else [headline]
@@ -108,6 +108,10 @@ class PipelineTests(unittest.TestCase):
                 shutil.copy(ROOT / "scripts/lib.sh", root / "scripts/lib.sh")
                 shutil.copy(ROOT / f"config/{dataset}.env", root / f"config/{dataset}.env")
                 if dataset == "tpcds_store_sales":
+                    # Exercise the runner's existing per-solver settings independently
+                    # of the matched production budget.
+                    with (root / "config/tpcds_store_sales.env").open("a") as handle:
+                        handle.write("\nSA_TRIALS=20\nSA_READS=100\nSQA_TRIALS=10\nSQA_READS=1000\n")
                     csv_name, solver_name = "TPCDS_store_sales_10000", "TPCDS_store_sales_10000"
                 else:
                     csv_name, solver_name = "DataMining_MarketBasket_10000", "MarketBasket10000"

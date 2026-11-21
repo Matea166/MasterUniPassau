@@ -43,7 +43,7 @@ QUICK=1 ./reproduce_all.sh
 
 Quick mode reduces the WetGrass, NHANES and Market Basket configuration grids
 and the random-structure check. TPC-DS uses the same fixed settings in both modes:
-SA 20 trials × 100 reads; SQA 10 trials × 1,000 reads.
+SA and SQA each use 5 trials × 500 reads.
 
 ## Data and results
 

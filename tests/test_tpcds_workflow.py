@@ -22,6 +22,10 @@ class TpcdsReportTests(unittest.TestCase):
         (self.root / "workloads").mkdir()
         source = Path(__file__).resolve().parents[1]
         shutil.copy(source / "config/tpcds_store_sales.env", self.root / "config")
+        # Keep this fixture independent of production defaults: the report
+        # must also correctly handle separate solver budgets when supplied.
+        with (self.root / "config/tpcds_store_sales.env").open("a") as handle:
+            handle.write("\nSA_TRIALS=20\nSA_READS=100\nSQA_TRIALS=10\nSQA_READS=1000\n")
         self.workload = pd.DataFrame({
             "query_id": ["Q02", "Q01"],
             "sql": ["SELECT * FROM store_sales WHERE ss_quantity = 2;",
