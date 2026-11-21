@@ -84,6 +84,9 @@ def calcAlphaijSum(alpha, parentSet, i, j, states):
   return sum
 
 def calcJthState(j, parentSet, states):
+  if len(states) > 7:
+    return divmod(j, states[parentSet[1]])
+
   p0 = parentSet[0]
   sp0 = j//states[p0]
   sp1 = j%states[p0]

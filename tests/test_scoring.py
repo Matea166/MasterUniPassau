@@ -10,6 +10,17 @@ from bnslqa.solvers.solver_utils import getNumExamples
 
 
 class ScoringTests(unittest.TestCase):
+    def test_parent_state_count_uses_seven_variable_cutoff(self):
+        # These rows distinguish the existing enumeration from divmod:
+        # j=2 matches (1, 0) below the cutoff and (0, 2) above it.
+        for n, expected in ((4, 2), (6, 2), (7, 2), (8, 3)):
+            with self.subTest(n=n):
+                states = [2, 4, 2] + [2] * (n - 3)
+                prefix_rows = [[1, 0, 0], [1, 0, 1]] + [[0, 2, 1]] * 3
+                examples = [row + [0] * (n - 3) for row in prefix_rows]
+                count = qubo.calcNijSum(examples, (0, 1), 2, 2, states)
+                self.assertEqual(count, expected)
+
     def test_heterogeneous_domain_scores_match_independent_counts(self):
         states = [2, 3, 4]
         examples = [list(row) for row in itertools.product(*(range(n) for n in states))]
