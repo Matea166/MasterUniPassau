@@ -22,7 +22,6 @@ def main():
         df[col] = df[col].astype(str)
     relation = Relation(df)
     bn = BayesianNetwork(cl_max_rows=30000).fit(relation)
-    bn.update(relation)
     print("\n--- Generating Graph ---")
     try:
         dot_file = os.path.join(output_dir, f"{csv_file}_bn.dot")

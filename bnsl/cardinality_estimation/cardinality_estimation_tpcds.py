@@ -31,7 +31,6 @@ def main():
     print("\n--- Training Bayesian Network ---")
     relation = Relation(df)
     bn = BayesianNetwork(cl_max_rows=30000).fit(relation)
-    bn.update(relation)
     print("Bayesian Network training complete.")
     print("\n--- Generating Graph ---")
     try:
