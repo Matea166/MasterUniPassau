@@ -79,7 +79,7 @@ def experiment_section(exp, title):
     if os.path.isfile(figure):
         parts.append(
             "<h3>Sorted clamped q-error profiles</h3>"
-            '<p class="meta">Per-query clamped q-errors of the stable SA and SQA '
+            '<p class="meta">Per-query clamped q-errors of the stable solver '
             "estimates and the baselines, sorted per estimator.</p>"
             f'<img class="fig-medium" src="{exp}/figure_6_1_sorted_qerror.png" '
             'alt="Sorted q-error profiles">')
@@ -101,13 +101,13 @@ def tpcds_section():
     tables = os.path.join(exp_dir, "reproduced_tables")
     parts = ["<h2>E7: TPC-DS Store Sales, N = 10,000</h2>",
              "<p>Eight attributes and 20 fixed single-table queries. "
-             "Tree and annealing use the same coarse groups; PostgreSQL uses "
+             "Tree and QUBO solvers use the same coarse groups; PostgreSQL uses "
              "the raw data with ordinary ANALYZE statistics. "
-             "SA/SQA values use the stable-estimate aggregation described above.</p>"]
+             "Solver estimates use the stable-estimate aggregation described above.</p>"]
     if not os.path.isfile(os.path.join(tables, "cardinality_estimates.csv")):
         parts.append('<p class="missing">TPC-DS results not generated yet.</p>')
         return "\n".join(parts)
-    for filename, title in [("solver_settings.csv", "Annealing settings"),
+    for filename, title in [("solver_settings.csv", "Solver settings"),
                             ("qerror_summary.csv", "Clamped q-error summary"),
                             ("cardinality_estimates.csv", "Estimates and q-errors by query")]:
         path = os.path.join(tables, filename)
@@ -166,10 +166,10 @@ For scoring only, both the estimate and true count are floored at 1 before
 their ratio is calculated. The original counts are retained. A score of 1
 does not necessarily mean an exact prediction: exact-match percentages
 compare the original counts with absolute tolerance 1e-9. Metrics use CSV
-precision before display rounding; stable SA/SQA estimates retain the
+precision before display rounding; stable solver estimates retain the
 two-decimal modal grouping and use the upper-median original value within
 the selected group.</p>
-<p>SA and SQA are stochastic solvers, so structures and estimates can vary
+<p>SA, SQA and QAOA are stochastic solvers, so structures and estimates can vary
 between runs.</p>
 </div>
 {''.join(sections)}

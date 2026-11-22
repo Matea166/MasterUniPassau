@@ -51,6 +51,14 @@ import_csv_into_db() { # $1 = db, $2 = table, $3 = csv path relative to bnsl/dat
 build_config_pairs() {
     CONFIG_PAIRS=()
     local solver="${1:-SA}"
+    if [ "$solver" = "QAOA" ]; then
+        if [ -z "${QAOA_TRIALS:-}${QAOA_READS:-}" ]; then
+            solver="SA"
+        elif [ -z "${QAOA_TRIALS:-}" ] || [ -z "${QAOA_READS:-}" ]; then
+            echo "Error: specify both QAOA_TRIALS and QAOA_READS." >&2
+            return 1
+        fi
+    fi
     local trials_var="${solver}_TRIALS" reads_var="${solver}_READS"
     if [ -n "${!trials_var:-}" ] && [ -n "${!reads_var:-}" ]; then
         CONFIG_PAIRS=("${!trials_var}:${!reads_var}")
@@ -124,17 +132,21 @@ run_ce_experiment() { # $1 = config file relative to repo root
     fi
     printf 'solver,trials,reads\n' > "$exp_dir/configurations.csv"
 
-    local headline_sa="" headline_sqa=""
+    local headline_sa="" headline_sqa="" headline_qaoa=""
     local solver pair trials reads tag dlog qlog solver_dir final_csv qerr_file
     local trials_var reads_var headline_trials headline_reads
 
-    for solver in SA SQA; do
+    for solver in SA SQA QAOA; do
         build_config_pairs "$solver"
         log "[$EXPERIMENT] ${#CONFIG_PAIRS[@]} $solver configurations (QUICK=$QUICK)"
         trials_var="${solver}_TRIALS"
         reads_var="${solver}_READS"
         headline_trials="${!trials_var:-${HEADLINE_TRIALS:-}}"
         headline_reads="${!reads_var:-${HEADLINE_READS:-}}"
+        if [ "$solver" = "QAOA" ]; then
+            headline_trials="${QAOA_TRIALS:-${SA_TRIALS:-${HEADLINE_TRIALS:-}}}"
+            headline_reads="${QAOA_READS:-${SA_READS:-${HEADLINE_READS:-}}}"
+        fi
         for pair in "${CONFIG_PAIRS[@]}"; do
             trials="${pair%%:*}"
             reads="${pair##*:}"
@@ -144,8 +156,11 @@ run_ce_experiment() { # $1 = config file relative to repo root
 
             log "[$EXPERIMENT] $tag: solver + cardinality estimation"
             (cd "$REPO_ROOT/bnsl-qa" &&
+                export QAOA_BACKEND QAOA_REPS QAOA_SHOTS QAOA_FINAL_SHOTS QAOA_MAXITER QAOA_SEED \
+                       IBM_BACKEND IBM_INSTANCE IBM_API_KEY_FILE &&
                 DATASET_TXT="$SOLVER_TXT" SOLVER="$solver" TRIALS="$trials" READS="$reads" \
                 CE_SCRIPT="$CE_SCRIPT_QA" CE_DATASET_CSV="$csv_from_qa" \
+                QAOA_RESULTS_DIR="$exp_dir/qaoa/${tag}_$(date +%Y-%m-%d_%H-%M-%S)" \
                 bash dispatch.sh) 2>&1 | tee "$dlog"
 
             solver_dir=$(extract_result_var DISPATCH_SOLVER_DIR "$dlog")
@@ -172,11 +187,11 @@ run_ce_experiment() { # $1 = config file relative to repo root
             cp "$REPO_ROOT/bnsl-qa/$qerr_file" "$exp_dir/qerrors/qerrors_${tag}.csv"
 
             if [ "$trials" = "$headline_trials" ] && [ "$reads" = "$headline_reads" ]; then
-                if [ "$solver" = "SA" ]; then
-                    headline_sa="$final_csv"
-                else
-                    headline_sqa="$final_csv"
-                fi
+                case "$solver" in
+                    SA) headline_sa="$final_csv" ;;
+                    SQA) headline_sqa="$final_csv" ;;
+                    QAOA) headline_qaoa="$final_csv" ;;
+                esac
             fi
         done
     done
@@ -203,10 +218,11 @@ run_ce_experiment() { # $1 = config file relative to repo root
     cp "$bench_final" "$exp_dir/chowliu_pg_final.csv"
 
     # Merged grouped bar chart for the headline configuration
-    if [ -n "$headline_sa" ] && [ -n "$headline_sqa" ]; then
+    if [ -n "$headline_sa" ] && [ -n "$headline_sqa" ] && [ -n "$headline_qaoa" ]; then
         log "[$EXPERIMENT] merging headline comparison figure"
         (cd "$REPO_ROOT/bnsl" &&
             SA_FILE="../bnsl-qa/$headline_sa" SQA_FILE="../bnsl-qa/$headline_sqa" \
+            QAOA_FILE="../bnsl-qa/$headline_qaoa" \
             BN_FILE="$bench_final" MERGE_OUTPUT_DIR="$exp_dir" \
             bash merge_results.sh) 2>&1 | tee "$log_dir/merge.log"
 

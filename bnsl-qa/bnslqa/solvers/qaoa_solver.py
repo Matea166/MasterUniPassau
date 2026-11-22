@@ -9,6 +9,10 @@ import networkx as nx
 import numpy as np
 
 
+class InvalidGraphError(RuntimeError):
+    pass
+
+
 def ising_coefficients(Q):
     Q = np.asarray(Q, dtype=float)
     if Q.ndim != 2 or Q.shape[0] != Q.shape[1] or not Q.size or not np.isfinite(Q).all():
@@ -111,7 +115,7 @@ def sample_ibm(circuit, backend_name, shots, seed, on_submit,
     return counts, metadata
 
 
-def solve(Q, reps=1, shots=1024, maxiter=None, seed=42, max_qubits=20,
+def solve(Q, reps=1, shots=1024, maxiter=None, seed=42,
           accept_sample=None, ibm_backend=None, on_submit=None, final_shots=None,
           ibm_api_key_file=None, ibm_instance=None):
     from qiskit import transpile
@@ -121,12 +125,10 @@ def solve(Q, reps=1, shots=1024, maxiter=None, seed=42, max_qubits=20,
 
     Q = np.asarray(Q, dtype=float)
     final_shots = shots if final_shots is None else final_shots
-    if min(reps, shots, final_shots, max_qubits) < 1:
-        raise ValueError("Repetitions, shots and qubit limit must be positive.")
+    if min(reps, shots, final_shots) < 1:
+        raise ValueError("Repetitions and shots must be positive.")
     if maxiter is not None and maxiter < 2 * reps + 2:
         raise ValueError("COBYLA needs at least 2 * reps + 2 evaluations.")
-    if len(Q) > max_qubits:
-        raise ValueError(f"This QUBO needs {len(Q)} qubits; the simulator limit is {max_qubits}.")
     circuit, angles, scale, offset = build_circuit(Q, reps)
     noise_settings = {"model": "none"}
     training = "ideal Aer simulation"
@@ -174,9 +176,10 @@ def solve(Q, reps=1, shots=1024, maxiter=None, seed=42, max_qubits=20,
     candidates = []
     for bitstring, count in counts.items():
         bits = sample_bits(bitstring, len(Q))
-        if accept_sample is None or accept_sample(bits):
-            candidates.append((float(bits @ Q @ bits), -count, bitstring, bits.tolist()))
+        candidates.append((float(bits @ Q @ bits), -count, bitstring, bits.tolist()))
     selected = min(candidates) if candidates else None
+    if selected is not None and accept_sample is not None and not accept_sample(np.array(selected[3], dtype=int)):
+        selected = None
     packages = ["qiskit", "qiskit-aer", "numpy", "scipy"]
     if ibm_backend:
         packages.append("qiskit-ibm-runtime")
@@ -215,9 +218,6 @@ def main(args):
     if args.dry_run:
         print(json.dumps(plan, indent=2))
         return
-    if width > args.max_qubits:
-        raise ValueError(f"This QUBO needs {width} qubits. Use --dry-run to inspect resources; "
-                         "increase --max-qubits only if the simulator has enough memory.")
     if args.qaoa_backend == "aer" and args.ibm_backend:
         raise ValueError("--ibm-backend requires --qaoa-backend ibm.")
     if args.qaoa_backend == "aer" and (args.ibm_api_key_file or args.ibm_instance):
@@ -236,17 +236,23 @@ def main(args):
         print(f"IBM job submitted: {job['execution']['job_id']}", flush=True)
 
     result = solve(Q, reps=args.reps, shots=args.shots, maxiter=getattr(args, "maxiter", None),
-                   seed=args.seed, max_qubits=args.max_qubits,
+                   seed=args.seed,
                    accept_sample=lambda bits: graph_is_valid(bits, indices, n),
                    ibm_backend=(args.ibm_backend or "auto") if args.qaoa_backend == "ibm" else None,
                    on_submit=on_submit, final_shots=args.final_shots,
                    ibm_api_key_file=args.ibm_api_key_file, ibm_instance=args.ibm_instance)
+    result["adjacency_matrix"] = None
+    if result["best_bits"] is not None:
+        adjacency = np.zeros((n, n), dtype=int)
+        for (kind, parent, child), bit in zip(indices, result["best_bits"]):
+            if kind == "d":
+                adjacency[parent, child] = bit
+        result["adjacency_matrix"] = adjacency.tolist()
     result.update(metadata)
     write_result(output, result)
     print(f"QAOA result: {output}")
     if result["best_bits"] is None:
-        print("No valid DAG sampled.")
-        return
+        raise InvalidGraphError("Minimum-energy sample failed graph validation.")
     print("Solution adjacency matrix:")
     printAdjMat(n, torch.tensor(result["best_bits"]))
     print(f"QUBO energy: {result['best_energy']}")

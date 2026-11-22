@@ -7,13 +7,14 @@ import numpy as np
 from bnsl.workloads import normalize_query
 
 if len(sys.argv) < 4:
-    print("Usage: python3 merge_csv_logic.py <sa_path> <sqa_path> <bn_path> [rng_path]")
+    print("Usage: python3 merge_csv_logic.py <sa_path> <sqa_path> <bn_path> [rng_path] [qaoa_path]")
     sys.exit(1)
 
 sa_path = sys.argv[1]
 sqa_path = sys.argv[2]
 bn_path = sys.argv[3]
 rng_path = sys.argv[4] if len(sys.argv) > 4 else "NONE"
+qaoa_path = sys.argv[5] if len(sys.argv) > 5 else "NONE"
 
 
 def extract_dataset_name(path):
@@ -68,6 +69,9 @@ def align_queries(reference, estimates, label):
 df_sa = prepare_queries(df_sa, "SA")
 df_sqa = align_queries(df_sa, prepare_queries(df_sqa, "SQA"), "SQA")
 df_bn = align_queries(df_sa, prepare_queries(df_bn, "Tree/PostgreSQL"), "Tree/PostgreSQL")
+solver_frames = {"SA": df_sa, "SQA": df_sqa}
+if qaoa_path != "NONE":
+    solver_frames["QAOA"] = align_queries(df_sa, prepare_queries(pd.read_csv(qaoa_path), "QAOA"), "QAOA")
 
 if rng_path != "NONE":
     df_rng = align_queries(df_sa, prepare_queries(df_rng, "Random control"), "Random control")
@@ -97,8 +101,7 @@ def format_graph_cols(df):
 final_output = pd.DataFrame({
     "query": df_sa["query_sql"],
     "join_key": df_sa["join_key"],
-    "SA_str": format_graph_cols(df_sa),
-    "SQA_str": format_graph_cols(df_sqa)
+    **{f"{solver}_str": format_graph_cols(frame) for solver, frame in solver_frames.items()}
 })
 
 df_bn_subset = df_bn[[
@@ -129,20 +132,18 @@ def get_graph_data(df, prefix):
     return data
 
 
-sa_graphs = get_graph_data(df_sa, "SA")
-sqa_graphs = get_graph_data(df_sqa, "SQA")
+solver_graphs = {solver: get_graph_data(frame, solver) for solver, frame in solver_frames.items()}
 
-plot_df = pd.concat([merged, sa_graphs, sqa_graphs], axis=1)
+plot_df = pd.concat([merged, *solver_graphs.values()], axis=1)
 
 value_cols = ["bn_est_cardinality", "true_cardinality", "pg_est_cardinality"]
-value_cols += list(sa_graphs.columns) + list(sqa_graphs.columns) + rng_cols
+value_cols += [col for frame in solver_graphs.values() for col in frame.columns] + rng_cols
 if plot_df[value_cols].isna().any().any():
     raise ValueError("Missing cardinality values; comparison CSV and plot were not generated.")
 
 csv_dict = {
     "query": merged["query"],
-    "SA": merged["SA_str"],
-    "SQA": merged["SQA_str"],
+    **{solver: merged[f"{solver}_str"] for solver in solver_frames},
     "BNSL": merged["bn_est_cardinality"],
     "true": merged["true_cardinality"],
     "postgres_est": merged["pg_est_cardinality"]
@@ -168,21 +169,16 @@ print(f"CSV saved: {output_base}.csv")
 
 print("Generating high-contrast separated visualization...")
 
-sa_cols = [c for c in plot_df.columns if c.startswith("SA_Graph")]
-sqa_cols = [c for c in plot_df.columns if c.startswith("SQA_Graph")]
 bn_col = "bn_est_cardinality"
 pg_col = "pg_est_cardinality"
 true_col = "true_cardinality"
 
-group_sa = len(sa_cols) > 4
-group_sqa = len(sqa_cols) > 4
 group_rng = len(rng_cols) > 4
 
-n_sa_plot = 1 if group_sa else len(sa_cols)
-n_sqa_plot = 1 if group_sqa else len(sqa_cols)
 n_rng_plot = (1 if group_rng else len(rng_cols)) if rng_cols else 0
 
-num_estimators = 3 + n_sa_plot + n_sqa_plot + n_rng_plot
+num_estimators = 3 + sum(1 if len(frame.columns) > 4 else len(frame.columns)
+                         for frame in solver_graphs.values()) + n_rng_plot
 
 labels = [f"Q{i + 1}" for i in range(len(plot_df))]
 x = np.arange(len(labels))
@@ -238,21 +234,21 @@ r_true = ax.bar(
 add_bar_labels(r_true)
 current_pos += (bar_width + bar_gap)
 
-if len(sa_cols) > 0:
-    if group_sa:
-        data_sa = plot_df[sa_cols]
-        avgs = data_sa.mean(axis=1, skipna=True).round(1)
-        sems = data_sa.sem(axis=1, skipna=True).round(1)
-        mins = data_sa.min(axis=1).round(1)
-        maxs = data_sa.max(axis=1).round(1)
+colors = {"SA": "#2980b9", "SQA": "#8e44ad", "QAOA": "#c0392b"}
+for solver, data in solver_graphs.items():
+    if len(data.columns) > 4:
+        avgs = data.mean(axis=1, skipna=True).round(1)
+        sems = data.sem(axis=1, skipna=True).round(1)
+        mins = data.min(axis=1).round(1)
+        maxs = data.max(axis=1).round(1)
 
-        r_sa = ax.bar(
+        bars = ax.bar(
             current_pos,
             avgs,
             bar_width,
             yerr=sems,
-            label="SA (AVG + SEM)",
-            color="#2980b9",
+            label=f"{solver} (AVG + SEM)",
+            color=colors[solver],
             capsize=4
         )
 
@@ -261,55 +257,18 @@ if len(sa_cols) > 0:
             for a, m, mx in zip(avgs, mins, maxs)
         ]
 
-        add_bar_labels(r_sa, extra_info=info, yerr=sems, offset_points=10)
+        add_bar_labels(bars, extra_info=info, yerr=sems, offset_points=10)
         current_pos += (bar_width + bar_gap)
     else:
-        for col in sa_cols:
-            r_sa = ax.bar(
+        for col in data.columns:
+            bars = ax.bar(
                 current_pos,
                 plot_df[col],
                 bar_width,
                 label=col,
-                color="#2980b9"
+                color=colors[solver]
             )
-            add_bar_labels(r_sa)
-            current_pos += (bar_width + bar_gap)
-
-if len(sqa_cols) > 0:
-    if group_sqa:
-        data_sqa = plot_df[sqa_cols]
-        avgs = data_sqa.mean(axis=1, skipna=True).round(1)
-        sems = data_sqa.sem(axis=1, skipna=True).round(1)
-        mins = data_sqa.min(axis=1).round(1)
-        maxs = data_sqa.max(axis=1).round(1)
-
-        r_sqa = ax.bar(
-            current_pos,
-            avgs,
-            bar_width,
-            yerr=sems,
-            label="SQA (AVG + SEM)",
-            color="#8e44ad",
-            capsize=4
-        )
-
-        info = [
-            f"Avg:{a:.1f} Range:[{m:.1f}-{mx:.1f}]"
-            for a, m, mx in zip(avgs, mins, maxs)
-        ]
-
-        add_bar_labels(r_sqa, extra_info=info, yerr=sems, offset_points=10)
-        current_pos += (bar_width + bar_gap)
-    else:
-        for col in sqa_cols:
-            r_sqa = ax.bar(
-                current_pos,
-                plot_df[col],
-                bar_width,
-                label=col,
-                color="#8e44ad"
-            )
-            add_bar_labels(r_sqa)
+            add_bar_labels(bars)
             current_pos += (bar_width + bar_gap)
 
 if len(rng_cols) > 0:

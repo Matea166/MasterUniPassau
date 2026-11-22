@@ -90,19 +90,30 @@ if [ "$mode" = "Run solver now" ]; then
     for i in $(seq 1 $executions); do
         solver_args=(--reads "$reads")
         if [ "$solver" = "QAOA" ]; then
-            qaoa_output="${QAOA_RESULTS_DIR:-../results/qaoa/${dataset_name}_${timestamp}}"
+            qaoa_output="${QAOA_RESULTS_DIR:-../results/qaoa/${dataset_name}_${executions}_${reads}_${timestamp}}"
             solver_args=(--shots "${QAOA_SHOTS:-$reads}" --reps "${QAOA_REPS:-1}"
                          --final-shots "${QAOA_FINAL_SHOTS:-${QAOA_SHOTS:-$reads}}"
                          --seed "$(( ${QAOA_SEED:-42} + i - 1 ))"
-                         --max-qubits "${QAOA_MAX_QUBITS:-20}"
+                         --qaoa-backend "${QAOA_BACKEND:-aer}"
                          --qaoa-output "$qaoa_output/trial_${i}.json")
             if [ -n "${QAOA_MAXITER:-}" ]; then
                 solver_args+=(--maxiter "$QAOA_MAXITER")
             fi
+            if [ "${QAOA_BACKEND:-aer}" = "ibm" ]; then
+                [ -z "${IBM_BACKEND:-}" ] || solver_args+=(--ibm-backend "$IBM_BACKEND")
+                [ -z "${IBM_INSTANCE:-}" ] || solver_args+=(--ibm-instance "$IBM_INSTANCE")
+                [ -z "${IBM_API_KEY_FILE:-}" ] || solver_args+=(--ibm-api-key-file "$IBM_API_KEY_FILE")
+            fi
         fi
-        if ! python3 -m bnslqa solve "$dataset_path" "$solver" "${solver_args[@]}" >> "$matrix_file" 2>&1; then
-            echo "Error: $solver failed on trial $i; see $matrix_file" >&2
-            exit 1
+        solver_status=0
+        python3 -m bnslqa solve "$dataset_path" "$solver" "${solver_args[@]}" >> "$matrix_file" 2>&1 || solver_status=$?
+        if [ "$solver_status" -ne 0 ]; then
+            if [ "$solver" = "QAOA" ] && [ "$solver_status" -eq 3 ]; then
+                echo -e "\nQAOA trial $i rejected: invalid minimum-energy graph; continuing scheduled trials."
+            else
+                echo "Error: $solver failed on trial $i; see $matrix_file" >&2
+                exit 1
+            fi
         fi
         progress_bar $i $executions $start_time
     done

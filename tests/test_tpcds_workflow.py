@@ -2,6 +2,7 @@ import os
 from pathlib import Path
 import shutil
 import subprocess
+import sys
 import tempfile
 import unittest
 from unittest.mock import patch
@@ -54,6 +55,11 @@ class TpcdsReportTests(unittest.TestCase):
         self.addCleanup(self.patcher.stop)
 
     def test_query_alignment_precision_and_separate_solver_budgets(self):
+        qaoa = self.estimates.copy()
+        qaoa["Graph_1"] = [2, 5]
+        qaoa["Graph_2"] = [2, 5]
+        qaoa.iloc[::-1].to_csv(self.exp / "estimates/estimates_QAOA_T3_R64.csv", index=False)
+        (self.exp / "configurations.csv").write_text("solver,trials,reads\nSA,20,100\nSQA,10,1000\nQAOA,3,64\n")
         summary.summarize_tpcds()
         tables = self.exp / "reproduced_tables"
         results = pd.read_csv(tables / "cardinality_estimates.csv")
@@ -61,12 +67,20 @@ class TpcdsReportTests(unittest.TestCase):
         self.assertEqual(results["true_cardinality"].tolist(), [10, 1])
         self.assertEqual(results["sa_estimate"].tolist(), [8.002, 1.004])
         self.assertAlmostEqual(results["sa_qerror"].iloc[1], 1.004)
+        self.assertEqual(results["qaoa_estimate"].tolist(), [5, 2])
+        self.assertEqual(results["qaoa_qerror"].tolist(), [2, 2])
+        errors = pd.read_csv(tables / "qerror_summary.csv").set_index("estimator")
+        self.assertEqual(errors.loc["QAOA stable", "median_qerror"], 2)
         settings = pd.read_csv(tables / "solver_settings.csv")
-        self.assertEqual(settings["trials"].tolist(), [20, 10])
-        self.assertEqual(settings["reads"].tolist(), [100, 1000])
-        self.assertEqual(settings["unique_structures"].tolist(), [2, 2])
+        self.assertEqual(settings["solver"].tolist(), ["SA", "SQA", "QAOA"])
+        self.assertEqual(settings["trials"].tolist(), [20, 10, 3])
+        self.assertEqual(settings["reads"].tolist(), [100, 1000, 64])
+        self.assertEqual(settings["unique_structures"].tolist(), [2, 2, 2])
 
     def test_missing_solver_output_stops_summary(self):
+        (self.exp / "configurations.csv").write_text("solver,trials,reads\nSA,20,100\nSQA,10,1000\nQAOA,3,64\n")
+        with self.assertRaisesRegex(ValueError, "Missing QAOA estimates"):
+            summary.summarize_tpcds()
         (self.exp / "estimates/estimates_SQA_T10_R1000.csv").unlink()
         with self.assertRaisesRegex(ValueError, "missing SQA estimates"):
             summary.summarize_tpcds()
@@ -75,6 +89,36 @@ class TpcdsReportTests(unittest.TestCase):
         self.estimates.iloc[:1].to_csv(self.exp / "estimates/estimates_SA_T20_R100.csv", index=False)
         with self.assertRaisesRegex(ValueError, "Query mismatch"):
             summary.summarize_tpcds()
+
+    def test_merged_comparison_aligns_qaoa_and_rejects_incomplete_queries(self):
+        source = Path(__file__).resolve().parents[1]
+        qaoa = pd.DataFrame({"query_sql": self.truth["query_sql"]})
+        for graph in range(1, 6):
+            qaoa[f"Graph_{graph}"] = [graph, graph * 10]
+        qaoa_path = self.exp / "qaoa.csv"
+        qaoa.iloc[::-1].to_csv(qaoa_path, index=False)
+        output = self.root / "merged"
+        env = dict(os.environ, MERGE_OUTPUT_DIR=str(output))
+        command = [sys.executable, str(source / "bnsl/merge_csv_logic.py"),
+                   str(self.exp / "estimates/estimates_SA_T20_R100.csv"),
+                   str(self.exp / "estimates/estimates_SQA_T10_R1000.csv"),
+                   str(self.exp / "chowliu_pg_final.csv"), "NONE", str(qaoa_path)]
+        run = subprocess.run(command, env=env, capture_output=True, text=True)
+        self.assertEqual(run.returncode, 0, run.stdout + run.stderr)
+        combined = pd.read_csv(next(output.glob("*.csv")))
+        self.assertEqual(combined["query"].tolist(), self.truth["query_sql"].tolist())
+        self.assertEqual(combined["QAOA"].tolist(), [
+            "Graph_1: 1 | Graph_2: 2 | Graph_3: 3 | Graph_4: 4 | Graph_5: 5",
+            "Graph_1: 10 | Graph_2: 20 | Graph_3: 30 | Graph_4: 40 | Graph_5: 50",
+        ])
+        self.assertGreater(next(output.glob("*.png")).stat().st_size, 0)
+        qaoa.iloc[:1].to_csv(qaoa_path, index=False)
+        rejected = self.root / "rejected"
+        run = subprocess.run(command, env=dict(env, MERGE_OUTPUT_DIR=str(rejected)),
+                             capture_output=True, text=True)
+        self.assertNotEqual(run.returncode, 0)
+        self.assertIn("QAOA: query mismatch", run.stderr)
+        self.assertFalse(rejected.exists())
 
     def test_duplicate_workload_ids_stop_summary(self):
         self.workload["query_id"] = "Q01"
@@ -98,8 +142,9 @@ class TpcdsReportTests(unittest.TestCase):
         market = self.root / "results/market_basket_10000"
         (market / "estimates").mkdir(parents=True)
         self.truth.to_csv(market / "chowliu_pg_final.csv", index=False)
-        for solver in ("SA", "SQA"):
+        for solver in ("SA", "SQA", "QAOA"):
             self.estimates.to_csv(market / f"estimates/estimates_{solver}_T20_R1000.csv", index=False)
+        self.estimates.to_csv(self.exp / "estimates/estimates_QAOA_T20_R100.csv", index=False)
         self.workload.to_csv(self.root / "workloads/market_basket.csv", index=False)
         summary.summarize_experiment("market_basket_10000",
                                      summary.parse_env(source / "config/market_basket_10000.env"))

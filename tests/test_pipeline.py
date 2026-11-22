@@ -150,6 +150,7 @@ class PipelineTests(unittest.TestCase):
                 with (output / "configurations.csv").open() as handle:
                     budgets = [(r["solver"], int(r["trials"]), int(r["reads"])) for r in csv.DictReader(handle)]
                 expected = [("SA", 20, 100), ("SQA", 10, 1000)] if dataset == "tpcds_store_sales" else [("SA", 20, 1000), ("SQA", 20, 1000)]
+                expected.append(("QAOA", expected[0][1], expected[0][2]))
                 self.assertEqual(budgets, expected)
                 self.assertTrue((output / "combined_results.csv").is_file())
                 self.assertEqual((root / "preparation").read_text().strip(),

@@ -18,7 +18,7 @@ echo "   Card-Estimation Results Merger          "
 echo "==========================================="
 
 if [ -n "${SA_FILE:-}" ] && [ -n "${SQA_FILE:-}" ] && [ -n "${BN_FILE:-}" ]; then
-    python3 merge_csv_logic.py "$SA_FILE" "$SQA_FILE" "$BN_FILE" "${RNG_FILE:-NONE}"
+    python3 merge_csv_logic.py "$SA_FILE" "$SQA_FILE" "$BN_FILE" "${RNG_FILE:-NONE}" "${QAOA_FILE:-NONE}"
     exit $?
 fi
 
@@ -101,4 +101,4 @@ fi
 
 
 # 5. Run the Python Merger
-python3 merge_csv_logic.py "$sa_file" "$sqa_file" "$bn_file" "$rng_file"
+python3 merge_csv_logic.py "$sa_file" "$sqa_file" "$bn_file" "$rng_file" "${QAOA_FILE:-NONE}"

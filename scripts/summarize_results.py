@@ -81,6 +81,7 @@ def graph_columns(df):
 
 def load_estimates(exp_dir, solver, trials, reads):
     manifest = os.path.join(exp_dir, "configurations.csv")
+    recorded = False
     if os.path.isfile(manifest):
         configurations = pd.read_csv(manifest)
         selected = configurations["solver"].eq(solver)
@@ -88,12 +89,31 @@ def load_estimates(exp_dir, solver, trials, reads):
         selected &= configurations["reads"].eq(int(reads))
         if not selected.any():
             return None
+        recorded = True
     path = os.path.join(exp_dir, "estimates", f"estimates_{solver}_T{trials}_R{reads}.csv")
     if not os.path.isfile(path):
+        if solver == "QAOA" and recorded:
+            raise ValueError(f"Missing QAOA estimates for {trials} trials and {reads} reads: {path}")
         return None
     df = pd.read_csv(path)
     df["join_key"] = df["query_sql"].apply(normalize_query)
     return df
+
+
+def load_qaoa_headline(exp_dir, cfg):
+    trials = cfg.get("QAOA_TRIALS", cfg.get("SA_TRIALS", cfg.get("HEADLINE_TRIALS")))
+    reads = cfg.get("QAOA_READS", cfg.get("SA_READS", cfg.get("HEADLINE_READS")))
+    manifest = os.path.join(exp_dir, "configurations.csv")
+    if os.path.isfile(manifest):
+        configurations = pd.read_csv(manifest)
+        configurations = configurations[configurations["solver"].eq("QAOA")].drop_duplicates()
+        if configurations.empty:
+            return None, trials, reads
+        if len(configurations) == 1:
+            trials, reads = configurations.iloc[0][["trials", "reads"]].tolist()
+        elif not (configurations["trials"].eq(int(trials)) & configurations["reads"].eq(int(reads))).any():
+            raise ValueError(f"{exp_dir}: missing QAOA headline configuration.")
+    return load_estimates(exp_dir, "QAOA", trials, reads), trials, reads
 
 
 def modal_estimate(row, cols):
@@ -148,14 +168,19 @@ def workload_truth(truth, dataset):
     return merge_estimates(workload, truth)
 
 
-def estimate_tables(truth, sa_vals, sqa_vals):
+def estimate_tables(truth, sa_vals, sqa_vals, qaoa_vals=None):
     per_query = truth[["query_id", "sql", "reason", "true_cardinality"]].copy()
     rows = []
-    for key, label, values in [
+    estimators = [
         ("sa", "SA stable", sa_vals), ("sqa", "SQA stable", sqa_vals),
+    ]
+    if qaoa_vals is not None:
+        estimators.append(("qaoa", "QAOA stable", qaoa_vals))
+    estimators += [
         ("tree", "Tree baseline", truth["bn_est_cardinality"].tolist()),
         ("postgresql", "PostgreSQL", truth["pg_est_cardinality"].tolist()),
-    ]:
+    ]
+    for key, label, values in estimators:
         qerrs = pd.Series([qerror(est, true)
                            for est, true in zip(values, truth["true_cardinality"])])
         per_query[f"{key}_estimate"] = values
@@ -168,7 +193,7 @@ def estimate_tables(truth, sa_vals, sqa_vals):
     return per_query, pd.DataFrame(rows)
 
 
-def make_sorted_qerror_figure(exp_dir, truth, sa_vals, sqa_vals):
+def make_sorted_qerror_figure(exp_dir, truth, sa_vals, sqa_vals, qaoa_vals=None):
     """Reproduces thesis Figure 6.1 (sorted q-error profiles, Market Basket
     N = 100) from this run's data: per-query q-errors of the stable SA/SQA
     estimates and of the deterministic baselines, each sorted ascending and
@@ -178,6 +203,10 @@ def make_sorted_qerror_figure(exp_dir, truth, sa_vals, sqa_vals):
     series = [
         ("SA", sa_vals, "#2a78d6", "o", "-"),
         ("SQA", sqa_vals, "#eb6834", "s", "--"),
+    ]
+    if qaoa_vals is not None:
+        series.append(("QAOA", qaoa_vals, "#c0392b", "v", "-."))
+    series += [
         ("Classical baseline", truth["bn_est_cardinality"].tolist(), "#1baf7a", "^", "-"),
         ("PostgreSQL", truth["pg_est_cardinality"].tolist(), "#eda100", "D", "-"),
     ]
@@ -228,12 +257,14 @@ def summarize_experiment(exp, cfg):
     sqa = load_estimates(exp_dir, "SQA", ht, hr)
     if sa is None or sqa is None:
         raise ValueError(f"{exp}: missing headline estimates; rerun the experiment.")
+    qaoa, _, _ = load_qaoa_headline(exp_dir, cfg)
 
     # --- cardinality estimates (Tables 6.3 / 6.5 / 6.8 / 6.10 / 6.15) ---
     if sa is not None and sqa is not None:
         sa_vals = stable_estimates(truth, sa)
         sqa_vals = stable_estimates(truth, sqa)
-        per_query, summary = estimate_tables(truth, sa_vals, sqa_vals)
+        qaoa_vals = stable_estimates(truth, qaoa) if qaoa is not None else None
+        per_query, summary = estimate_tables(truth, sa_vals, sqa_vals, qaoa_vals)
         write_table(exp_dir, numbers["estimates"], "cardinality_estimates", per_query)
 
         # --- q-error summary (Tables 6.4 / 6.6 / 6.9 / 6.11 / 6.16) ---
@@ -241,7 +272,7 @@ def summarize_experiment(exp, cfg):
 
         # Thesis Figure 6.1 belongs to the Market Basket N=100 experiment
         if exp == "market_basket_100":
-            make_sorted_qerror_figure(exp_dir, truth, sa_vals, sqa_vals)
+            make_sorted_qerror_figure(exp_dir, truth, sa_vals, sqa_vals, qaoa_vals)
 
     # --- read / trial variation (Tables 6.12 / 6.13 / 6.17 / 6.18) ---
     if "read_variation" in numbers:
@@ -253,7 +284,7 @@ def summarize_experiment(exp, cfg):
         ]
         for kind, varying, pairs in sweeps:
             rows = []
-            for solver in ("SA", "SQA"):
+            for solver in ("SA", "SQA", "QAOA"):
                 for trials, reads in pairs:
                     est = load_estimates(exp_dir, solver, trials, reads)
                     if est is None:
@@ -360,7 +391,13 @@ def summarize_tpcds():
         settings.append({"solver": solver, "trials": int(trials), "reads": int(reads),
                          "unique_structures": len(graph_columns(est))})
 
-    per_query, summary = estimate_tables(truth, estimates["sa"], estimates["sqa"])
+    qaoa, trials, reads = load_qaoa_headline(exp_dir, cfg)
+    qaoa_vals = None
+    if qaoa is not None:
+        qaoa_vals = stable_estimates(truth, qaoa)
+        settings.append({"solver": "QAOA", "trials": int(trials), "reads": int(reads),
+                         "unique_structures": len(graph_columns(qaoa))})
+    per_query, summary = estimate_tables(truth, estimates["sa"], estimates["sqa"], qaoa_vals)
 
     out_dir = os.path.join(exp_dir, "reproduced_tables")
     os.makedirs(out_dir, exist_ok=True)

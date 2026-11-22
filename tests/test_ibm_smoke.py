@@ -38,11 +38,14 @@ class IbmSmokeTests(unittest.TestCase):
         return code, files
 
     def test_ideal_aer_exports_real_results(self):
-        code, files = self.run_smoke(["--qaoa-backend", "aer"])
+        with patch("qiskit_ibm_runtime.QiskitRuntimeService") as service:
+            code, files = self.run_smoke(["--qaoa-backend", "aer"])
+            service.assert_not_called()
         self.assertEqual(code, 0)
         result = json.loads(files["result.json"])
         manifest = json.loads(files["run.json"])
         self.assertEqual(result["qubits"], 7)
+        self.assertEqual(manifest["qubits"], len(result["variable_order"]))
         self.assertEqual(result["optimizer"], "COBYLA")
         self.assertGreater(result["evaluations"], 0)
         self.assertIsNone(result["max_evaluations"])
@@ -75,6 +78,41 @@ class IbmSmokeTests(unittest.TestCase):
         self.assertEqual(run.returncode, 2)
         self.assertIn("unrecognized arguments: --aer-noise", run.stderr)
 
+    def test_cli_rejects_invalid_minimum_even_when_valid_sample_is_available(self):
+        with redirect_stdout(io.StringIO()):
+            dataset, _ = smoke.prepare_dataset(self.root)
+        output = self.root / "failed_result.json"
+        program = (
+            "from bnslqa.solvers import qaoa_solver\n"
+            "qaoa_solver.sample_ibm = lambda *args, **kwargs: "
+            "({'0000011': 1, '0000001': 1023}, {'backend': 'local-test'})\n"
+            "from bnslqa.__main__ import main\n"
+            "main()\n"
+        )
+        run = subprocess.run(
+            [sys.executable, "-c", program, "solve", str(dataset), "QAOA",
+             "--qaoa-backend", "ibm", "--qaoa-output", str(output)],
+            cwd=smoke.ROOT, capture_output=True, text=True,
+        )
+        self.assertEqual(run.returncode, 3)
+        self.assertIn("Minimum-energy sample failed graph validation", run.stderr)
+        self.assertNotIn("Solution adjacency matrix:", run.stdout)
+        result = json.loads(output.read_text())
+        self.assertEqual(result["status"], "no_valid_graph")
+        self.assertEqual(result["counts"], {"0000011": 1, "0000001": 1023})
+        self.assertIsNone(result["adjacency_matrix"])
+
+    def test_smoke_preserves_failed_run_without_a_valid_graph(self):
+        with patch.object(smoke.qaoa_solver, "sample_ibm", return_value=(
+            {"0000011": 1024}, {"backend": "local-test"}
+        )):
+            code, files = self.run_smoke([])
+        self.assertEqual(code, 1)
+        self.assertEqual(json.loads(files["run.json"])["status"], "failed")
+        result = json.loads(files["result.json"])
+        self.assertEqual(result["status"], "no_valid_graph")
+        self.assertEqual(result["counts"], {"0000011": 1024})
+
     def check_ibm(self, fail=False, automatic=False, metrics_fail=False, usage_fail=False,
                   invalid_timestamps=False):
         backend = GenericBackendV2(7, basis_gates=["id", "rz", "sx", "x", "cx"], seed=42)
@@ -84,7 +122,7 @@ class IbmSmokeTests(unittest.TestCase):
             service.return_value.least_busy.return_value = backend
             job = sampler.return_value.run.return_value
             job.job_id.return_value = "local-test-job"
-            job.result.return_value[0].data.meas.get_counts.return_value = {"0000000": 1024}
+            job.result.return_value[0].data.meas.get_counts.return_value = {"0000001": 1024}
             job.metrics.return_value = {
                 "timestamps": {"created": "2026-11-22T10:00:00Z", "finished": "2026-11-22T10:00:25Z"},
                 "usage": {"quantum_seconds": 1.25},
@@ -115,6 +153,10 @@ class IbmSmokeTests(unittest.TestCase):
         self.assertEqual(result["execution"]["job_id"], "local-test-job")
         self.assertEqual(code, 1 if fail else 0)
         self.assertEqual(manifest["status"], "failed" if fail else "completed")
+        if not fail:
+            self.assertEqual(result["adjacency_matrix"], [[0, 1], [0, 0]])
+            matrix_lines = files["run.log"].decode().split("Solution adjacency matrix:\n", 1)[1].splitlines()[:2]
+            self.assertEqual([json.loads(line) for line in matrix_lines], result["adjacency_matrix"])
         if not fail and not metrics_fail and not invalid_timestamps:
             self.assertEqual(result["execution"]["elapsed_seconds"], 25.0)
         if not fail and not usage_fail:

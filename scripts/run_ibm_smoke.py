@@ -34,7 +34,10 @@ def prepare_dataset(output):
     source_rows = data.getvalue().splitlines()
     rows = [[int(row.split()[i]) for i in positions] for row in source_rows]
     path = output / "WetGrass_smoke.txt"
-    path.write_text("2 2 2\nWetGrass_smoke_Rain_WetGrass\n0 0\n" +
+    n = len(columns)
+    header = " ".join(map(str, [n] + [states[name] for name in columns]))
+    solution = " ".join(["0"] * (n * (n - 1)))
+    path.write_text(f"{header}\nWetGrass_smoke_{'_'.join(columns)}\n{solution}\n" +
                     "".join(" ".join(map(str, row)) + "\n" for row in rows))
     return path, {"source": "bnsl-qa/problems/WetGrass.json", "columns": columns,
                   "rows": len(rows), "requested_rows": 11, "source_rows": len(source_rows),
@@ -58,7 +61,7 @@ def main():
     manifest = {"status": "running", "scenario": "WetGrass Rain/WetGrass projection",
                 "started_at_utc": datetime.now(timezone.utc).isoformat(),
                 "qaoa_backend": args.qaoa_backend, "ibm_backend": (args.ibm_backend or "auto") if ibm else None,
-                "qubits": 7, "reps": 1, "optimizer": "COBYLA",
+                "reps": 1, "optimizer": "COBYLA",
                 "shots_per_evaluation": 1024, "final_shots": 1024, "seed": 42,
                 "aer_noise": "none", "max_ibm_jobs": 1 if ibm else 0,
                 "python": platform.python_version()}
@@ -83,12 +86,13 @@ def main():
             qaoa_solver.write_result(output / "run.json", manifest)
             qaoa_solver.main(SimpleNamespace(
                 dataset=str(dataset), reps=1, shots=1024, final_shots=1024,
-                seed=42, max_qubits=7, qaoa_backend=args.qaoa_backend,
+                seed=42, qaoa_backend=args.qaoa_backend,
                 ibm_backend=args.ibm_backend if ibm else None,
                 ibm_instance=args.ibm_instance if ibm else None,
                 ibm_api_key_file=str(args.ibm_api_key_file) if ibm and args.ibm_api_key_file else None,
                 qaoa_output=str(result_path), dry_run=False))
-            manifest["status"] = json.loads(result_path.read_text())["status"]
+            result = json.loads(result_path.read_text())
+            manifest.update(status=result["status"], qubits=result["qubits"])
     except (Exception, KeyboardInterrupt) as error:
         manifest["status"] = "failed"
         manifest["error"] = str(error).replace(token, "[REDACTED]") if token else str(error)

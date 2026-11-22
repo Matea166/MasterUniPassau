@@ -25,7 +25,6 @@ def main():
   solver_parser.add_argument('--reps', type=int, default=1, help='QAOA circuit layers')
   solver_parser.add_argument('--maxiter', type=int, help='QAOA optimizer evaluation budget [default: SciPy COBYLA default]')
   solver_parser.add_argument('--seed', type=int, default=42, help='QAOA simulator and optimizer seed')
-  solver_parser.add_argument('--max-qubits', type=int, default=20, help='QAOA local simulation qubit limit')
   solver_parser.add_argument('--qaoa-backend', choices=['aer','ibm'], default='aer')
   solver_parser.add_argument('--ibm-backend', help='IBM backend name; defaults to the least-busy suitable backend')
   solver_parser.add_argument('--ibm-api-key-file', type=str, help='file containing the IBM API key')
@@ -76,7 +75,13 @@ def main():
       if 'mhp' in args.problem.lower():
         args.func = mhp_legacy.main
 
-  args.func(args)
+  if getattr(args, 'strategy', None) == 'QAOA':
+    try:
+      args.func(args)
+    except qaoa_solver.InvalidGraphError as error:
+      parser.exit(3, f'{error}\n')
+  else:
+    args.func(args)
 
 if __name__ == '__main__':
   main()
