@@ -39,8 +39,7 @@ tqdm==4.67.3
 PyYAML==6.0.3
 requests==2.32.5
 
-# Quantum-circuit utilities used by bnslqa.solvers.dwave_solver
-qrisp==0.8.2
+# Quantum-circuit utilities
 qiskit==2.3.1
 qiskit-aer==0.17.2
 qiskit-ibm-runtime==0.45.1

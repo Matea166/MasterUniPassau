@@ -2,7 +2,7 @@
 # Original project licensed under the GNU General Public License, Version 2.
 # Modified by Matea Qazolli, 2026.
 # Modifications include package import adaptation, simulated quantum annealing
-# support, QRISP/QAOA and IBM quantum backend integration, QUBO matrix output,
+# support, QUBO matrix output,
 # solver-routing logic, timing handling, and experiment workflow adaptations.
 
 from time import time_ns
@@ -16,16 +16,6 @@ from dimod.reference.samplers import ExactSolver
 from neal import SimulatedAnnealingSampler
 from dwave.system import DWaveSampler, EmbeddingComposite
 from dwave.samplers import PathIntegralAnnealingSampler
-
-# --- NEW QRISP & IBM IMPORTS ---
-from qrisp import QuantumVariable
-from qrisp.algorithms.qaoa import QAOAProblem
-from qrisp.interface import QiskitBackend
-from qiskit_ibm_runtime import QiskitRuntimeService
-
-
-# -------------------------------
-
 
 def getDwaveQubo(Q, indexQUBO):
     qubo = {}
@@ -130,60 +120,6 @@ def dwaveSolve(Q, indexQUBO, posOfIndex, label, method='SA', nReads=1000, anneal
     return minXt, minY, readFound, occurrences, annealTimeRes
 
 
-# --- NEW QRISP SOLVER FUNCTION ---
-def qrispSolve(Q, indexQUBO, method='QRISP_SIM', nReads=1000, p=1):
-    num_vars = len(indexQUBO)
-
-    def cost_operator(qv):
-        for i in range(num_vars):
-            for j in range(i, num_vars):
-                weight = Q[i, j].item()
-                if weight != 0:
-                    if i == j:
-                        qv.phase(weight, i)
-                    else:
-                        qv.phase(weight, [i, j])
-
-    qaoa_p = QAOAProblem(cost_operator, p=p)
-    start_time = time_ns()
-
-    print("Optimizing QAOA parameters locally...")
-    res_sim = qaoa_p.run(max_iter=50)
-
-    if method == 'QRISP_HW':
-        print("Connecting to real quantum hardware...")
-        service = QiskitRuntimeService()
-        backend = service.least_busy(operational=True, simulator=False)
-        print(f"Executing on QPU: {backend.name}")
-
-        qrisp_hw_backend = QiskitBackend(backend)
-        qpu_results = qaoa_p.get_measurement(
-            backend=qrisp_hw_backend,
-            shots=nReads
-        )
-        results_to_process = qpu_results
-    else:
-        results_to_process = res_sim
-
-    end_time = time_ns()
-    qaoa_time_res = (end_time - start_time) // 10 ** 3
-
-    best_sample = max(results_to_process, key=results_to_process.get)
-    occurrences = results_to_process[best_sample] * nReads if isinstance(results_to_process[best_sample], float) else \
-    results_to_process[best_sample]
-
-    minXt = torch.tensor([int(bit) for bit in best_sample])
-    minX = minXt.view(-1, 1).float()
-    minY = torch.matmul(torch.matmul(minXt.float(), Q.float()), minX).item()
-
-    readFound = 0
-
-    return minXt, minY, readFound, int(occurrences), qaoa_time_res
-
-
-# ---------------------------------
-
-
 def main(args):
     startCalcQUBO = time_ns()
     path = args.dataset
@@ -210,17 +146,10 @@ def main(args):
     dsName = path[path.find('/') + 1:path.find('.')]
     label = '{} - {} reads'.format(dsName, nReads)
 
-    # --- ROUTING LOGIC ---
-    if method in ['QRISP_SIM', 'QRISP_HW']:
-        minXt, minY, readFound, occurrences, annealTimeRes = qrispSolve(
-            Q, indexQUBO, method=method, nReads=nReads
-        )
-    else:
-        minXt, minY, readFound, occurrences, annealTimeRes = dwaveSolve(
-            Q, indexQUBO, posOfIndex, label,
-            method=method, nReads=nReads, annealTime=annealTime
-        )
-    # ---------------------
+    minXt, minY, readFound, occurrences, annealTimeRes = dwaveSolve(
+        Q, indexQUBO, posOfIndex, label,
+        method=method, nReads=nReads, annealTime=annealTime
+    )
 
     graph = nx.DiGraph(
         (index[1], index[2])
