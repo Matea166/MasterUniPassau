@@ -17,6 +17,12 @@ echo "==========================================="
 echo "   Card-Estimation Results Merger          "
 echo "==========================================="
 
+if [ "${QAOA_FILE:-NONE}" = "NONE" ]; then
+    printf '%s\n' 'WARNING: QAOA results not supplied; QAOA will be omitted from the comparison.' >&2
+else
+    printf 'Including QAOA results: %s\n' "$QAOA_FILE"
+fi
+
 if [ -n "${SA_FILE:-}" ] && [ -n "${SQA_FILE:-}" ] && [ -n "${BN_FILE:-}" ]; then
     python3 merge_csv_logic.py "$SA_FILE" "$SQA_FILE" "$BN_FILE" "${RNG_FILE:-NONE}" "${QAOA_FILE:-NONE}"
     exit $?
