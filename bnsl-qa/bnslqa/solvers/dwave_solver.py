@@ -6,14 +6,12 @@
 # solver-routing logic, timing handling, and experiment workflow adaptations.
 
 from time import time_ns
-import os
 import torch
 import networkx as nx
 from .qubo_matrix import calcQUBOMatrix, printMatrix
 from .solver_utils import getExpectedSolution, printInfoResults, getNumExamples, getData
 
 from neal import SimulatedAnnealingSampler
-from dwave.system import DWaveSampler, EmbeddingComposite
 from dwave.samplers import PathIntegralAnnealingSampler
 
 def getDwaveQubo(Q, indexQUBO):
@@ -28,13 +26,6 @@ def getDwaveQubo(Q, indexQUBO):
 def getSampler(method='SA'):
     if method == 'SA':
         return SimulatedAnnealingSampler()
-    elif method == 'QA':
-        return EmbeddingComposite(
-            DWaveSampler(
-                profile=os.getenv('DWAVE_PROFILE'),
-                solver={'topology__type__eq': 'pegasus'}
-            )
-        )
     elif method == 'SQA':
         return PathIntegralAnnealingSampler()
     raise ValueError(f"Unsupported annealing strategy: {method}")
@@ -60,32 +51,26 @@ def getMinInfo(record):
     return readFound, occurrences
 
 
-def writeCSV(n, probName, alpha, method, nReads, annealTime,
+def writeCSV(n, probName, alpha, method, nReads,
              dsName, calcQUBOTime, annealTimeRes, readFound,
              occurrences, minY, expY, minXt, path):
     with open('./tests/tests_anneal.csv', 'a') as file:
         examples = getNumExamples(path)
-        if method != 'QA':
-            annealTime = '-'
         template = '{},' * 12 + ',,' + '{},' * 2 + '\'{}\'' + '\n'
         testResult = template.format(
-            n, probName, alpha, examples, method, nReads, annealTime,
+            n, probName, alpha, examples, method, nReads, '-',
             dsName, calcQUBOTime / 10 ** 6, annealTimeRes / 10 ** 6,
             readFound, occurrences, minY, expY, minXt.int().tolist()
         )
         file.write(testResult)
 
 
-def dwaveSolve(Q, indexQUBO, posOfIndex, label, method='SA', nReads=1000, annealTime=99):
+def dwaveSolve(Q, indexQUBO, posOfIndex, label, method='SA', nReads=1000):
     qubo = getDwaveQubo(Q, indexQUBO)
     sampler = getSampler(method=method)
     startAnneal = time_ns()
 
-    if method == 'QA':
-        # Hardware: uses annealing_time in microseconds
-        sampleset = sampler.sample_qubo(qubo, num_reads=nReads, label=label, annealing_time=annealTime)
-
-    elif method == 'SQA':
+    if method == 'SQA':
         # Simulation: uses sweeps and beta schedules to emulate quantum thermalization
         sampleset = sampler.sample_qubo(
             qubo,
@@ -95,18 +80,13 @@ def dwaveSolve(Q, indexQUBO, posOfIndex, label, method='SA', nReads=1000, anneal
             label=label
         )
 
-    else:
+    elif method == 'SA':
         # Classical SA
         sampleset = sampler.sample_qubo(qubo, num_reads=nReads, label=label)
 
     endAnneal = time_ns()
 
-    if 'timing' in sampleset.info.keys() and method == 'QA':
-        print(sampleset.info['timing'])
-        annealTimeRes = sampleset.info['timing'].get('qpu_access_time', (endAnneal - startAnneal) // 10 ** 3)
-    else:
-        # Fixed the 103 typo here to 10**3
-        annealTimeRes = (endAnneal - startAnneal) // 10 ** 3
+    annealTimeRes = (endAnneal - startAnneal) // 10 ** 3
 
     minXt = getMinXt(sampleset.first.sample, indexQUBO, posOfIndex)
     minX = minXt.view(-1, 1)
@@ -121,7 +101,6 @@ def main(args):
     path = args.dataset
     method = args.strategy
     nReads = args.reads
-    annealTime = args.anneal
 
     # Calculate the QUBO matrix given the dataset path
     alpha = '1/(ri*qi)'
@@ -144,7 +123,7 @@ def main(args):
 
     minXt, minY, readFound, occurrences, annealTimeRes = dwaveSolve(
         Q, indexQUBO, posOfIndex, label,
-        method=method, nReads=nReads, annealTime=annealTime
+        method=method, nReads=nReads
     )
 
     graph = nx.DiGraph(
@@ -166,7 +145,7 @@ def main(args):
 
     # Write data to CSV file
     writeCSV(
-        n, problemName, alpha, method, nReads, annealTime,
+        n, problemName, alpha, method, nReads,
         dsName, calcQUBOTime, annealTimeRes, readFound,
         occurrences, minY, expY, minXt, path
     )

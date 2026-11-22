@@ -4,22 +4,18 @@ import bnslqa.generators.mhp_legacy as mhp_legacy
 import bnslqa.generators.generator as gen
 
 def main():
-  parser = argparse.ArgumentParser(description='Implementation of Bayesian Network Structure Learning using Quantum Annealing',
+  parser = argparse.ArgumentParser(description='Bayesian Network Structure Learning',
                                    prog='python -m bnslqa')
   subparsers = parser.add_subparsers(help='sub-command help')
 
   solver_parser = subparsers.add_parser('solve', help='estimate BN structure from data',
                                         description='',
-                                        epilog='''Example: \'python -m bnslqa solve qa-datasets/WasteExp.txt QA -r 10000 -a 99\'
-                                        will use D-Wave\'s Quantum Annealer to solve the WasteExp problem, with 10000 reads
-                                        each with an annealing time of 99 microseconds''')
+                                        epilog='Example: python -m bnslqa solve qa-datasets/WetGrass.txt SA -r 10000')
   solver_parser.add_argument('dataset', type=str, help='dataset path')
-  solver_parser.add_argument('strategy', type=str, choices=['SA','QA','SQA','QAOA'],
+  solver_parser.add_argument('strategy', type=str, choices=['SA','SQA','QAOA'],
                              help='solver strategy')
   solver_parser.add_argument('-r','--reads', type=int, metavar='NUM', default=10**4,
-                             help='number of reads for annealing strategies, SA has no limits, QA can have at most 10000 [default: 10000]')
-  solver_parser.add_argument('-a','--anneal', type=int, metavar='T', default=99,
-                             help='annealing time in microseconds for each read (only for QA), up to 2000 [default: 99]')
+                             help='number of reads for SA/SQA [default: 10000]')
   solver_parser.add_argument('--shots', type=int, default=1024, help='QAOA training shots per evaluation')
   solver_parser.add_argument('--final-shots', type=int, help='QAOA final sampling shots [default: same as --shots]')
   solver_parser.add_argument('--reps', type=int, default=1, help='QAOA circuit layers')
