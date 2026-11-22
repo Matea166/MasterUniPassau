@@ -112,6 +112,8 @@ def sample_ibm(circuit, backend_name, shots, seed, on_submit,
             print(f"QPU usage time: {qpu_time:.4f} s")
     except Exception:
         metadata["usage_status"] = "unavailable"
+    if "elapsed_seconds" in metadata:
+        print(f"Total job time: {metadata['elapsed_seconds']:.4f} s")
     return counts, metadata
 
 

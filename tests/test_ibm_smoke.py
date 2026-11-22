@@ -2,6 +2,7 @@ from contextlib import redirect_stdout
 import io
 import json
 from pathlib import Path
+import secrets
 import subprocess
 import sys
 import tempfile
@@ -20,9 +21,10 @@ class IbmSmokeTests(unittest.TestCase):
         temporary = tempfile.TemporaryDirectory()
         self.addCleanup(temporary.cleanup)
         self.root = Path(temporary.name)
-        self.secret = "LOCAL-TEST-KEY-NOT-FOR-EXPORT"
+        self.secret = secrets.token_urlsafe(32)
         self.key = self.root / "ibm_api_key.txt"
         self.key.write_text(self.secret + "\n")
+        self.key.chmod(0o600)
 
     def run_smoke(self, arguments):
         output = self.root / "results"
@@ -159,6 +161,7 @@ class IbmSmokeTests(unittest.TestCase):
             self.assertEqual([json.loads(line) for line in matrix_lines], result["adjacency_matrix"])
         if not fail and not metrics_fail and not invalid_timestamps:
             self.assertEqual(result["execution"]["elapsed_seconds"], 25.0)
+            self.assertIn(b"Total job time: 25.0000 s", files["run.log"])
         if not fail and not usage_fail:
             self.assertEqual(result["execution"]["qpu_seconds"], 1.25)
             self.assertIn(b"QPU usage time: 1.2500 s", files["run.log"])
