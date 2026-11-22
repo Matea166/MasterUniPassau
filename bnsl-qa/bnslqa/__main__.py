@@ -59,8 +59,8 @@ def main():
         from bnslqa.solvers import qaoa_solver
         args.func = qaoa_solver.main
       else:
-        from bnslqa.solvers import dwave_solver
-        args.func = dwave_solver.main
+        from bnslqa.solvers import annealing_solver
+        args.func = annealing_solver.main
     else:
       parser.print_usage()
       parser.exit(1)
