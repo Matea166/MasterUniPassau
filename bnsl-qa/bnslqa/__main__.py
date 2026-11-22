@@ -23,16 +23,13 @@ def main():
   solver_parser.add_argument('--shots', type=int, default=1024, help='QAOA training shots per evaluation')
   solver_parser.add_argument('--final-shots', type=int, help='QAOA final sampling shots [default: same as --shots]')
   solver_parser.add_argument('--reps', type=int, default=1, help='QAOA circuit layers')
-  solver_parser.add_argument('--maxiter', type=int, default=30, help='QAOA optimizer evaluation budget')
+  solver_parser.add_argument('--maxiter', type=int, help='QAOA optimizer evaluation budget [default: SciPy COBYLA default]')
   solver_parser.add_argument('--seed', type=int, default=42, help='QAOA simulator and optimizer seed')
   solver_parser.add_argument('--max-qubits', type=int, default=20, help='QAOA local simulation qubit limit')
   solver_parser.add_argument('--qaoa-backend', choices=['aer','ibm'], default='aer')
-  solver_parser.add_argument('--aer-noise', choices=['none','depolarizing'], default='none',
-                             help='QAOA Aer noise model for optimization and Aer final sampling')
-  solver_parser.add_argument('--ibm-backend', help='explicit IBM backend name; parameters are trained on Aer')
+  solver_parser.add_argument('--ibm-backend', help='IBM backend name; defaults to the least-busy suitable backend')
   solver_parser.add_argument('--ibm-api-key-file', type=str, help='file containing the IBM API key')
   solver_parser.add_argument('--ibm-instance', help='IBM Quantum compute instance CRN')
-  solver_parser.add_argument('--ibm-max-execution-time', type=int, help='IBM job execution limit in seconds')
   solver_parser.add_argument('--qaoa-output', help='QAOA result JSON path')
   solver_parser.add_argument('--dry-run', action='store_true', help='report QAOA resources without execution')
 

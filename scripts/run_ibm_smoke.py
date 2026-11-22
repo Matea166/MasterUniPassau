@@ -28,15 +28,17 @@ def prepare_dataset(output):
     states = {name: len(variable["states"]) for name, variable in variables.items()}
     counts = {name: [0] * max(states.values()) for name in variables}
     data = io.StringIO()
-    generateExpected(data, variables, problem["toporder"], states, 100, counts)
+    generateExpected(data, variables, problem["toporder"], states, 11, counts)
     columns = ["Rain", "WetGrass"]
     positions = [list(variables).index(name) for name in columns]
-    rows = [[int(row.split()[i]) for i in positions] for row in data.getvalue().splitlines()]
+    source_rows = data.getvalue().splitlines()
+    rows = [[int(row.split()[i]) for i in positions] for row in source_rows]
     path = output / "WetGrass_smoke.txt"
     path.write_text("2 2 2\nWetGrass_smoke_Rain_WetGrass\n0 0\n" +
                     "".join(" ".join(map(str, row)) + "\n" for row in rows))
     return path, {"source": "bnsl-qa/problems/WetGrass.json", "columns": columns,
-                  "rows": len(rows), "states": {name: variables[name]["states"] for name in columns}}
+                  "rows": len(rows), "requested_rows": 11, "source_rows": len(source_rows),
+                  "states": {name: variables[name]["states"] for name in columns}}
 
 
 def main():
@@ -44,8 +46,8 @@ def main():
     parser.add_argument("--qaoa-backend", choices=["aer", "ibm"], default="ibm")
     parser.add_argument("--ibm-backend", default=os.environ.get("IBM_BACKEND"))
     parser.add_argument("--ibm-instance", default=os.environ.get("IBM_INSTANCE"))
-    parser.add_argument("--ibm-api-key-file", type=Path, default=Path("/run/secrets/ibm_api_key"))
-    parser.add_argument("--aer-noise", choices=["none", "depolarizing"], default="none")
+    secret = Path("/run/secrets/ibm_api_key")
+    parser.add_argument("--ibm-api-key-file", type=Path, default=secret if secret.is_file() else None)
     parser.add_argument("--output-dir", type=Path, default=ROOT / "results/ibm")
     args = parser.parse_args()
     ibm = args.qaoa_backend == "ibm"
@@ -55,11 +57,11 @@ def main():
     log_path = output / "run.log"
     manifest = {"status": "running", "scenario": "WetGrass Rain/WetGrass projection",
                 "started_at_utc": datetime.now(timezone.utc).isoformat(),
-                "qaoa_backend": args.qaoa_backend, "ibm_backend": args.ibm_backend if ibm else None,
-                "qubits": 7, "reps": 1, "optimizer": "COBYLA", "max_evaluations": 30,
-                "shots_per_evaluation": 1024, "final_shots": 256, "seed": 42,
-                "aer_noise": args.aer_noise, "max_ibm_jobs": 1 if ibm else 0,
-                "ibm_max_execution_time": 60 if ibm else None, "python": platform.python_version()}
+                "qaoa_backend": args.qaoa_backend, "ibm_backend": (args.ibm_backend or "auto") if ibm else None,
+                "qubits": 7, "reps": 1, "optimizer": "COBYLA",
+                "shots_per_evaluation": 1024, "final_shots": 1024, "seed": 42,
+                "aer_noise": "none", "max_ibm_jobs": 1 if ibm else 0,
+                "python": platform.python_version()}
     token = ""
     print(f"Running {args.qaoa_backend} smoke test. Results: {output}", flush=True)
     try:
@@ -67,11 +69,10 @@ def main():
             manifest["versions"] = {name: version(name) for name in
                                     ("qiskit", "qiskit-aer", "qiskit-ibm-runtime", "numpy", "scipy")}
             if ibm:
-                if not args.ibm_backend or not args.ibm_instance:
-                    raise ValueError("Set IBM_BACKEND and IBM_INSTANCE, or pass their command-line options.")
-                token = args.ibm_api_key_file.read_text().strip()
-                if not token:
-                    raise ValueError("The IBM API key file is empty.")
+                if args.ibm_api_key_file:
+                    token = args.ibm_api_key_file.read_text().strip()
+                    if not token:
+                        raise ValueError("The IBM API key file is empty.")
             dataset, manifest["dataset"] = prepare_dataset(output)
             source_files = sorted((ROOT / "bnsl-qa/bnslqa").rglob("*.py"))
             source_files += [Path(__file__).resolve(), ROOT / "bnsl-qa/problems/WetGrass.json",
@@ -81,12 +82,11 @@ def main():
                                          for path in source_files}
             qaoa_solver.write_result(output / "run.json", manifest)
             qaoa_solver.main(SimpleNamespace(
-                dataset=str(dataset), reps=1, shots=1024, final_shots=256, maxiter=30,
+                dataset=str(dataset), reps=1, shots=1024, final_shots=1024,
                 seed=42, max_qubits=7, qaoa_backend=args.qaoa_backend,
                 ibm_backend=args.ibm_backend if ibm else None,
                 ibm_instance=args.ibm_instance if ibm else None,
-                ibm_api_key_file=str(args.ibm_api_key_file) if ibm else None,
-                ibm_max_execution_time=60 if ibm else None, aer_noise=args.aer_noise,
+                ibm_api_key_file=str(args.ibm_api_key_file) if ibm and args.ibm_api_key_file else None,
                 qaoa_output=str(result_path), dry_run=False))
             manifest["status"] = json.loads(result_path.read_text())["status"]
     except (Exception, KeyboardInterrupt) as error:

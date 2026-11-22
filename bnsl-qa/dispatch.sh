@@ -93,10 +93,12 @@ if [ "$mode" = "Run solver now" ]; then
             qaoa_output="${QAOA_RESULTS_DIR:-../results/qaoa/${dataset_name}_${timestamp}}"
             solver_args=(--shots "${QAOA_SHOTS:-$reads}" --reps "${QAOA_REPS:-1}"
                          --final-shots "${QAOA_FINAL_SHOTS:-${QAOA_SHOTS:-$reads}}"
-                         --maxiter "${QAOA_MAXITER:-30}" --seed "$(( ${QAOA_SEED:-42} + i - 1 ))"
+                         --seed "$(( ${QAOA_SEED:-42} + i - 1 ))"
                          --max-qubits "${QAOA_MAX_QUBITS:-20}"
-                         --aer-noise "${QAOA_AER_NOISE:-none}"
                          --qaoa-output "$qaoa_output/trial_${i}.json")
+            if [ -n "${QAOA_MAXITER:-}" ]; then
+                solver_args+=(--maxiter "$QAOA_MAXITER")
+            fi
         fi
         if ! python3 -m bnslqa solve "$dataset_path" "$solver" "${solver_args[@]}" >> "$matrix_file" 2>&1; then
             echo "Error: $solver failed on trial $i; see $matrix_file" >&2
