@@ -2,12 +2,11 @@
 
 Research code for a planned submission to the [BTW 2027 Student Program](https://btw2027.gi.de/calls/student-program),
 extending a [master's thesis at the University of Passau](docs/Master%20Thesis.pdf).
-The experiments compare cardinality estimates from annealing-learned Bayesian
-networks, a tree baseline and PostgreSQL on fixed single-table workloads.
+The experiments compare cardinality estimates from Bayesian networks learned
+with SA, SQA and QAOA, a tree baseline and PostgreSQL on fixed single-table workloads.
 
-Structure learning uses simulated annealing (SA) and simulated quantum annealing
-(SQA). The tree retains the normalized mutual information implementation from
-[tldks-2020](https://github.com/MaxHalford/tldks-2020). PostgreSQL uses ordinary
+Structure learning supports simulated annealing (SA), simulated quantum annealing
+(SQA) and the quantum approximate optimization algorithm (QAOA). PostgreSQL uses ordinary
 statistics after `ANALYZE`.
 
 QAOA supports noiseless Qiskit Aer and IBM hardware sampling; see the
@@ -44,7 +43,13 @@ QUICK=1 ./reproduce_all.sh
 
 Quick mode reduces the WetGrass, NHANES and Market Basket configuration grids
 and the random-structure check. TPC-DS uses the same fixed settings in both modes:
-SA and SQA each use 5 trials × 500 reads.
+SA and SQA each use 5 trials × 500 reads. QAOA inherits the SA configurations
+unless overridden.
+
+The runners include QAOA. Its current parameter training uses local statevector
+Aer even when final sampling uses IBM. Market Basket and TPC-DS require 57 and
+100 qubits, making this local training impractical. Use the small smoke test
+below to check QAOA execution.
 
 ## IBM Quantum smoke test
 
@@ -122,7 +127,8 @@ is needed.
    This uses ten WetGrass rows and the Rain/WetGrass attributes. QAOA parameters
    are optimized locally with noiseless Aer and COBYLA, followed by one IBM
    hardware job for final sampling. Results, logs and a ZIP archive are saved
-   under `results/ibm/`.
+   under `results/ibm/`. IBM QPU usage and total job time, including queue time,
+   are logged and saved when returned by IBM.
 
 Docker mounts the key file read-only at `/run/secrets/ibm_api_key` when the
 container runs. The key is not baked into the image. The original key file on
@@ -156,8 +162,9 @@ Saved PostgreSQL measurements and input hashes are in [reference_results/](refer
 docker compose run --build --rm --no-deps app python -m unittest discover -s tests -v
 ```
 
-The expanded workflow is awaiting full end-to-end validation. SA and SQA are
-stochastic, so structures and estimates can vary between runs.
+The expanded workflow is awaiting full end-to-end validation. IBM hardware
+execution has not been tested. SA, SQA and QAOA are stochastic, so structures
+and estimates can vary between runs.
 
 ## Licence and sources
 

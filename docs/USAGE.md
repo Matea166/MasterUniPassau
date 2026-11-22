@@ -63,65 +63,68 @@ Basket experiment first to include its SA/SQA rows in the comparison report.
 
 ### QAOA
 
-QAOA uses the same structure-learning QUBO. Aer and COBYLA optimize circuit
-parameters; final sampling runs on Aer or IBM hardware. IBM execution has not
-yet been validated. The full-run script currently runs SA/SQA.
+QAOA uses the shared structure-learning QUBO. Noiseless local Aer and COBYLA
+optimize circuit parameters from random initial angles. Final measurements use
+Aer by default, or one IBM hardware job per trial with `--qaoa-backend ibm`.
 
-After dataset preparation, inspect resources and run WetGrass on Aer:
+After dataset preparation, inspect the required qubits and statevector memory:
 
 ```bash
 docker compose exec -T -w /workspace/bnsl-qa app python -m bnslqa solve qa-datasets/WetGrass.txt QAOA --dry-run
-docker compose exec -T -w /workspace/bnsl-qa app python -m bnslqa solve qa-datasets/WetGrass.txt QAOA --max-qubits 26
 ```
 
-Defaults are one layer, 1,024 shots per evaluation and final sample, 30 optimizer
-evaluations and seed 42. Set `--reps`, `--shots`, `--maxiter` and `--seed` to change
-them. JSON results are saved under `results/qaoa/`.
+`--dry-run` stops before optimization, authentication or job submission.
+For a small local run without IBM credentials:
 
-Use `--shots 1024 --final-shots 4096` to train with 1,024 shots per evaluation
-and sample the final circuit with 4,096 shots on Aer or IBM. Without
-`--final-shots`, final sampling uses `--shots`. For `dispatch.sh`, set
-`QAOA_SHOTS` and `QAOA_FINAL_SHOTS`.
+```bash
+docker compose run --build --rm --no-deps app python scripts/run_ibm_smoke.py --qaoa-backend aer
+```
 
-Aer is ideal by default. Add `--aer-noise depolarizing` for noisy optimization
-and final Aer sampling. This synthetic model applies depolarizing errors of
-0.1% to SX/X gates and 1% to CX gates, plus a 2% symmetric readout error; RZ
-gates are noiseless. It is not calibrated to an IBM device. Noise settings are
-saved in the result JSON. For `dispatch.sh`, set `QAOA_AER_NOISE=depolarizing`.
+Direct CLI defaults are one layer, 1,024 training shots per evaluation, the same
+number of final shots, and seed 42. COBYLA uses SciPy's default evaluation budget.
+Override these with `--reps`, `--shots`, `--final-shots`, `--seed` and `--maxiter`.
+Standalone solver JSON results go under `results/qaoa/`.
 
-For IBM sampling, configure a saved Qiskit Runtime account in the container and
-add `--qaoa-backend ibm --ibm-backend BACKEND_NAME` to the run command. This submits
-a hardware job using Aer-trained parameters.
+The experiment runners include SA, SQA and QAOA. QAOA inherits each dataset's SA
+configuration grid by default. Set both `QAOA_TRIALS` and `QAOA_READS` to override it.
+For QAOA, reads supply the training and final shot counts unless overridden by
+`QAOA_SHOTS` and `QAOA_FINAL_SHOTS`. Other overrides are `QAOA_REPS`,
+`QAOA_MAXITER`, `QAOA_BACKEND` and `QAOA_SEED`. Trial seeds start at 42 and
+increase by one; `QAOA_SEED` changes the starting seed.
 
-Four, six and eight attributes require 26, 57 and 100 qubits. The default Aer
-limit is 20; WetGrass requires raising it to 26, whose statevector alone needs
-1 GiB. Local simulation is also required for the current IBM path.
-
-References: [IBM QAOA tutorial](https://quantum.cloud.ibm.com/docs/en/tutorials/quantum-approximate-optimization-algorithm)
-and [Aer SamplerV2](https://qiskit.github.io/qiskit-aer/stubs/qiskit_aer.primitives.SamplerV2.html).
-Noise follows the [Aer noise model API](https://qiskit.github.io/qiskit-aer/stubs/qiskit_aer.noise.NoiseModel.html).
+Four, six and eight attributes require 26, 57 and 100 qubits. The 26-qubit
+statevector alone needs 1 GiB; 57- and 100-qubit statevectors are impractical
+locally. IBM sampling still requires local Aer training in the current code.
+There is no fixed qubit cap; Aer applies its memory checks.
 
 ### IBM smoke test
 
-Put the API key in a plain-text file outside the repository. From the repository
-root, run:
+Follow the [credential setup](../README.md#ibm-quantum-smoke-test), then run:
 
 ```bash
-IBM_API_KEY_FILE=/absolute/path/ibm_api_key.txt \
-IBM_BACKEND=BACKEND_NAME IBM_INSTANCE=INSTANCE_CRN \
 docker compose -f docker-compose.quantum.yml run --build --rm quantum
 ```
 
-This uses only Rain and WetGrass from the existing 100-row expected-value
-generator: 7 qubits, one layer, COBYLA, 30 evaluations and 1,024 training shots.
-It submits one IBM job with 256 final shots and a 60-second
-[execution limit](https://quantum.cloud.ibm.com/docs/en/ibm-quantum-compute/max-execution-time).
-The limit applies to QPU usage, not queue time. Larger experiments do not start automatically.
+The smoke test uses 10 expected-value WetGrass rows, projected onto Rain and
+WetGrass. The QUBO determines the seven-qubit circuit. It uses one layer,
+1,024 training shots per evaluation, 1,024 final shots, seed 42 and COBYLA's
+default budget. Final sampling submits one IBM job through `SamplerV2` in job
+mode. No explicit IBM execution-time limit is supplied. Leave `IBM_BACKEND`
+empty for the least-busy suitable backend, or supply its name.
 
-Send back the ZIP under `results/ibm/`. It contains the input, results, settings,
-code hashes and log, including a job ID if submission succeeded. Runtime failures
-also produce a ZIP; check it before submitting another job. The key is mounted
-read-only and excluded from the archive. No account is saved.
+Each run writes a folder and ZIP under `results/ibm/`:
+
+| File | Contents |
+|---|---|
+| `WetGrass_smoke.txt` | Ten-row, two-attribute solver input |
+| `run.json` | Settings, status, software versions and source hashes |
+| `result.json` | Angles, measurements, selected graph and IBM job details when available |
+| `run.log` | Solver output and errors |
+
+IBM QPU usage and total job time from creation to completion are logged and
+saved when available. Total time includes queue time. Failures also produce an
+archive; `result.json` may be absent if execution failed before results were
+written. Credentials are excluded. IBM hardware execution has not been tested.
 
 ## Repository layout
 
@@ -164,7 +167,7 @@ The included CSV has 2,278 rows. The modeled columns are `age_group`, `BMXBMI`,
 
 [`grouping_nhanes.py`](../bnsl/datasets/grouping_nhanes.py) defines the shared
 BMI groups: [0,18.5), [18.5,25), [25,30), [30,150). The tree keeps original
-category labels; annealing uses integer category codes.
+category labels; SA/SQA/QAOA use integer category codes.
 [`Nhanes_csv_to_txt.py`](../bnsl-qa/Nhanes_csv_to_txt.py) writes the solver TXT
 and category mappings under `bnsl-qa/qa-datasets/`.
 
@@ -200,9 +203,9 @@ empty fields become SQL `NULL`.
 
 #### Grouping
 
-Both models use [`grouping_tpcds.py`](../bnsl/datasets/grouping_tpcds.py).
+The tree and SA/SQA/QAOA use [`grouping_tpcds.py`](../bnsl/datasets/grouping_tpcds.py).
 Codes start at zero in the table order below. The final code is a separate
-missing state; the tree represents it as `MISSING` and annealing as an integer.
+missing state; the tree represents it as `MISSING` and SA/SQA/QAOA as an integer.
 All 10,000 rows are retained, including 856 with at least one missing value.
 
 | Column | Nonmissing groups, in code order | Missing code |
@@ -275,9 +278,12 @@ references identify their original data and workloads by checksum.
 
 ## Estimators and PostgreSQL
 
-SA/SQA learn graph structures with at most two parents. Cyclic structures are
-discarded rather than repaired. The resulting networks use pgmpy maximum-likelihood
-parameter fitting and variable elimination. Inference failures stop the run.
+SA/SQA/QAOA select a minimum-energy sample, then check for cycles and at most
+two parents per node. Rejected trials are skipped; scheduled trials continue.
+Graphs are not repaired. All unique accepted graphs are used for cardinality
+estimation with pgmpy maximum-likelihood categorical tables and variable
+elimination. The experiment fails if no graph is accepted, or if execution or
+inference fails.
 
 The tree retains the normalized-MI structure learning and fitting/inference from
 the adapted [tldks-2020](https://github.com/MaxHalford/tldks-2020) implementation.
@@ -309,7 +315,8 @@ are below one. Exact matches use the original counts with absolute tolerance `1e
 Reports include per-query estimates, median, 95th-percentile and maximum q-error,
 plus exact-match percentages. CSVs retain full precision; HTML rounds for display.
 
-For each query, SA/SQA stable estimates use the most frequent two-decimal group.
+For each query, SA/SQA/QAOA stable estimates use the most frequent two-decimal
+group across unique graphs. Each unique graph contributes one estimate.
 Ties are resolved by the upper median of the tied group values; the upper-median
 original estimate within the chosen group is used for scoring. Read/trial and
 random-structure summaries evaluate the per-structure estimates.
@@ -321,13 +328,19 @@ Open `results/index.html` after report generation. Each experiment writes to
 
 | Path | Contents |
 |---|---|
-| `estimates/` | Per-structure SA/SQA estimates, named by solver, trials and reads |
+| `estimates/` | Per-structure SA/SQA/QAOA estimates, named by solver, trials and reads |
 | `qerrors/` | Per-structure query estimates, true counts and q-errors |
 | `chowliu_pg_final.csv` | Tree and PostgreSQL estimates with true counts |
 | `combined_results.csv` and `.png` | Headline comparison |
 | `reproduced_tables/` | Summary tables with query IDs and full-precision estimates |
 | `configurations.csv` | Solver configurations executed in the run |
 | `logs/` | Execution logs |
+| `qaoa/QAOA_T<trials>_R<reads>_<timestamp>/` | QAOA `trial_<i>.json` results |
+
+Graphs are saved separately under
+`results/graphs/<SOLVER>_Matrix_<dataset>_<trials>_<reads>_<timestamp>/`:
+`matrices/` contains solver output and adjacency matrices; `graphs/` contains
+graph images and cardinality-estimation outputs.
 
 The random check writes `final_queries_cardinality.csv`, `random_matrices.txt`
 and logs. Report generation also uses the corresponding Market Basket outputs.
@@ -351,8 +364,9 @@ remain available for exploratory runs:
 | `/workspace/bnsl` | `bash cardinality_benchmarks.sh` | Run tree and PostgreSQL comparisons |
 | `/workspace/bnsl` | `bash merge_results.sh` | Merge estimates and plot comparisons |
 
-Choose the dataset, script and database consistently. Interactive outputs stay
-inside the container unless saved under `/workspace/results/`.
+Choose the dataset, script and database consistently. Dispatch copies matrices
+and graph outputs to `results/graphs/`. Other interactive outputs stay inside
+the container unless saved under `/workspace/results/`.
 
 ## Verification
 
@@ -364,8 +378,9 @@ docker compose run --build --rm --no-deps app python -m unittest discover -s tes
 
 The suite checks mixed-domain scores, grouping, SQL/model row alignment, reporting
 and workflow failures. Copied upstream tests in `bnsl/tldks_2020/tests/` target the
-older `phd` package and are separate. Joins and hardware backends are outside this
-experiment workflow. Full end-to-end validation of the expanded workflow is pending.
+older `phd` package and are separate. QAOA tests use local Aer and mocked IBM
+responses; they do not submit hardware jobs. IBM hardware execution and full
+end-to-end validation of the expanded workflow are pending.
 
 ## Licence
 
