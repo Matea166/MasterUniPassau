@@ -168,7 +168,8 @@ else
 
 fi
 
-python3 - "$unique_matrix_file" <<'PY' || exit 1
+if [ "$mode" != "Run solver now" ] || [ "$solver" = "ES" ]; then
+    python3 - "$unique_matrix_file" <<'PY' || exit 1
 import ast
 import sys
 import networkx as nx
@@ -185,6 +186,7 @@ for line in matrices:
 with open(sys.argv[1], 'w') as f:
     f.writelines(valid_matrices)
 PY
+fi
 
 if [ ! -s "$unique_matrix_file" ]; then
     echo "Error: no valid graphs to evaluate." >&2
@@ -217,6 +219,7 @@ progress_bar 0 $num_matrices $start_time
 counter=1
 while IFS= read -r matrix; do
     graph_log="$card_out_dir/graph_${counter}_inference.log"
+    printf '%s\n' "$matrix" > "$card_out_dir/Graph_${counter}.txt"
     if ! python3 "$py_script" "$matrix" "$card_out_dir" "$counter" > "$graph_log" 2>&1; then
         echo -e "\nError: cardinality estimation failed for graph $counter. See $graph_log" >&2
         cat "$graph_log" >&2
@@ -264,6 +267,12 @@ df_final.to_csv('$final_csv', index=False)
 " || exit 1
 echo "Process complete! Final report: $final_csv"
 
+graph_dir="../results/graphs/${solver}_Matrix_${dataset_name}_${executions:-previous}_${reads}_${timestamp}"
+mkdir -p "$graph_dir/matrices" "$graph_dir/graphs" || exit 1
+cp -R "$solver_run_dir/." "$graph_dir/matrices/" || exit 1
+cp -R "$card_out_dir/." "$graph_dir/graphs/" || exit 1
+
+echo "DISPATCH_GRAPH_DIR=$graph_dir"
 echo "DISPATCH_SOLVER_DIR=$solver_run_dir"
 echo "DISPATCH_CARD_DIR=$card_out_dir"
 echo "DISPATCH_FINAL_CSV=$final_csv"
