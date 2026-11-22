@@ -14,7 +14,7 @@ def main():
                                         will use D-Wave\'s Quantum Annealer to solve the WasteExp problem, with 10000 reads
                                         each with an annealing time of 99 microseconds''')
   solver_parser.add_argument('dataset', type=str, help='dataset path')
-  solver_parser.add_argument('strategy', type=str, choices=['ES','SA','QA','SQA','QAOA'],
+  solver_parser.add_argument('strategy', type=str, choices=['SA','QA','SQA','QAOA'],
                              help='solver strategy')
   solver_parser.add_argument('-r','--reads', type=int, metavar='NUM', default=10**4,
                              help='number of reads for annealing strategies, SA has no limits, QA can have at most 10000 [default: 10000]')
@@ -57,10 +57,7 @@ def main():
 
   if 'func' not in args:
     if 'strategy' in args:
-      if args.strategy == 'ES':
-        from bnslqa.solvers import exact_solver
-        args.func = exact_solver.main
-      elif args.strategy == 'QAOA':
+      if args.strategy == 'QAOA':
         from bnslqa.solvers import qaoa_solver
         args.func = qaoa_solver.main
       else:

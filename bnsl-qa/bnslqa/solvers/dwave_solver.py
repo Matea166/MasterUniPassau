@@ -12,7 +12,6 @@ import networkx as nx
 from .qubo_matrix import calcQUBOMatrix, printMatrix
 from .solver_utils import getExpectedSolution, printInfoResults, getNumExamples, getData
 
-from dimod.reference.samplers import ExactSolver
 from neal import SimulatedAnnealingSampler
 from dwave.system import DWaveSampler, EmbeddingComposite
 from dwave.samplers import PathIntegralAnnealingSampler
@@ -27,21 +26,18 @@ def getDwaveQubo(Q, indexQUBO):
 
 
 def getSampler(method='SA'):
-    sampler = None
     if method == 'SA':
-        sampler = SimulatedAnnealingSampler()
+        return SimulatedAnnealingSampler()
     elif method == 'QA':
-        sampler = EmbeddingComposite(
+        return EmbeddingComposite(
             DWaveSampler(
                 profile=os.getenv('DWAVE_PROFILE'),
                 solver={'topology__type__eq': 'pegasus'}
             )
         )
     elif method == 'SQA':
-        sampler = PathIntegralAnnealingSampler()
-    else:
-        sampler = ExactSolver()
-    return sampler
+        return PathIntegralAnnealingSampler()
+    raise ValueError(f"Unsupported annealing strategy: {method}")
 
 
 def getMinXt(bestSample, indexQUBO, posOfIndex):

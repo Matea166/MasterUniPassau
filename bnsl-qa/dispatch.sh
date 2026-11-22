@@ -179,7 +179,7 @@ else
 
 fi
 
-if [ "$mode" != "Run solver now" ] || [ "$solver" = "ES" ]; then
+if [ "$mode" != "Run solver now" ]; then
     python3 - "$unique_matrix_file" <<'PY' || exit 1
 import ast
 import sys
