@@ -14,8 +14,8 @@ def main():
   solver_parser.add_argument('dataset', type=str, help='dataset path')
   solver_parser.add_argument('strategy', type=str, choices=['SA','SQA','QAOA'],
                              help='solver strategy')
-  solver_parser.add_argument('-r','--reads', type=int, metavar='NUM', default=10**4,
-                             help='number of reads for SA/SQA [default: 10000]')
+  solver_parser.add_argument('-r','--reads', type=int, metavar='READS',
+                             help='number of reads for SA/SQA (required)')
   solver_parser.add_argument('--shots', type=int, default=1024, help='QAOA training shots per evaluation')
   solver_parser.add_argument('--final-shots', type=int, help='QAOA final sampling shots [default: same as --shots]')
   solver_parser.add_argument('--reps', type=int, default=1, help='QAOA circuit layers')
@@ -26,7 +26,7 @@ def main():
   solver_parser.add_argument('--ibm-api-key-file', type=str, help='file containing the IBM API key')
   solver_parser.add_argument('--ibm-instance', help='IBM Quantum compute instance CRN')
   solver_parser.add_argument('--qaoa-output', help='QAOA result JSON path')
-  solver_parser.add_argument('--dry-run', action='store_true', help='report QAOA resources without execution')
+  solver_parser.add_argument('--dry-run', action='store_true', help='preview QAOA resources; no optimization, sampling, or IBM job')
 
   generator_parser = subparsers.add_parser('generate',
                                            help='generate problem dataset',
@@ -48,6 +48,8 @@ def main():
   generator_parser.set_defaults(parser=generator_parser)
 
   args = parser.parse_args()
+  if getattr(args, 'strategy', None) in ('SA', 'SQA') and args.reads is None:
+    parser.error('--reads is required for SA/SQA; use the dataset configuration.')
   if getattr(args, 'dry_run', False) and args.strategy != 'QAOA':
     parser.error('--dry-run is supported only for QAOA')
 
