@@ -1,7 +1,41 @@
 # This file is based on code from BNSL-QA-PYTHON.
 # Original project licensed under the GNU General Public License, Version 2.
 
+from itertools import combinations
+
+import networkx as nx
 import torch
+
+
+class InvalidSampleError(RuntimeError):
+  pass
+
+
+def sample_violations(bits, indices, n):
+  if len(bits) != len(indices) or any(bit not in (0, 1) for bit in bits):
+    return ["sample must contain one binary value per QUBO variable"]
+  values = {tuple(index): int(bit) for index, bit in zip(indices, bits)}
+  graph = nx.DiGraph()
+  graph.add_nodes_from(range(n))
+  graph.add_edges_from((i, j) for (kind, i, j), bit in values.items()
+                       if kind == 'd' and bit)
+  violations = []
+  if not nx.is_directed_acyclic_graph(graph):
+    violations.append("graph contains a cycle")
+  for i, degree in graph.in_degree():
+    if degree > 2:
+      violations.append(f"parent limit exceeded at node {i}")
+    if degree + values['y', i, 1] + 2 * values['y', i, 2] != 2:
+      violations.append(f"incorrect parent-count helper bits at node {i}")
+  for i, j, k in combinations(range(n), 3):
+    rij, rik, rjk = values['r', i, j], values['r', i, k], values['r', j, k]
+    if rik + rij * rjk - rij * rik - rjk * rik:
+      violations.append(f"ordering transitivity violated at nodes {i}, {j}, {k}")
+  for i, j in combinations(range(n), 2):
+    rij = values['r', i, j]
+    if values['d', j, i] * rij + values['d', i, j] * (1 - rij):
+      violations.append(f"edge-order consistency violated at nodes {i}, {j}")
+  return violations
 
 def getExpectedSolution(solution, Q, indexQUBO, posOfIndex, n):
   narcs = n*(n-1)

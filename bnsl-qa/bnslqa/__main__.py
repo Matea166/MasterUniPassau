@@ -70,13 +70,11 @@ def main():
       if 'mhp' in args.problem.lower():
         args.func = mhp_legacy.main
 
-  if getattr(args, 'strategy', None) == 'QAOA':
-    try:
-      args.func(args)
-    except qaoa_solver.InvalidGraphError as error:
-      parser.exit(3, f'{error}\n')
-  else:
+  from bnslqa.solvers.solver_utils import InvalidSampleError
+  try:
     args.func(args)
+  except InvalidSampleError as error:
+    parser.exit(3, f'{error}\n')
 
 if __name__ == '__main__':
   main()

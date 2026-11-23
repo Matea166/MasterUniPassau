@@ -108,8 +108,8 @@ if [ "$mode" = "Run solver now" ]; then
         solver_status=0
         python3 -m bnslqa solve "$dataset_path" "$solver" "${solver_args[@]}" >> "$matrix_file" 2>&1 || solver_status=$?
         if [ "$solver_status" -ne 0 ]; then
-            if [ "$solver" = "QAOA" ] && [ "$solver_status" -eq 3 ]; then
-                echo -e "\nQAOA trial $i rejected: invalid minimum-energy graph; continuing scheduled trials."
+            if [ "$solver_status" -eq 3 ]; then
+                echo -e "\n$solver trial $i rejected: constraint violation; see $matrix_file; continuing scheduled trials."
             else
                 echo "Error: $solver failed on trial $i; see $matrix_file" >&2
                 exit 1

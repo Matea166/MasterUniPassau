@@ -20,7 +20,7 @@ sys.path.insert(0, str(ROOT / "bnsl-qa"))
 from bnslqa.solvers import qaoa_solver
 
 
-def prepare_dataset(output):
+def prepare_dataset(output, scenario="wetgrass-10"):
     from bnslqa.generators.generator import generateExpected
 
     problem = json.loads((ROOT / "bnsl-qa/problems/WetGrass.json").read_text())
@@ -28,8 +28,9 @@ def prepare_dataset(output):
     states = {name: len(variable["states"]) for name, variable in variables.items()}
     counts = {name: [0] * max(states.values()) for name in variables}
     data = io.StringIO()
-    generateExpected(data, variables, problem["toporder"], states, 11, counts)
-    columns = ["Rain", "WetGrass"]
+    requested_rows = 100 if scenario == "wetgrass-100" else 11
+    generateExpected(data, variables, problem["toporder"], states, requested_rows, counts)
+    columns = list(variables) if scenario == "wetgrass-100" else ["Rain", "WetGrass"]
     positions = [list(variables).index(name) for name in columns]
     source_rows = data.getvalue().splitlines()
     rows = [[int(row.split()[i]) for i in positions] for row in source_rows]
@@ -40,12 +41,15 @@ def prepare_dataset(output):
     path.write_text(f"{header}\nWetGrass_smoke_{'_'.join(columns)}\n{solution}\n" +
                     "".join(" ".join(map(str, row)) + "\n" for row in rows))
     return path, {"source": "bnsl-qa/problems/WetGrass.json", "columns": columns,
-                  "rows": len(rows), "requested_rows": 11, "source_rows": len(source_rows),
+                  "rows": len(rows), "requested_rows": requested_rows, "source_rows": len(source_rows),
+                  "generation": "expected",
                   "states": {name: variables[name]["states"] for name in columns}}
 
 
 def main():
     parser = argparse.ArgumentParser()
+    parser.add_argument("--scenario", choices=["wetgrass-10", "wetgrass-100"], default="wetgrass-10",
+                        help="WetGrass: 10 rows/two variables or 100 rows/four variables")
     parser.add_argument("--qaoa-backend", choices=["aer", "ibm"], default="ibm")
     parser.add_argument("--ibm-backend", default=os.environ.get("IBM_BACKEND"))
     parser.add_argument("--ibm-instance", default=os.environ.get("IBM_INSTANCE"))
@@ -58,11 +62,12 @@ def main():
     output.mkdir(parents=True)
     result_path = output / "result.json"
     log_path = output / "run.log"
-    manifest = {"status": "running", "scenario": "WetGrass Rain/WetGrass projection",
+    manifest = {"status": "running", "scenario": args.scenario,
                 "started_at_utc": datetime.now(timezone.utc).isoformat(),
                 "qaoa_backend": args.qaoa_backend, "ibm_backend": (args.ibm_backend or "auto") if ibm else None,
-                "reps": 1, "optimizer": "COBYLA",
-                "shots_per_evaluation": 1024, "final_shots": 1024, "seed": 42,
+                "reps": 1, "optimizer": "COBYLA", "initialization": "linear_ramp",
+                "shots_per_evaluation": 1024,
+                "final_shots": 4096 if args.scenario == "wetgrass-100" else 1024, "seed": 42,
                 "aer_noise": "none", "max_ibm_jobs": 1 if ibm else 0,
                 "python": platform.python_version()}
     token = ""
@@ -76,7 +81,7 @@ def main():
                     token = args.ibm_api_key_file.read_text().strip()
                     if not token:
                         raise ValueError("The IBM API key file is empty.")
-            dataset, manifest["dataset"] = prepare_dataset(output)
+            dataset, manifest["dataset"] = prepare_dataset(output, args.scenario)
             source_files = sorted((ROOT / "bnsl-qa/bnslqa").rglob("*.py"))
             source_files += [Path(__file__).resolve(), ROOT / "bnsl-qa/problems/WetGrass.json",
                              ROOT / "requirements.txt", ROOT / "docker-compose.quantum.yml",
@@ -85,7 +90,8 @@ def main():
                                          for path in source_files}
             qaoa_solver.write_result(output / "run.json", manifest)
             qaoa_solver.main(SimpleNamespace(
-                dataset=str(dataset), reps=1, shots=1024, final_shots=1024,
+                dataset=str(dataset), reps=manifest["reps"], shots=manifest["shots_per_evaluation"],
+                final_shots=manifest["final_shots"],
                 seed=42, qaoa_backend=args.qaoa_backend,
                 ibm_backend=args.ibm_backend if ibm else None,
                 ibm_instance=args.ibm_instance if ibm else None,

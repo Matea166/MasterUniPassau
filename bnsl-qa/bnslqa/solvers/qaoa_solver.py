@@ -5,12 +5,9 @@ from importlib.metadata import version
 from pathlib import Path
 from time import perf_counter, time_ns
 
-import networkx as nx
 import numpy as np
 
-
-class InvalidGraphError(RuntimeError):
-    pass
+from .solver_utils import InvalidSampleError, sample_violations
 
 
 def ising_coefficients(Q):
@@ -44,14 +41,6 @@ def sample_bits(bitstring, width):
     if len(bits) != width or set(bits) - {"0", "1"}:
         raise ValueError("Measured bitstring does not match the QUBO width.")
     return np.array([int(bit) for bit in bits[::-1]], dtype=int)
-
-
-def graph_is_valid(bits, indices, n):
-    graph = nx.DiGraph()
-    graph.add_nodes_from(range(n))
-    graph.add_edges_from((index[1], index[2]) for index, bit in zip(indices, bits)
-                         if index[0] == "d" and bit)
-    return nx.is_directed_acyclic_graph(graph) and all(d <= 2 for _, d in graph.in_degree())
 
 
 def write_result(path, result):
@@ -118,7 +107,7 @@ def sample_ibm(circuit, backend_name, shots, seed, on_submit,
 
 
 def solve(Q, reps=1, shots=1024, maxiter=None, seed=42,
-          accept_sample=None, ibm_backend=None, on_submit=None, final_shots=None,
+          sample_validator=None, ibm_backend=None, on_submit=None, final_shots=None,
           ibm_api_key_file=None, ibm_instance=None):
     from qiskit import transpile
     from qiskit_aer import AerSimulator
@@ -153,8 +142,8 @@ def solve(Q, reps=1, shots=1024, maxiter=None, seed=42,
             best.update(value=energy, angles=values.copy())
         return (energy - offset) / scale
 
-    rng = np.random.default_rng(seed)
-    initial = np.concatenate([rng.uniform(0, 2 * np.pi, reps), rng.uniform(0, np.pi, reps)])
+    fraction = (np.arange(reps) + 0.5) / reps
+    initial = np.concatenate([fraction, -(1 - fraction)])
     options = {"maxiter": maxiter} if maxiter is not None else {}
     optimization = minimize(objective, initial, method="COBYLA", options=options)
     bound = compiled.assign_parameters(dict(zip(angles, best["angles"])))
@@ -167,6 +156,7 @@ def solve(Q, reps=1, shots=1024, maxiter=None, seed=42,
             if on_submit:
                 on_submit({"execution": job, "angles": best["angles"].tolist(),
                            "parameter_order": [parameter.name for parameter in angles],
+                           "initialization": "linear_ramp", "initial_angles": initial.tolist(),
                            "seed": seed, "reps": reps, "shots_per_evaluation": shots,
                            "training_shots": shots * len(history), "final_shots": final_shots,
                            "history": history, "parameter_training": training,
@@ -180,7 +170,9 @@ def solve(Q, reps=1, shots=1024, maxiter=None, seed=42,
         bits = sample_bits(bitstring, len(Q))
         candidates.append((float(bits @ Q @ bits), -count, bitstring, bits.tolist()))
     selected = min(candidates) if candidates else None
-    if selected is not None and accept_sample is not None and not accept_sample(np.array(selected[3], dtype=int)):
+    violations = sample_validator(selected[3]) if selected is not None and sample_validator else []
+    rejected = selected if violations else None
+    if violations:
         selected = None
     packages = ["qiskit", "qiskit-aer", "numpy", "scipy"]
     if ibm_backend:
@@ -190,13 +182,17 @@ def solve(Q, reps=1, shots=1024, maxiter=None, seed=42,
             "qubits": len(Q), "reps": reps, "shots_per_evaluation": shots,
             "training_shots": shots * len(history), "final_shots": sum(counts.values()),
             "seed": seed, "max_evaluations": maxiter,
-            "optimizer": "COBYLA", "optimizer_success": bool(optimization.success),
+            "optimizer": "COBYLA", "initialization": "linear_ramp", "initial_angles": initial.tolist(),
+            "optimizer_success": bool(optimization.success),
             "optimizer_message": str(optimization.message), "evaluations": len(history),
             "angles": best["angles"].tolist(), "parameter_order": [parameter.name for parameter in angles],
             "training_mean_energy": best["value"],
             "ising_scale": scale, "ising_offset": offset, "history": history,
             "counts": counts, "best_bits": selected[3] if selected else None,
             "best_energy": selected[0] if selected else None,
+            "constraint_violations": violations,
+            "rejected_bits": rejected[3] if rejected else None,
+            "rejected_energy": rejected[0] if rejected else None,
             "training_seconds": training_seconds, "total_seconds": perf_counter() - started,
             "versions": {package: version(package) for package in packages}}
 
@@ -239,7 +235,7 @@ def main(args):
 
     result = solve(Q, reps=args.reps, shots=args.shots, maxiter=getattr(args, "maxiter", None),
                    seed=args.seed,
-                   accept_sample=lambda bits: graph_is_valid(bits, indices, n),
+                   sample_validator=lambda bits: sample_violations(bits, indices, n),
                    ibm_backend=(args.ibm_backend or "auto") if args.qaoa_backend == "ibm" else None,
                    on_submit=on_submit, final_shots=args.final_shots,
                    ibm_api_key_file=args.ibm_api_key_file, ibm_instance=args.ibm_instance)
@@ -254,7 +250,8 @@ def main(args):
     write_result(output, result)
     print(f"QAOA result: {output}")
     if result["best_bits"] is None:
-        raise InvalidGraphError("Minimum-energy sample failed graph validation.")
+        raise InvalidSampleError("Minimum-energy sample failed constraint validation: "
+                                 + "; ".join(result["constraint_violations"]))
     print("Solution adjacency matrix:")
     printAdjMat(n, torch.tensor(result["best_bits"]))
     print(f"QUBO energy: {result['best_energy']}")

@@ -1,11 +1,13 @@
 from contextlib import redirect_stdout
 import io
 import json
+import os
 from pathlib import Path
 import secrets
 import subprocess
 import sys
 import tempfile
+from types import SimpleNamespace
 import unittest
 from unittest.mock import patch
 from zipfile import ZipFile
@@ -64,12 +66,17 @@ class IbmSmokeTests(unittest.TestCase):
         self.assertIn("WetGrass_smoke.txt", files)
 
     def test_explicit_optimizer_budget_remains_available(self):
-        result = smoke.qaoa_solver.solve([[1.0]], shots=64, maxiter=6)
-        self.assertEqual(result["status"], "completed")
-        self.assertEqual(result["max_evaluations"], 6)
-        self.assertGreater(result["evaluations"], 0)
-        self.assertLessEqual(result["evaluations"], 6)
-        self.assertEqual(sum(result["counts"].values()), 64)
+        for reps, initial in ((1, [0.5, -0.5]), (2, [0.25, 0.75, -0.75, -0.25])):
+            with self.subTest(reps=reps):
+                result = smoke.qaoa_solver.solve([[1.0]], reps=reps, shots=64, maxiter=8)
+                self.assertEqual(result["status"], "completed")
+                self.assertEqual(result["max_evaluations"], 8)
+                self.assertGreater(result["evaluations"], 0)
+                self.assertLessEqual(result["evaluations"], 8)
+                self.assertEqual(sum(result["counts"].values()), 64)
+                self.assertEqual(result["history"][0]["angles"], initial)
+                self.assertEqual(result["initialization"], "linear_ramp")
+                self.assertEqual(result["initial_angles"], initial)
 
     def test_qaoa_cli_rejects_removed_noise_option(self):
         run = subprocess.run(
@@ -82,27 +89,112 @@ class IbmSmokeTests(unittest.TestCase):
 
     def test_cli_rejects_invalid_minimum_even_when_valid_sample_is_available(self):
         with redirect_stdout(io.StringIO()):
-            dataset, _ = smoke.prepare_dataset(self.root)
+            dataset, _ = smoke.prepare_dataset(self.root, "wetgrass-100")
         output = self.root / "failed_result.json"
+        rejected = [0, 0, 0, 0, 0, 1, 0, 1, 1, 0, 0, 0,
+                    0, 1, 1, 0, 0, 1, 0, 0, 0, 1, 1, 0, 1, 1]
+        valid = [0] * 12 + [0, 1] * 4 + [1] * 6
+        counts = {"".join(map(str, rejected[::-1])): 1,
+                  "".join(map(str, valid[::-1])): 1023}
         program = (
             "from bnslqa.solvers import qaoa_solver\n"
             "qaoa_solver.sample_ibm = lambda *args, **kwargs: "
-            "({'0000011': 1, '0000001': 1023}, {'backend': 'local-test'})\n"
+            + repr((counts, {"backend": "local-test"})) + "\n"
             "from bnslqa.__main__ import main\n"
             "main()\n"
         )
         run = subprocess.run(
             [sys.executable, "-c", program, "solve", str(dataset), "QAOA",
-             "--qaoa-backend", "ibm", "--qaoa-output", str(output)],
+             "--qaoa-backend", "ibm", "--qaoa-output", str(output), "--maxiter", "4"],
             cwd=smoke.ROOT, capture_output=True, text=True,
         )
         self.assertEqual(run.returncode, 3)
-        self.assertIn("Minimum-energy sample failed graph validation", run.stderr)
+        self.assertIn("ordering transitivity", run.stderr)
         self.assertNotIn("Solution adjacency matrix:", run.stdout)
         result = json.loads(output.read_text())
         self.assertEqual(result["status"], "no_valid_graph")
-        self.assertEqual(result["counts"], {"0000011": 1, "0000001": 1023})
+        self.assertEqual(result["counts"], counts)
         self.assertIsNone(result["adjacency_matrix"])
+        self.assertEqual(result["rejected_bits"], rejected)
+        self.assertIsNone(result["best_bits"])
+
+    def test_all_solvers_validate_complete_selected_sample(self):
+        import dimod
+        from bnslqa.__main__ import main
+        from bnslqa.solvers import annealing_solver
+        from bnslqa.solvers.qubo_matrix import calcQUBOMatrix
+        from bnslqa.solvers.solver_utils import getData
+
+        with redirect_stdout(io.StringIO()):
+            dataset, _ = smoke.prepare_dataset(self.root, "wetgrass-100")
+        examples, n, states, _, _ = getData(str(dataset))
+        Q, indices, _ = calcQUBOMatrix(examples, n, states)
+        valid = [1, 1, 0, 0, 1, 0, 0, 0, 1, 0, 0, 0,
+                 0, 1, 1, 0, 0, 0, 1, 0, 1, 1, 1, 1, 1, 1]
+        cases = [("valid", {}, None),
+                 ("slack", {12: 1}, "parent-count helper"),
+                 ("transitivity", {22: 0}, "ordering transitivity"),
+                 ("consistency", {20: 0}, "edge-order consistency"),
+                 ("three_parents", {2: 1, 5: 1, 18: 0}, "parent limit"),
+                 ("cycle", {9: 1, 12: 1, 13: 0}, "cycle")]
+        for solver in ("SA", "SQA", "QAOA"):
+            for name, changes, cause in cases:
+                with self.subTest(solver=solver, case=name):
+                    bits = valid.copy()
+                    for position, value in changes.items():
+                        bits[position] = value
+                    energy = sum(bits[i] * Q[i][j] * bits[j]
+                                 for i in range(len(bits)) for j in range(len(bits)))
+                    samples = dimod.SampleSet.from_samples(dict(zip(indices, bits)),
+                                                          dimod.BINARY, energy=[energy])
+                    counts = {"".join(map(str, bits[::-1])): 64}
+                    aer_result = [SimpleNamespace(data=SimpleNamespace(
+                        meas=SimpleNamespace(get_counts=lambda: counts)))]
+                    output = self.root / f"{solver}_{name}.json"
+                    storage = self.root / "tests/tests_anneal.csv"
+                    storage.parent.mkdir(exist_ok=True)
+                    storage.write_text("previous results\n")
+                    argv = ["bnslqa", "solve", str(dataset), solver, "--reads", "64",
+                            "--shots", "64", "--maxiter", "4", "--qaoa-backend", "ibm",
+                            "--qaoa-output", str(output)]
+                    code = 0
+                    previous = Path.cwd()
+                    try:
+                        os.chdir(self.root)
+                        with patch.object(sys, "argv", argv), \
+                             patch.object(annealing_solver, "getSampler") as sampler, \
+                             patch.object(smoke.qaoa_solver, "sample_ibm", return_value=(counts, {})), \
+                             patch("qiskit_aer.primitives.SamplerV2") as aer, \
+                             redirect_stdout(io.StringIO()) as console, \
+                             patch("sys.stderr", new_callable=io.StringIO) as errors:
+                            sampler.return_value.sample_qubo.return_value = samples
+                            aer.return_value.run.return_value.result.return_value = aer_result
+                            try:
+                                main()
+                            except SystemExit as error:
+                                code = error.code
+                    finally:
+                        os.chdir(previous)
+                    if cause is None:
+                        self.assertEqual(code, 0)
+                        self.assertIn("Solution adjacency matrix:", console.getvalue())
+                        if solver == "QAOA":
+                            result = json.loads(output.read_text())
+                            self.assertEqual(result["constraint_violations"], [])
+                            self.assertEqual(result["best_bits"], valid)
+                        else:
+                            self.assertGreater(storage.stat().st_size, len("previous results\n"))
+                    else:
+                        self.assertEqual(code, 3)
+                        self.assertIn(cause, errors.getvalue())
+                        self.assertNotIn("Solution adjacency matrix:", console.getvalue())
+                        self.assertEqual(storage.read_text(), "previous results\n")
+                        if solver == "QAOA":
+                            result = json.loads(output.read_text())
+                            self.assertIsNone(result["adjacency_matrix"])
+                            self.assertIsNone(result["best_bits"])
+                            self.assertEqual(result["rejected_bits"], bits)
+                            self.assertIn(cause, " ".join(result["constraint_violations"]))
 
     def test_smoke_preserves_failed_run_without_a_valid_graph(self):
         with patch.object(smoke.qaoa_solver, "sample_ibm", return_value=(
@@ -124,7 +216,7 @@ class IbmSmokeTests(unittest.TestCase):
             service.return_value.least_busy.return_value = backend
             job = sampler.return_value.run.return_value
             job.job_id.return_value = "local-test-job"
-            job.result.return_value[0].data.meas.get_counts.return_value = {"0000001": 1024}
+            job.result.return_value[0].data.meas.get_counts.return_value = {"1011001": 1024}
             job.metrics.return_value = {
                 "timestamps": {"created": "2026-11-22T10:00:00Z", "finished": "2026-11-22T10:00:25Z"},
                 "usage": {"quantum_seconds": 1.25},
@@ -197,7 +289,7 @@ class IbmSmokeTests(unittest.TestCase):
             service.return_value.least_busy.return_value = backend
             job = sampler.return_value.run.return_value
             job.job_id.return_value = "local-test-job"
-            job.result.return_value[0].data.meas.get_counts.return_value = {"0000000": 1024}
+            job.result.return_value[0].data.meas.get_counts.return_value = {"1101000": 1024}
             code, files = self.run_smoke([])
             self.assertEqual(service.call_args.kwargs, {})
         self.assertEqual(code, 0)

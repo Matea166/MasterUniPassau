@@ -80,12 +80,27 @@ For a small local run without IBM credentials:
 docker compose run --build --rm --no-deps app python scripts/run_ibm_smoke.py --qaoa-backend aer
 ```
 
+For the actual 100-row WetGrass dataset and all four variables:
+
+```bash
+docker compose run --build --rm --no-deps app python scripts/run_ibm_smoke.py --qaoa-backend aer --scenario wetgrass-100
+```
+
+This case uses the same expected-value generator as the WetGrass 100 experiment
+and requires 26 qubits.
+The default smoke case keeps its 10 expected-value rows and two variables.
+Both cases use linear-ramp initialization, one layer, COBYLA and 1,024 training
+shots per evaluation. WetGrass 100 uses 4,096 final shots; the default smoke case
+uses 1,024 final shots.
+
 Direct CLI defaults are one layer, 1,024 training shots per evaluation, the same
-number of final shots, and seed 42. COBYLA uses SciPy's default evaluation budget.
+number of final shots, and seed 42. QAOA starts from linear-ramp angles; for one
+layer these are gamma=0.5 and beta=-0.5. COBYLA uses SciPy's default evaluation budget.
 Override these with `--reps`, `--shots`, `--final-shots`, `--seed` and `--maxiter`.
 Standalone solver JSON results go under `results/qaoa/`.
 
-The experiment runners include SA, SQA and QAOA. QAOA inherits each dataset's SA
+The experiment runners include SA, SQA and QAOA. WetGrass 100 uses 30 QAOA trials,
+one layer, 1,024 training shots and 4,096 final shots. Other datasets inherit the SA
 configuration grid by default. Set both `QAOA_TRIALS` and `QAOA_READS` to override it.
 For QAOA, reads supply the training and final shot counts unless overridden by
 `QAOA_SHOTS` and `QAOA_FINAL_SHOTS`. Other overrides are `QAOA_REPS`,
@@ -105,7 +120,7 @@ Follow the [credential setup](../README.md#ibm-quantum-smoke-test), then run:
 docker compose -f docker-compose.quantum.yml run --build --rm quantum
 ```
 
-The smoke test uses 10 expected-value WetGrass rows, projected onto Rain and
+The default smoke test uses 10 expected-value WetGrass rows, projected onto Rain and
 WetGrass. The QUBO determines the seven-qubit circuit. It uses one layer,
 1,024 training shots per evaluation, 1,024 final shots, seed 42 and COBYLA's
 default budget. Final sampling submits one IBM job through `SamplerV2` in job
@@ -116,7 +131,7 @@ Each run writes a folder and ZIP under `results/ibm/`:
 
 | File | Contents |
 |---|---|
-| `WetGrass_smoke.txt` | Ten-row, two-attribute solver input |
+| `WetGrass_smoke.txt` | Solver input for the selected scenario |
 | `run.json` | Settings, status, software versions and source hashes |
 | `result.json` | Angles, measurements, selected graph and IBM job details when available |
 | `run.log` | Solver output and errors |
@@ -278,9 +293,11 @@ references identify their original data and workloads by checksum.
 
 ## Estimators and PostgreSQL
 
-SA/SQA/QAOA select a minimum-energy sample, then check for cycles and at most
-two parents per node. Rejected trials are skipped; scheduled trials continue.
-Graphs are not repaired. All unique accepted graphs are used for cardinality
+SA/SQA/QAOA select a minimum-energy sample, then validate the graph and all
+QUBO constraints: at most two parents, parent-count helper bits, ordering
+transitivity, and edge-order consistency. Rejection reasons are logged; rejected
+trials are skipped and scheduled trials continue. QAOA JSON also preserves the
+rejected bits, energy and reasons. Samples are not repaired or replaced. All unique accepted graphs are used for cardinality
 estimation with pgmpy maximum-likelihood categorical tables and variable
 elimination. The experiment fails if no graph is accepted, or if execution or
 inference fails.

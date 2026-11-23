@@ -7,9 +7,9 @@
 
 from time import time_ns
 import torch
-import networkx as nx
 from .qubo_matrix import calcQUBOMatrix, printMatrix
-from .solver_utils import getExpectedSolution, printInfoResults, getNumExamples, getData
+from .solver_utils import (InvalidSampleError, getExpectedSolution, printInfoResults,
+                           getNumExamples, getData, sample_violations)
 
 from neal import SimulatedAnnealingSampler
 from dwave.samplers import PathIntegralAnnealingSampler
@@ -126,13 +126,10 @@ def main(args):
         method=method, nReads=nReads
     )
 
-    graph = nx.DiGraph(
-        (index[1], index[2])
-        for index, value in zip(indexQUBO, minXt)
-        if index[0] == 'd' and value == 1
-    )
-    if not nx.is_directed_acyclic_graph(graph) or any(degree > 2 for _, degree in graph.in_degree()):
-        return
+    violations = sample_violations(minXt, indexQUBO, n)
+    if violations:
+        raise InvalidSampleError("Minimum-energy sample failed constraint validation: "
+                                 + "; ".join(violations))
 
     printInfoResults(expXt, expY, minXt, minY, n)
     print(
