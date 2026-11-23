@@ -29,3 +29,5 @@ output_bn/
 graphs/
 bnsl/graphs/
 bnsl/combined_results_*
+.DS_Store
+.idea/
